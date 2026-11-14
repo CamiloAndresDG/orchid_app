@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-14T00:00:00Z",
+  "title": "Design System: Field Shift",
+  "extensions": {
+    "colorMeta": {
+      "moss": { "role": "primary", "displayName": "Musgo", "canonical": "#3f6b3a", "tonalRamp": ["#14230f", "#1f351b", "#2c4d29", "#3f6b3a", "#5a8a52", "#7aa96f", "#a8cc9c", "#dcebd4"] },
+      "moss-deep": { "role": "primary", "displayName": "Musgo Hondo", "canonical": "#2c4d29", "tonalRamp": ["#0f1c0d", "#1a2f17", "#2c4d29", "#3e6639", "#58834f", "#78a26c", "#a6c69a", "#dbead3"] },
+      "moss-wash": { "role": "primary", "displayName": "Lavado de Musgo", "canonical": "#e2e6cf", "tonalRamp": ["#2a2f1c", "#41472d", "#5d6444", "#7d8462", "#a0a684", "#c2c7a8", "#e2e6cf", "#f3f5ea"] },
+      "clay": { "role": "secondary", "displayName": "Barro", "canonical": "#9a4220", "tonalRamp": ["#2e1208", "#4f1f0e", "#742f16", "#9a4220", "#c0613a", "#e58d62", "#f2b99a", "#fbe6da"] },
+      "paper": { "role": "neutral", "displayName": "Papel", "canonical": "#f3eddd", "tonalRamp": ["#151a12", "#37422f", "#575f4e", "#8a8470", "#cfc5a8", "#e9e1cc", "#f3eddd", "#faf7ef"] },
+      "paper-deep": { "role": "neutral", "displayName": "Papel Hondo", "canonical": "#e9e1cc" },
+      "ink": { "role": "neutral", "displayName": "Tinta", "canonical": "#23301f", "tonalRamp": ["#121a10", "#23301f", "#46523f", "#575f4e", "#7e8774", "#a9b09e", "#d3d7c9", "#eef0e8"] },
+      "ink-soft": { "role": "neutral", "displayName": "Tinta Suave", "canonical": "#46523f" },
+      "ink-faint": { "role": "neutral", "displayName": "Tinta Tenue", "canonical": "#575f4e" },
+      "rule": { "role": "neutral", "displayName": "Renglón", "canonical": "#cfc5a8" },
+      "field": { "role": "neutral", "displayName": "Lindero", "canonical": "#8a8470" },
+      "paper-night": { "role": "neutral", "displayName": "Papel de Noche", "canonical": "#151a12" },
+      "paper-deep-night": { "role": "neutral", "displayName": "Papel Hondo de Noche", "canonical": "#1f271b" },
+      "moss-wash-night": { "role": "primary", "displayName": "Lavado de Musgo de Noche", "canonical": "#213019" },
+      "ink-night": { "role": "neutral", "displayName": "Tinta de Noche", "canonical": "#ece6d3" },
+      "ink-soft-night": { "role": "neutral", "displayName": "Tinta Suave de Noche", "canonical": "#c3cab6" },
+      "ink-faint-night": { "role": "neutral", "displayName": "Tinta Tenue de Noche", "canonical": "#9aa38f" },
+      "rule-night": { "role": "neutral", "displayName": "Renglón de Noche", "canonical": "#37422f" },
+      "field-night": { "role": "neutral", "displayName": "Lindero de Noche", "canonical": "#6b7760" },
+      "moss-night": { "role": "primary", "displayName": "Musgo de Noche", "canonical": "#93c283" },
+      "moss-deep-night": { "role": "primary", "displayName": "Musgo Hondo de Noche", "canonical": "#b5d9a7" },
+      "clay-night": { "role": "secondary", "displayName": "Barro de Noche", "canonical": "#e58d62" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "El nombre «Field Shift» en la cabecera del cuaderno." },
+      "headline": { "displayName": "Headline", "purpose": "Título de cada pestaña principal, «Lo que te sugerimos» y «Tu mejor opción»." },
+      "headline-sm": { "displayName": "Headline Small", "purpose": "Títulos de los paneles de «Más datos»." },
+      "title": { "displayName": "Title", "purpose": "Pasos, secciones y resúmenes desplegables." },
+      "title-sm": { "displayName": "Title Small", "purpose": "Otras opciones y apartados de lo que sabemos del terreno." },
+      "body-lg": { "displayName": "Body Large", "purpose": "Veredicto de la mejor opción y botón principal grande." },
+      "body": { "displayName": "Body", "purpose": "Todo el texto de lectura, etiquetas, pestañas y botones; mínimo para decidir." },
+      "label": { "displayName": "Label", "purpose": "Notas al pie, fuentes, enlaces oficiales y píldoras de «Más datos»." }
+    },
+    "shadows": [
+      { "name": "over-map-card", "value": "0 6px 20px rgb(0 0 0 / 0.3)", "purpose": "Tarjeta de indicación flotando sobre la imagen satelital." },
+      { "name": "over-map-label", "value": "0 4px 12px rgb(0 0 0 / 0.3)", "purpose": "Etiqueta en píldora sobre el mapa una vez puesto el pin." },
+      { "name": "map-fold", "value": "inset -12px 0 24px -12px rgb(0 0 0 / 0.35)", "purpose": "Pliegue del mapa contra el cuaderno." }
+    ],
+    "motion": [
+      { "name": "disclosure-rotate", "value": "transform 150ms cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "El chevron de un desplegable gira 90° al abrir." },
+      { "name": "scroll-to-result", "value": "scrollIntoView smooth", "purpose": "Al calcular, el cuaderno se desliza hasta los resultados." },
+      { "name": "reduced-motion", "value": "animation: none; transition: none", "purpose": "Con prefers-reduced-motion se apaga todo movimiento." }
+    ],
+    "breakpoints": [
+      { "name": "desktop-min", "value": "1024px" },
+      { "name": "sm", "value": "640px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "La única acción principal visible: calcular, consultar precios.",
+      "html": "<button class=\"ds-btn-primary\">Ver qué me conviene sembrar</button> <button class=\"ds-btn-primary\" disabled>Ver qué me conviene sembrar</button>",
+      "css": ".ds-btn-primary{background:var(--moss,#3f6b3a);color:var(--paper,#f3eddd);border:none;border-radius:6px;padding:10px 20px;font:600 16px/1.5 'Public Sans',system-ui,sans-serif;cursor:pointer}.ds-btn-primary:hover{background:var(--moss-deep,#2c4d29)}.ds-btn-primary:focus-visible{outline:2px solid var(--moss,#3f6b3a);outline-offset:2px}.ds-btn-primary:disabled{opacity:.45;cursor:not-allowed}"
+    },
+    {
+      "name": "Botón de contorno",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Acción secundaria: agregar un cultivo, usar este precio, ver un ejemplo.",
+      "html": "<button class=\"ds-btn-outline\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"/></svg> Agregar un cultivo</button>",
+      "css": ".ds-btn-outline{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--moss,#3f6b3a);border:1px solid var(--moss,#3f6b3a);border-radius:6px;padding:10px 16px;font:400 16px/1.5 'Public Sans',system-ui,sans-serif;cursor:pointer}.ds-btn-outline:hover{background:var(--moss,#3f6b3a);color:var(--paper,#f3eddd)}.ds-btn-outline:focus-visible{outline:2px solid var(--moss,#3f6b3a);outline-offset:2px}"
+    },
+    {
+      "name": "Campo de formulario",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo con etiqueta encima y error en palabras llanas debajo.",
+      "html": "<label class=\"ds-label\">Tamaño en acres<input class=\"ds-input\" type=\"number\" placeholder=\"Ej.: 60\"></label><p class=\"ds-error-text\">Escribe un número de acres mayor que cero.</p>",
+      "css": ".ds-label{display:block;max-width:16rem;font:400 16px/1.5 'Public Sans',system-ui,sans-serif;color:var(--ink,#23301f)}.ds-input{display:block;width:100%;margin-top:4px;background:var(--paper,#f3eddd);color:var(--ink,#23301f);border:1px solid var(--field,#8a8470);border-radius:6px;padding:10px 12px;font:inherit}.ds-input:focus-visible{outline:2px solid var(--moss,#3f6b3a);outline-offset:2px}.ds-error-text{margin:8px 0 0;color:var(--clay,#9a4220);font:400 16px/1.5 'Public Sans',system-ui,sans-serif}"
+    },
+    {
+      "name": "Pestañas principales",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "Mi terreno / Mis precios / Más datos, sobre una línea rule.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button class=\"ds-tab\" role=\"tab\" aria-selected=\"true\">Mi terreno</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Mis precios</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Más datos</button></div>",
+      "css": ".ds-tabs{display:flex;gap:4px;border-bottom:1px solid var(--rule,#cfc5a8)}.ds-tab{margin-bottom:-1px;background:transparent;border:none;border-bottom:3px solid transparent;padding:12px 20px;font:400 16px/1.5 'Public Sans',system-ui,sans-serif;color:var(--ink-soft,#46523f);cursor:pointer}.ds-tab:hover{color:var(--ink,#23301f)}.ds-tab[aria-selected=true]{border-bottom-color:var(--moss,#3f6b3a);font-weight:600;color:var(--ink,#23301f)}.ds-tab:focus-visible{outline:2px solid var(--moss,#3f6b3a);outline-offset:2px}"
+    },
+    {
+      "name": "Píldoras de sub-pestaña",
+      "kind": "chip",
+      "refersTo": "pill",
+      "description": "Sub-secciones de «Más datos» y botones de ejemplo.",
+      "html": "<nav class=\"ds-pills\"><button class=\"ds-pill\" aria-current=\"page\">Clima</button><button class=\"ds-pill\">Meses difíciles</button><button class=\"ds-pill\">Ejemplos</button></nav>",
+      "css": ".ds-pills{display:flex;flex-wrap:wrap;gap:8px}.ds-pill{background:transparent;border:1px solid var(--rule,#cfc5a8);border-radius:9999px;padding:8px 16px;font:400 14px/1.25rem 'Public Sans',system-ui,sans-serif;color:var(--ink-soft,#46523f);cursor:pointer}.ds-pill:hover{border-color:var(--moss,#3f6b3a);color:var(--ink,#23301f)}.ds-pill[aria-current=page]{background:var(--moss,#3f6b3a);border-color:var(--moss,#3f6b3a);color:var(--paper,#f3eddd)}.ds-pill:focus-visible{outline:2px solid var(--moss,#3f6b3a);outline-offset:2px}"
+    },
+    {
+      "name": "Alternar",
+      "kind": "chip",
+      "refersTo": "toggle",
+      "description": "Par de opciones excluyentes como el riego.",
+      "html": "<div class=\"ds-toggles\"><button class=\"ds-toggle\" aria-pressed=\"true\">No, solo lluvia</button><button class=\"ds-toggle\" aria-pressed=\"false\">Sí, tengo riego</button></div>",
+      "css": ".ds-toggles{display:flex;gap:8px}.ds-toggle{background:transparent;border:1px solid var(--field,#8a8470);border-radius:6px;padding:10px 20px;font:400 16px/1.5 'Public Sans',system-ui,sans-serif;color:var(--ink,#23301f);cursor:pointer}.ds-toggle:hover{border-color:var(--moss,#3f6b3a)}.ds-toggle[aria-pressed=true]{background:var(--moss,#3f6b3a);border-color:var(--moss,#3f6b3a);color:var(--paper,#f3eddd)}.ds-toggle:focus-visible{outline:2px solid var(--moss,#3f6b3a);outline-offset:2px}"
+    },
+    {
+      "name": "Paso numerado",
+      "kind": "custom",
+      "refersTo": "step-marker",
+      "description": "Paso del formulario: línea rule, círculo con número o palomita, título serif, contenido sangrado.",
+      "html": "<section class=\"ds-step\"><h3 class=\"ds-step-title\"><span class=\"ds-step-dot ds-step-done\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m5 12.5 4.5 4.5L19 7.5\"/></svg></span>Marca tu terreno</h3><p class=\"ds-step-body\">Listo, ya tenemos tu terreno.</p></section><section class=\"ds-step\"><h3 class=\"ds-step-title\"><span class=\"ds-step-dot\">2</span>Tamaño y riego</h3><p class=\"ds-step-body\">Escribe el tamaño en acres.</p></section>",
+      "css": ".ds-step{border-top:1px solid var(--rule,#cfc5a8);padding-top:24px;margin-bottom:32px;color:var(--ink,#23301f)}.ds-step-title{display:flex;align-items:center;gap:12px;margin:0;font:600 20px/1.75rem Fraunces,Georgia,serif}.ds-step-dot{display:grid;place-items:center;width:32px;height:32px;flex-shrink:0;border-radius:9999px;border:2px solid var(--moss,#3f6b3a);color:var(--moss,#3f6b3a);font:400 16px/1 'Public Sans',system-ui,sans-serif;box-sizing:border-box}.ds-step-done{background:var(--moss,#3f6b3a);border-color:var(--moss,#3f6b3a);color:var(--paper,#f3eddd)}.ds-step-body{margin:16px 0 0;padding-left:44px;font:400 16px/1.5 'Public Sans',system-ui,sans-serif;color:var(--ink-soft,#46523f)}"
+    },
+    {
+      "name": "Tu mejor opción",
+      "kind": "card",
+      "refersTo": "best-option",
+      "description": "La única superficie tintada: la recomendación principal con razones, riesgos y evidencia.",
+      "html": "<article class=\"ds-best\"><h3 class=\"ds-best-title\"><span class=\"ds-best-lead\">Tu mejor opción:</span> siembra centeno en octubre</h3><p class=\"ds-best-verdict\">Encaja muy bien con tu terreno.</p><div class=\"ds-best-cols\"><div><p class=\"ds-best-h\">Por qué sí</p><ul class=\"ds-best-why\"><li>Cubre el suelo en los meses que queda pelado.</li></ul></div><div><p class=\"ds-best-h\">Ten cuidado con</p><ul class=\"ds-best-risk\"><li>Hay que terminarlo a tiempo en primavera.</li></ul></div></div><p class=\"ds-best-ev\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3 5 6v5.5c0 4.2 3 7.8 7 9.5 4-1.7 7-5.3 7-9.5V6l-7-3Z\"/><path d=\"m9 12 2 2 4-4\"/></svg> ¿De dónde sale esto?</p></article>",
+      "css": ".ds-best{background:var(--moss-wash,#e2e6cf);color:var(--ink,#23301f);border-radius:12px;padding:24px;font:400 16px/1.5 'Public Sans',system-ui,sans-serif}.ds-best-title{margin:0;font:600 30px/1.25 Fraunces,Georgia,serif}.ds-best-lead{color:var(--moss,#3f6b3a)}.ds-best-verdict{margin:8px 0 0;font-size:18px;line-height:1.75rem}.ds-best-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}.ds-best-h{margin:0;font-weight:600}.ds-best-why,.ds-best-risk{margin:4px 0 0;padding-left:20px;color:var(--ink-soft,#46523f)}.ds-best-why li::marker{color:var(--moss,#3f6b3a)}.ds-best-risk li::marker{color:var(--clay,#9a4220)}.ds-best-ev{display:inline-flex;align-items:center;gap:6px;margin:12px 0 0;color:var(--moss,#3f6b3a);cursor:pointer}.ds-best-ev:hover{text-decoration:underline}"
+    },
+    {
+      "name": "Aviso de error",
+      "kind": "custom",
+      "refersTo": "alert",
+      "description": "Fallo de conexión o de cálculo, con instrucción de qué hacer.",
+      "html": "<p class=\"ds-alert\" role=\"alert\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3 2 20h20L12 3Z\"/><path d=\"M12 10v4M12 17.5v.01\"/></svg> No pudimos calcular las opciones. Pulsa el botón otra vez; tus datos siguen aquí.</p>",
+      "css": ".ds-alert{display:flex;align-items:flex-start;gap:12px;margin:0;background:var(--paper-deep,#e9e1cc);color:var(--clay,#9a4220);border:1px solid color-mix(in oklab,var(--clay,#9a4220) 40%,transparent);border-radius:8px;padding:16px;font:400 16px/1.5 'Public Sans',system-ui,sans-serif}.ds-alert svg{flex-shrink:0;margin-top:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Field Notebook",
+    "overview": "Un cuaderno de campo abierto junto a una foto aérea del terreno. La mitad izquierda es el mundo real (imagen satelital del USGS, con el pin «Mi terreno»); la mitad derecha es la libreta donde se anota lo que se sabe de ese pedazo de tierra: tres pasos numerados, una recomendación y, siempre a mano, de dónde sale cada dato. Se lee como una página escrita a mano con cuidado, no como un tablero de control.\n\nEl papel es claro por defecto porque la escena de uso es una oficina o una cocina con luz de día; el modo oscuro existe como una libreta de noche en verde bosque, elegida por la persona y recordada. El sistema es plano: la jerarquía viene de la serif Fraunces en los títulos, del tamaño y de líneas finas de color «rule», no de tarjetas, sombras ni adornos. El verde musgo es la única voz de acción; el barro (clay) solo avisa de pérdida, riesgo o error.\n\nEl lenguaje es español sencillo de agricultor, con unidades de EE. UU. (acres, bushels, dólares por acre). Nada de rótulos en mayúsculas encima de los títulos ni de bordes laterales de color: el título dice lo que es y la línea separa.",
+    "keyCharacteristics": [
+      "Pantalla partida 50/50: mapa satelital a la izquierda, cuaderno a la derecha.",
+      "Papel crema claro por defecto; libreta verde bosque como modo oscuro opcional.",
+      "Líneas en lugar de tarjetas; una sola superficie tintada para «Tu mejor opción».",
+      "Musgo para actuar y elegir; barro solo para pérdida, riesgo y error.",
+      "Cada afirmación lleva su «¿De dónde sale esto?» con enlace al dato oficial."
+    ],
+    "rules": [
+      { "name": "The Measured Ink Rule", "body": "Todo token de texto (ink, ink-soft, ink-faint, moss, clay) mide al menos 4.5:1 sobre paper y paper-deep en ambos temas, y field mide al menos 3:1 como borde de control. Un color nuevo de texto entra solo si pasa la misma medida.", "section": "colors" },
+      { "name": "The Two Voices Rule", "body": "Musgo significa «actúa o está elegido»; barro significa «cuidado». No hay tercer acento, y ninguno se usa como adorno.", "section": "colors" },
+      { "name": "The One Wash Rule", "body": "Moss-wash pinta únicamente la recomendación principal. Si todo está tintado, nada destaca.", "section": "colors" },
+      { "name": "The Readable Floor Rule", "body": "El texto que la persona debe leer para decidir es de 16px como mínimo; 14px solo para notas y fuentes. Nada en mayúsculas sostenidas ni con espaciado ampliado.", "section": "typography" },
+      { "name": "The Title Says It Rule", "body": "Un título serif nombra la sección por sí solo; no lleva rótulo pequeño encima.", "section": "typography" },
+      { "name": "The Paper Is Flat Rule", "body": "Nada dentro del cuaderno lleva sombra, ni en reposo ni en hover. Las sombras solo separan cosas que flotan sobre la imagen satelital.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do separar secciones con una línea rule de 1px y 24px de aire, no con cajas.",
+      "Do usar moss para la única acción principal visible y para lo elegido; moss-deep solo en su hover.",
+      "Do reservar clay para pérdida, riesgo, validación y error.",
+      "Do acompañar cada dato público con su enlace «Ver dato oficial» y marcar los cálculos propios como tales.",
+      "Do escribir en español llano y en unidades de EE. UU. (acres, bushels, $ por acre).",
+      "Do dibujar iconos nuevos con trazo de 1.75px, puntas redondeadas y `currentColor`.",
+      "Do definir cada color nuevo para ambos temas y medirlo: 4.5:1 para texto, 3:1 para bordes de control."
+    ],
+    "donts": [
+      "Don't poner rótulos pequeños en mayúsculas encima de los títulos.",
+      "Don't usar bordes laterales de color para resaltar un bloque.",
+      "Don't añadir sombras a nada dentro del cuaderno; las sombras son solo para lo que flota sobre el mapa.",
+      "Don't pintar con moss-wash nada que no sea la recomendación principal.",
+      "Don't usar iconos de fuente, emoji ni paquetes de iconos con otro grosor.",
+      "Don't bajar de 16px el texto que hace falta para decidir.",
+      "Don't mostrar un dato que no tenemos; se escribe como algo que aún no sabemos."
+    ]
+  }
+}

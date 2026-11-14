@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/* Cuaderno de campo: papel crema de día (oficina, luz natural), verde bosque de noche. */
+:root {
+  --paper: #f3eddd;
+  --paper-deep: #e9e1cc;
+  --moss-wash: #e2e6cf;
+  --ink: #23301f;
+  --ink-soft: #46523f;
+  --ink-faint: #575f4e;
+  --rule: #cfc5a8;
+  --field: #8a8470;
+  --moss: #3f6b3a;
+  --moss-deep: #2c4d29;
+  --clay: #9a4220;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --paper: #151a12;
+  --paper-deep: #1f271b;
+  --moss-wash: #213019;
+  --ink: #ece6d3;
+  --ink-soft: #c3cab6;
+  --ink-faint: #9aa38f;
+  --rule: #37422f;
+  --field: #6b7760;
+  --moss: #93c283;
+  --moss-deep: #b5d9a7;
+  --clay: #e58d62;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-deep: var(--paper-deep);
+  --color-moss-wash: var(--moss-wash);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-rule: var(--rule);
+  --color-field: var(--field);
+  --color-moss: var(--moss);
+  --color-moss-deep: var(--moss-deep);
+  --color-clay: var(--clay);
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-public), system-ui, sans-serif;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-public), system-ui, sans-serif;
+  caret-color: var(--moss);
+}
+
+::selection {
+  background: var(--moss);
+  color: var(--paper);
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: 2px;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+* {
+  scrollbar-color: var(--rule) transparent;
+}
+
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Mapa: el control de atribucion adopta el papel del cuaderno. */
+.maplibregl-ctrl-attrib {
+  background: color-mix(in oklab, var(--paper) 85%, transparent) !important;
+  color: var(--ink-soft);
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--ink-soft) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+/* tokens v2 */

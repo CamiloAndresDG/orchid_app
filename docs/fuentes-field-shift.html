@@ -1,0 +1,190 @@
+<title>Fuentes Field Shift</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: una columna de lectura, tabla filtrable de 24 fuentes, bloques de alertas y plan de uso */
+:root{
+  --bg:#f6f7f4; --surface:#ffffff; --fg:#1b2420; --muted:#5b665f; --line:#dde2dc;
+  --accent:#1f6f54; --accent-soft:#e0efe8;
+  --ok:#1f7a45; --ok-soft:#e3f1e8; --warn:#9a5b00; --warn-soft:#fbefd9; --bad:#a3322a; --bad-soft:#f8e3e0;
+  --font-head:"Space Grotesk",system-ui,sans-serif; --font-body:"Inter",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121815; --surface:#19211d; --fg:#e8eeea; --muted:#9aa89f; --line:#2b3730;
+  --accent:#5fc9a0; --accent-soft:#1c3328;
+  --ok:#6fd397; --ok-soft:#1b3326; --warn:#f0b457; --warn-soft:#3a2e17; --bad:#f08b82; --bad-soft:#3b2220; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121815; --surface:#19211d; --fg:#e8eeea; --muted:#9aa89f; --line:#2b3730;
+  --accent:#5fc9a0; --accent-soft:#1c3328;
+  --ok:#6fd397; --ok-soft:#1b3326; --warn:#f0b457; --warn-soft:#3a2e17; --bad:#f08b82; --bad-soft:#3b2220; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 var(--font-body);
+  padding-block:32px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:36px}
+h1,h2,h3{font-family:var(--font-head);line-height:1.2;text-wrap:balance;margin:0}
+h1{font-size:clamp(26px,5vw,36px);letter-spacing:-.01em}
+h2{font-size:20px}
+h3{font-size:15px}
+p{margin:0}
+.lede{color:var(--muted);max-width:68ch;margin-top:10px}
+.meta{color:var(--muted);font-size:13px;margin-top:6px}
+.label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+section{display:flex;flex-direction:column;gap:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;min-width:0}
+.card p{color:var(--muted);font-size:14px;margin-top:6px}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.t-ok{background:var(--ok-soft);color:var(--ok)}
+.t-warn{background:var(--warn-soft);color:var(--warn)}
+.t-bad{background:var(--bad-soft);color:var(--bad)}
+.t-info{background:var(--accent-soft);color:var(--accent)}
+.alerts{display:flex;flex-direction:column;gap:8px}
+.alert{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:6px;padding:10px 14px;min-width:0}
+.alert b{font-weight:600}
+.alert span{color:var(--muted);font-size:14px}
+.alert.hi{border-left-color:var(--bad)}
+.filters{display:flex;flex-wrap:wrap;gap:8px}
+.filters button{font:inherit;font-size:13px;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.filters button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:820px;font-size:13.5px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface);position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+td.n{font-variant-numeric:tabular-nums;color:var(--muted);width:36px}
+td.nm{font-weight:600;min-width:150px}
+td small{display:block;color:var(--muted);font-weight:400;font-size:12px;margin-top:2px}
+.count{color:var(--muted);font-size:13px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+ul.plain{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
+ul.plain li{margin:3px 0}
+a{color:var(--accent)}
+.foot{color:var(--muted);font-size:13px}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="label">NASA Space Apps 2026 · Field Shift: Adapting Farms with NASA Data</div>
+  <h1>Fuentes Field Shift</h1>
+  <p class="lede">Resumen de las 24 fuentes de la pestaña Resources, verificadas el 14 de noviembre de 2026 con consultas reales a sus APIs y catálogos. Úsalo para decidir qué entra en el prototipo y qué claves pedir hoy.</p>
+  <p class="meta">Reto: herramienta de apoyo que compare al menos 3 estrategias de rotación (incluida la actual) con evidencia, vacíos y riesgos. No reemplaza al agricultor.</p>
+</header>
+
+<section>
+  <h2>Lo más importante</h2>
+  <div class="grid">
+    <div class="card"><h3>Sin cuenta, listas hoy</h3><p>NASA POWER, PRISM, SSURGO (Soil Data Access), CoCoRaHS, NWIS (API nueva), WMS de CDL y NLCD, servicio NAIP, GAEZ, LANDFIRE.</p></div>
+    <div class="card"><h3>Pedir hoy</h3><p>Cuenta Earthdata (SMAP, IMERG, MODIS, HLS, ECOSTRESS, SRTM, NLDAS/GLDAS, GEDI). Claves gratis: QuickStats, OpenET, ERA5 (CDS) y cuenta Copernicus para bajar Sentinel-2.</p></div>
+    <div class="card"><h3>Límite de cobertura</h3><p>13 de las 24 fuentes son solo de EE. UU. Para alcance global quedan SMAP, IMERG, Landsat/MODIS/VIIRS, POWER, SRTM, ECOSTRESS, GLDAS, GAEZ, GEDI, Sentinel-2 y ERA5.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>Alertas</h2>
+  <div class="alerts">
+    <div class="alert hi"><span class="tag t-bad">Plazo</span><div><b>NWIS: la API clásica se apaga el 22-feb-2027.</b> <span>Usar api.waterdata.usgs.gov (probada, sin clave). Los tutoriales viejos usan la que va a morir.</span></div></div>
+    <div class="alert"><span class="tag t-warn">Datos</span><div><b>IMERG Final se detiene el 2025-09-30.</b> <span>Para fechas recientes usar IMERG Late o Early.</span></div></div>
+    <div class="alert"><span class="tag t-warn">Datos</span><div><b>Suomi NPP ya no entrega datos nuevos.</b> <span>VIIRS/NPP (VNP13) queda congelado. Usar NOAA-20 (VJ113A1).</span></div></div>
+    <div class="alert"><span class="tag t-warn">Enlace</span><div><b>CropScape redirige a un login de CropSmart.</b> <span>El WMS de CDL funciona y el portal oficial es CroplandCROS.</span></div></div>
+    <div class="alert"><span class="tag t-warn">Datos</span><div><b>GEDI: biomasa en grilla (L4B) termina en marzo de 2023.</b> <span>Solo L4A por huella sigue activo. Casi no sirve sobre cultivos anuales.</span></div></div>
+    <div class="alert"><span class="tag t-warn">Datos</span><div><b>GLDAS v2.1 va ~3 meses atrasado</b> <span>(último dato 2026-07-31). NLDAS va ~4 días atrasado.</span></div></div>
+    <div class="alert"><span class="tag t-warn">Enlaces</span><div><b>Ag Data Commons y MODIS apuntan a páginas equivocadas.</b> <span>Buscador real: data.nal.usda.gov/search. Productos MODIS: Earthdata Search o AppEEARS.</span></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Las 24 fuentes</h2>
+  <div class="filters" role="group" aria-label="Filtros">
+    <button type="button" data-f="all" aria-pressed="true">Todas</button>
+    <button type="button" data-f="global" aria-pressed="false">Cobertura global</button>
+    <button type="button" data-f="us" aria-pressed="false">Solo EE. UU.</button>
+    <button type="button" data-f="open" aria-pressed="false">Sin cuenta</button>
+    <button type="button" data-f="warn" aria-pressed="false">Con alerta</button>
+  </div>
+  <div class="count" id="count"></div>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>#</th><th>Fuente</th><th>Qué aporta</th><th>Resolución y cobertura</th><th>Acceso</th><th>Estado</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Cómo cubrir cada necesidad del reto</h2>
+  <div class="two">
+    <div class="card"><h3>Agua</h3><ul class="plain"><li>Lluvia: IMERG (2), PRISM (10), CoCoRaHS para validar (16)</li><li>Humedad de suelo: SMAP superficie (1), NLDAS/GLDAS por capas (14), POWER (4), ERA5 (24)</li><li>Agua para riego: NWIS (17)</li></ul></div>
+    <div class="card"><h3>Calor, heladas y estrés</h3><ul class="plain"><li>Temperatura mínima y máxima: POWER (4), PRISM (10)</li><li>Estrés térmico y ET: ECOSTRESS (6), OpenET en el oeste (20)</li><li>Vigor del cultivo: HLS/Landsat/MODIS (3), Sentinel-2 (23)</li></ul></div>
+    <div class="card"><h3>Suelo y terreno</h3><ul class="plain"><li>Atributos: SSURGO vía Soil Data Access (11), Web Soil Survey (8)</li><li>Pendiente y escorrentía: SRTM (5)</li><li>Entorno: NLCD (13), LANDFIRE (21), NAIP (12)</li></ul></div>
+    <div class="card"><h3>Rotación, cultivos y mercado</h3><ul class="plain"><li>Rotación actual: CDL y secuencias de cultivo (9)</li><li>Aptitud y clima futuro: GAEZ (15), única fuente con escenarios</li><li>Rendimientos y mercado: QuickStats (19), Market News (18), Ag Data Commons (7)</li></ul></div>
+  </div>
+</section>
+
+<section>
+  <h2>Propuesta de pila para el prototipo</h2>
+  <div class="two">
+    <div class="card"><h3>Núcleo mínimo, sin fricción</h3><p>POWER para clima diario, SSURGO para suelo, CDL para la rotación actual y PRISM como contraste en EE. UU. Todo consultable por API sin cuenta. Suficiente para tres rotaciones con evidencia.</p></div>
+    <div class="card"><h3>Capa de satélite</h3><p>HLS (30 m, cada 2 a 3 días) para NDVI, SMAP L4 para humedad de zona radicular e IMERG Late para lluvia reciente. AppEEARS extrae series por punto o polígono sin bajar tiles.</p></div>
+    <div class="card"><h3>Para cultivos candidatos</h3><p>GAEZ filtra aptitud por cultivo, riego y escenario. QuickStats y Market News aportan rendimiento y mercado. Ag Data Commons respalda parámetros agronómicos.</p></div>
+    <div class="card"><h3>Si hay tiempo</h3><p>ECOSTRESS para puntos calientes dentro del campo, NAIP para validar suelo desnudo y NLDAS para humedad por capas. GEDI y LANDFIRE tienen prioridad baja.</p></div>
+  </div>
+</section>
+
+<p class="foot">Verificado: consultas reales a POWER, CMR de NASA, Soil Data Access, PRISM, NAIP, WMS de CDL y NLCD, STAC de Landsat y Copernicus, AppEEARS, GIBS, CoCoRaHS, NWIS y servicios de GAEZ y LANDFIRE. No verificado: datos reales de QuickStats y OpenET (exigen clave), contenido de las páginas de NLCD y NWIS en usgs.gov (devolvieron 403 a un cliente automático), servicios GetCDL* de CropScape (dieron error) y todo lo que viene de documentación oficial sin prueba. Informes completos por fuente: informe_fuentes_1-12.md e informe_fuentes_13-24.md.</p>
+</div>
+
+<script>
+var D=[
+[1,"SMAP","Humedad de suelo superficial y de zona radicular (L4)","9 km, 3 h a diario · global","earth","ok",""],
+[2,"GPM / IMERG","Lluvia y eventos extremos","0.1°, 30 min a mensual · global","earth","warn","Final termina 2025-09-30"],
+[3,"Landsat, MODIS, VIIRS","NDVI, reflectancia, temperatura de superficie; HLS cada 2 a 3 días","30 m a 1 km · global","earth","warn","Suomi NPP sin datos nuevos"],
+[4,"NASA POWER","Clima diario por punto: temperatura, lluvia, radiación, humedad, ET","~0.5° desde 1981 · global","open","ok",""],
+[5,"SRTM","Elevación; pendiente y escorrentía derivadas","30 m, estático · 60°N a 56°S","earth","ok",""],
+[6,"ECOSTRESS","Temperatura de superficie, ET e índice de estrés","70 m, revisita irregular · ±52°","earth","ok",""],
+[7,"USDA Ag Data Commons","Datasets de investigación: prácticas, fenología, suelos","Variable · sobre todo EE. UU.","open","warn","Enlace lleva a la guía"],
+[8,"Web Soil Survey","Mapas y reportes de suelo por parcela","Escala de campo · EE. UU.","open","ok","Sin API; usar Soil Data Access"],
+[9,"CDL / CropScape","Cultivo por año, base para reconstruir la rotación","30 m, 1997 a 2025 · EE. UU.","open","warn","Enlace redirige a login"],
+[10,"PRISM","Lluvia y temperatura históricas de alta calidad","4 km diario, 800 m normales · EE. UU.","open","ok",""],
+[11,"SSURGO / STATSGO2","Textura, materia orgánica, agua disponible, drenaje, inundación","Campo y regional · EE. UU.","open","ok",""],
+[12,"NAIP","Imagen aérea RGB + infrarrojo cercano","0.6 m, cada 2 a 3 años · EE. UU.","open","ok",""],
+[13,"NLCD","Cobertura y uso del suelo, cambios 1985 a 2024","30 m anual · EE. UU.","open","warn","usgs.gov dio 403; WMS ok"],
+[14,"NLDAS / GLDAS","Humedad de suelo en 4 capas, ET, escorrentía, forzantes","0.125° horario NLDAS (EE. UU.); 0.25° GLDAS (global)","earth","warn","GLDAS ~3 meses de retraso"],
+[15,"FAO GAEZ","Aptitud y rendimiento potencial por cultivo, con clima futuro","~9 km · global","open","ok","Portal v4"],
+[16,"CoCoRaHS","Lluvia diaria de pluviómetros voluntarios","Estaciones · EE. UU. y Canadá","open","ok",""],
+[17,"USGS NWIS","Caudal y nivel de agua subterránea","Estaciones · EE. UU.","open","warn","API clásica se apaga 2027"],
+[18,"USDA AMS Market News","Precios y mercados","Informes por mercado · EE. UU.","open","warn","Informes públicos en PDF"],
+[19,"NASS QuickStats","Rendimiento, área y producción por condado","Condado y estado · EE. UU.","key","ok","Clave gratis"],
+[20,"OpenET","ET de campo y consumo de agua","30 m · oeste de EE. UU.","key","ok","Clave de API"],
+[21,"LANDFIRE","Vegetación, combustibles, topografía","30 m · EE. UU.","open","ok","Prioridad baja"],
+[22,"GEDI","Altura de dosel y biomasa","Huellas 25 m, grilla 1 km · ±51.6°","earth","warn","L4B termina 2023-03"],
+[23,"Sentinel-2","NDVI y red-edge","10 a 20 m, ~5 días · global","cop","ok","Bajar requiere cuenta Copernicus"],
+[24,"ERA5","Clima horario y humedad de suelo en 4 capas","0.25° desde 1940 · global","key","ok","Cuenta CDS con clave"]
+];
+var GLOBAL={1:1,2:1,3:1,4:1,5:1,6:1,14:1,15:1,22:1,23:1,24:1};
+var ACC={open:["Sin cuenta","t-ok"],earth:["Earthdata","t-info"],key:["Clave gratis","t-warn"],cop:["Copernicus","t-warn"]};
+var US_ONLY=function(r){return !GLOBAL[r[0]]};
+var filter="all";
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;")}
+function render(){
+  var rows=D.filter(function(r){
+    if(filter==="global")return !!GLOBAL[r[0]];
+    if(filter==="us")return US_ONLY(r);
+    if(filter==="open")return r[4]==="open";
+    if(filter==="warn")return r[5]==="warn";
+    return true;
+  });
+  document.getElementById("rows").innerHTML=rows.map(function(r){
+    var a=ACC[r[4]],st=r[5]==="ok"?'<span class="tag t-ok">Activa</span>':'<span class="tag t-warn">Con alerta</span>';
+    return '<tr><td class="n">'+r[0]+'</td><td class="nm">'+esc(r[1])+'</td><td>'+esc(r[2])+'</td><td>'+esc(r[3])+'</td><td><span class="tag '+a[1]+'">'+a[0]+'</span></td><td>'+st+(r[6]?'<small>'+esc(r[6])+'</small>':'')+'</td></tr>';
+  }).join("");
+  document.getElementById("count").textContent=rows.length+" de 24 fuentes";
+}
+document.querySelector(".filters").addEventListener("click",function(e){
+  var b=e.target.closest("button");if(!b)return;
+  filter=b.getAttribute("data-f");
+  document.querySelectorAll(".filters button").forEach(function(x){x.setAttribute("aria-pressed",x===b?"true":"false")});
+  render();
+});
+render();
+</script>
