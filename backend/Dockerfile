@@ -9,6 +9,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+# Tablas del ETL ya construidas (GAEZ, celdas, rasgos de cultivos); las demás se generan con `python -m app.etl`.
+COPY data/db ./data/db
 
 # En Azure, /app/cache es un recurso compartido de Azure Files (ver infra/azure).
 EXPOSE 8000
