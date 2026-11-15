@@ -6,11 +6,11 @@ import { CheckIcon, ChevronIcon, ExternalIcon, PlusIcon, ShieldIcon, Spinner, Tr
 import { AboutFit, AboutHarvests, AboutRain, AboutSeason, useAgro } from "./agro";
 import { Analysis, TabId } from "./panels";
 import { CROPS, ECON_CROPS, EconUS, HA_PER_ACRE, HistoryRow, MONTH_NAMES, hasEcon, toMetric } from "./shared";
+import { PLOT_KEY as STORAGE_KEY } from "./auth";
 import { notebookChanged } from "./notebook";
 import { SOURCE_LABEL, SourceKey, cdlUrl, ndviUrl, powerUrl, sourceUrl, ssurgoMapUrl } from "./sources";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const STORAGE_KEY = "fieldshift.plot.v1";
 
 export type Point = { lat: number; lon: number };
 type Rotation = { sell: Option; cover: Option | null; label: string; note: string | null };
@@ -453,7 +453,7 @@ function Evidence({ o, point }: { o: Option; point: Point }) {
                   Ver dato oficial <ExternalIcon />
                 </a>
               ) : (
-                <span className="whitespace-nowrap text-ink-faint">(cálculo de Field Shift)</span>
+                <span className="whitespace-nowrap text-ink-faint">(cálculo de Orchid)</span>
               )}
             </li>
           ))}
@@ -553,7 +553,7 @@ function FieldNotes({ notes, point }: { notes: Note[]; point: Point }) {
                 Ver dato oficial <ExternalIcon />
               </a>
             ) : (
-              <span className="text-sm text-ink-faint">(consejo de Field Shift)</span>
+              <span className="text-sm text-ink-faint">(consejo de Orchid)</span>
             )}
           </li>
         ))}

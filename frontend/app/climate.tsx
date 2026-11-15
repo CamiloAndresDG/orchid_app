@@ -30,7 +30,7 @@ const SERIES: {
   derived?: boolean;
 }[] = [
   { key: "rain_in_day", label: "Lluvia por día", unit: "pulgadas", kind: "line", color: "var(--moss)", source: "PRECTOTCORR · Precipitation Corrected (MERRA-2), en mm/día; aquí en pulgadas" },
-  { key: "rain_in_total", label: "Lluvia acumulada", unit: "pulgadas", kind: "bar", color: "var(--moss)", source: "No existe en la fuente: es la suma de los días de PRECTOTCORR en el periodo (cálculo de Field Shift)", derived: true },
+  { key: "rain_in_total", label: "Lluvia acumulada", unit: "pulgadas", kind: "bar", color: "var(--moss)", source: "No existe en la fuente: es la suma de los días de PRECTOTCORR en el periodo (cálculo de Orchid)", derived: true },
   { key: "temp_f", label: "Temperatura", unit: "°F", kind: "line", color: "var(--clay)", source: "T2M · Temperature at 2 Meters (MERRA-2), en °C; aquí en °F" },
   { key: "soil_pct", label: "Humedad del suelo", unit: "%", kind: "line", color: "var(--field)", source: "GWETROOT · Root Zone Soil Wetness (MERRA-2), de 0 a 1; aquí en %" },
 ];

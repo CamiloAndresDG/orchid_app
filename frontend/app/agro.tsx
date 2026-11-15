@@ -44,7 +44,7 @@ const CROP_ES: Record<string, string> = {
   "Rest of crops": "Otros cultivos", "Oil seeds": "Oleaginosas",
 };
 const es = (c: string) => CROP_ES[c] ?? c;
-// Cultivos que maneja Field Shift, en el orden en que se muestran.
+// Cultivos que maneja Orchid, en el orden en que se muestran.
 const MAIN = ["Maize", "Soybean", "Wheat", "Sorghum", "Sunflower", "Oat", "Rye", "Barley", "Alfalfa"];
 // Cultivo de GAEZ -> clave de unidades de EE. UU. (shared.ts)
 const US_KEY: Record<string, string> = { Maize: "corn", Soybean: "soybean", Wheat: "wheat", Sorghum: "sorghum", Sunflower: "sunflower", Oat: "oats" };

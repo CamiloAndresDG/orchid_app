@@ -14,10 +14,10 @@ QUICKSTATS_KEY = os.environ.get("QUICKSTATS_KEY", "").strip()
 if len(QUICKSTATS_KEY) < 8:
     QUICKSTATS_KEY = ""  # vacío o marcador ("-") = sin clave del servidor
 
-# Base de datos. En Azure: postgresql+psycopg://usuario:clave@servidor:5432/fieldshift?sslmode=require
-# Sin DATABASE_URL se usa SQLite local (backend/instance/fieldshift.db) para desarrollar sin Postgres.
+# Base de datos. En Azure: postgresql+psycopg://usuario:clave@servidor:5432/orchid?sslmode=require
+# Sin DATABASE_URL se usa SQLite local (backend/instance/orchid.db) para desarrollar sin Postgres.
 # (backend/data es del ETL y se versiona: no mezclar ahí la base de cuentas.)
-_LOCAL_DB = Path(__file__).resolve().parent.parent / "instance" / "fieldshift.db"
+_LOCAL_DB = Path(__file__).resolve().parent.parent / "instance" / "orchid.db"
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 if not DATABASE_URL:
     _LOCAL_DB.parent.mkdir(parents=True, exist_ok=True)

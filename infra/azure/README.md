@@ -1,8 +1,8 @@
 # Despliegue en Azure
 
 ```
-Navegador ──> fieldshift-web (Container App, Next.js)
-        └───> fieldshift-api (Container App, FastAPI) ──> APIs de NASA, USDA, Censo
+Navegador ──> orchid-web (Container App, Next.js)
+        └───> orchid-api (Container App, FastAPI) ──> APIs de NASA, USDA, Censo
                      ├── /app/cache  (Azure Files)
                      └── PostgreSQL Flexible Server: cuentas, sesiones y terrenos
 Imágenes: Azure Container Registry · Logs: Log Analytics
@@ -19,7 +19,7 @@ QUICKSTATS_KEY=<clave opcional del USDA> bash infra/azure/setup.sh
 ```
 
 El script crea el grupo de recursos, el registro de contenedores, el entorno de Container Apps, el almacenamiento
-de la caché, el servidor PostgreSQL con la base `fieldshift`, construye las dos imágenes en Azure (no necesitas Docker instalado), las despliega y configura CORS.
+de la caché, el servidor PostgreSQL con la base `orchid`, construye las dos imágenes en Azure (no necesitas Docker instalado), las despliega y configura CORS.
 Al final imprime las URLs.
 
 Variables que puedes cambiar: `RG`, `LOCATION`, `ACR`, `STORAGE`, `ENV_NAME`, `API_APP`, `WEB_APP`, `PG`, `PG_USER`,
@@ -31,8 +31,8 @@ Variables que puedes cambiar: `RG`, `LOCATION`, `ACR`, `STORAGE`, `ENV_NAME`, `A
 
 ```bash
 SUB=$(az account show --query id -o tsv)
-RG=rg-fieldshift
-APP_ID=$(az ad app create --display-name fieldshift-github --query appId -o tsv)
+RG=rg-orchid
+APP_ID=$(az ad app create --display-name orchid-github --query appId -o tsv)
 az ad sp create --id $APP_ID
 az role assignment create --assignee $APP_ID --role Contributor --scope /subscriptions/$SUB/resourceGroups/$RG
 az ad app federated-credential create --id $APP_ID --parameters '{
@@ -55,7 +55,7 @@ En GitHub → Settings → Secrets and variables → Actions:
 | `ALLOWED_ORIGINS` | Orígenes permitidos por CORS, separados por coma | `http://localhost:3000` |
 | `CACHE_DIR` | Carpeta de caché | `backend/cache` |
 | `QUICKSTATS_KEY` | Clave del USDA del servidor; si existe, el usuario no necesita la suya | vacía |
-| `DATABASE_URL` | `postgresql+psycopg://usuario:clave@servidor:5432/fieldshift?sslmode=require` | SQLite en `backend/instance/` |
+| `DATABASE_URL` | `postgresql+psycopg://usuario:clave@servidor:5432/orchid?sslmode=require` | SQLite en `backend/instance/` |
 | `SESSION_DAYS` | Días que dura una sesión iniciada | `30` |
 
 El frontend solo usa `NEXT_PUBLIC_API_URL`, que se fija **al construir** la imagen (`--build-arg`).
@@ -63,9 +63,9 @@ El frontend solo usa `NEXT_PUBLIC_API_URL`, que se fija **al construir** la imag
 Cambiar la clave de QuickStats después:
 
 ```bash
-az containerapp secret set -g rg-fieldshift -n fieldshift-api --secrets quickstats-key=<clave>
-az containerapp revision restart -g rg-fieldshift -n fieldshift-api \
-  --revision $(az containerapp revision list -g rg-fieldshift -n fieldshift-api --query "[0].name" -o tsv)
+az containerapp secret set -g rg-orchid -n orchid-api --secrets quickstats-key=<clave>
+az containerapp revision restart -g rg-orchid -n orchid-api \
+  --revision $(az containerapp revision list -g rg-orchid -n orchid-api --query "[0].name" -o tsv)
 ```
 
 ## Base de datos
@@ -82,20 +82,20 @@ Endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET 
 `PUT /me/notebook` y `DELETE /me` (borra la cuenta y sus datos). El modo visitante no usa la base: guarda todo en el
 navegador. Si después crea una cuenta, su terreno se sube a ella.
 
-Sin `DATABASE_URL`, el backend usa SQLite en `backend/instance/fieldshift.db`, así que en local no hace falta instalar Postgres.
+Sin `DATABASE_URL`, el backend usa SQLite en `backend/instance/orchid.db`, así que en local no hace falta instalar Postgres.
 
 Flexible Server hace copias de seguridad automáticas (7 días por defecto). Para consultar la base desde tu equipo:
 
 ```bash
-az postgres flexible-server firewall-rule create -g rg-fieldshift -n <servidor> -r mi-ip --start-ip-address <tu IP> --end-ip-address <tu IP>
-psql "host=<servidor>.postgres.database.azure.com dbname=fieldshift user=fsadmin sslmode=require"
+az postgres flexible-server firewall-rule create -g rg-orchid -n <servidor> -r mi-ip --start-ip-address <tu IP> --end-ip-address <tu IP>
+psql "host=<servidor>.postgres.database.azure.com dbname=orchid user=fsadmin sslmode=require"
 ```
 
 Cambiar la contraseña de Postgres:
 
 ```bash
-az postgres flexible-server update -g rg-fieldshift -n <servidor> --admin-password <nueva>
-az containerapp secret set -g rg-fieldshift -n fieldshift-api   --secrets "database-url=postgresql+psycopg://fsadmin:<nueva>@<servidor>.postgres.database.azure.com:5432/fieldshift?sslmode=require"
+az postgres flexible-server update -g rg-orchid -n <servidor> --admin-password <nueva>
+az containerapp secret set -g rg-orchid -n orchid-api   --secrets "database-url=postgresql+psycopg://fsadmin:<nueva>@<servidor>.postgres.database.azure.com:5432/orchid?sslmode=require"
 ```
 
 Luego reinicia la revisión del backend, igual que con la clave de QuickStats.
@@ -106,5 +106,5 @@ recuperación de contraseña por correo y, si se quiere inicio de sesión con Mi
 ## Borrar todo
 
 ```bash
-az group delete -n rg-fieldshift
+az group delete -n rg-orchid
 ```
