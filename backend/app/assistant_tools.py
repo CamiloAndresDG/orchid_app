@@ -74,6 +74,7 @@ class ToolContext:
     plot: dict | None
     map_point: dict | None
     cited: list[str] = field(default_factory=list)  # ids de fuente en orden de primera cita
+    lang: str = "es"  # idioma de la respuesta que pidió el navegador
 
     def cite(self, source_id: str) -> str:
         if source_id not in self.cited:
@@ -209,6 +210,24 @@ STATUS = {
     "relieve_terreno": "Consultando el relieve (NASA SRTM)",
     "opciones_de_rotacion": "Comparando opciones de rotación",
     "que_es_la_fuente": "Buscando la descripción de la fuente",
+}
+
+STATUS_EN = {
+    "mi_terreno": "Checking your field",
+    "buscar_lugar": "Looking up the place",
+    "clima_del_punto": "Getting the climate (NASA POWER)",
+    "suelo_del_punto": "Getting the soil (SSURGO)",
+    "vegetacion_ndvi": "Getting the vegetation (MODIS)",
+    "cultivos_cercanos": "Getting the area's crops (CDL)",
+    "idoneidad_cultivos": "Getting crop suitability (FAO GAEZ)",
+    "periodo_crecimiento": "Getting the growing season (FAO GAEZ)",
+    "lluvia_estaciones": "Checking nearby rain gauges (CoCoRaHS)",
+    "humedad_suelo_satelite": "Getting soil moisture (NASA SMAP)",
+    "lluvia_reciente_satelite": "Getting satellite rainfall (NASA IMERG)",
+    "balance_agua_suelo": "Getting soil water (NASA NLDAS)",
+    "relieve_terreno": "Getting the terrain (NASA SRTM)",
+    "opciones_de_rotacion": "Comparing rotation options",
+    "que_es_la_fuente": "Looking up the source description",
 }
 
 # ---------- Conversión de precios (mismas unidades que frontend/app/shared.ts) ----------

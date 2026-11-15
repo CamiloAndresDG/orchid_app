@@ -1,6 +1,35 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLang } from "./i18n";
+import { setThemePref, useTheme } from "./theme";
+
+const COPY = {
+  es: {
+    hintPlant: "Toca la tierra para sembrar · arrastra a un agricultor para moverlo",
+    hintRain: "Toca donde quieras que llueva · el agua hace crecer lo sembrado",
+    toolbar: "Jugar con el campo",
+    plant: "Sembrar",
+    rain: "Lluvia",
+    toDay: "Cambiar a modo día",
+    toNight: "Cambiar a modo noche",
+    day: "Día",
+    night: "Noche",
+    clear: "Limpiar",
+  },
+  en: {
+    hintPlant: "Tap the soil to plant · drag a farmer to move them",
+    hintRain: "Tap where you want rain · water makes the crops grow",
+    toolbar: "Play with the field",
+    plant: "Plant",
+    rain: "Rain",
+    toDay: "Switch to day mode",
+    toNight: "Switch to night mode",
+    day: "Day",
+    night: "Night",
+    clear: "Clear",
+  },
+};
 
 // Campo interactivo para el fondo del inicio de sesión.
 // - Sembrar: tocar o arrastrar sobre la tierra planta trigo, maíz o girasoles que crecen.
@@ -77,30 +106,16 @@ export function InteractiveField() {
   const toolRef = useRef<Tool>("plant");
   const api = useRef<{ clear: () => void } | null>(null);
   const [tool, setTool] = useState<Tool>("plant");
-  const [night, setNight] = useState(false);
-
-  // Tema guardado: se aplica antes de que arranque el canvas para no animar al cargar.
-  useEffect(() => {
-    let dark = false;
-    try {
-      dark = localStorage.getItem("theme") === "dark";
-    } catch {}
-    document.documentElement.dataset.theme = dark ? "dark" : "light";
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setNight(dark);
-  }, []);
+  // El tema ya viene puesto desde <head> (sistema o elección guardada); aquí solo se lee y se cambia.
+  const night = useTheme() === "dark";
+  const t = COPY[useLang()];
 
   useEffect(() => {
     toolRef.current = tool;
   }, [tool]);
 
   function toggleTheme() {
-    const next = !night;
-    setNight(next);
-    document.documentElement.dataset.theme = next ? "dark" : "light";
-    try {
-      localStorage.setItem("theme", next ? "dark" : "light");
-    } catch {}
+    setThemePref(night ? "light" : "dark");
   }
 
   useEffect(() => {
@@ -741,10 +756,7 @@ export function InteractiveField() {
     };
   }, []);
 
-  const hint =
-    tool === "plant"
-      ? "Toca la tierra para sembrar · arrastra a un agricultor para moverlo"
-      : "Toca donde quieras que llueva · el agua hace crecer lo sembrado";
+  const hint = tool === "plant" ? t.hintPlant : t.hintRain;
 
   const btn = (active: boolean) =>
     `flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
@@ -760,7 +772,7 @@ export function InteractiveField() {
         </p>
         <div
           role="toolbar"
-          aria-label="Jugar con el campo"
+          aria-label={t.toolbar}
           className="pointer-events-auto flex flex-wrap items-center justify-center gap-1 rounded-full border border-rule bg-paper/90 p-1 shadow-[0_10px_30px_-12px_rgb(0_0_0/0.45)] backdrop-blur"
         >
           <button type="button" aria-pressed={tool === "plant"} onClick={() => setTool("plant")} className={btn(tool === "plant")}>
@@ -769,17 +781,17 @@ export function InteractiveField() {
               <path d="M12 12c0-4 3-6 7-6 0 4-3 6-7 6Z" />
               <path d="M12 14c0-3-2.5-5-6-5 0 3 2.5 5 6 5Z" />
             </svg>
-            Sembrar
+            {t.plant}
           </button>
           <button type="button" aria-pressed={tool === "rain"} onClick={() => setTool("rain")} className={btn(tool === "rain")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
               <path d="M7 15a4 4 0 1 1 .9-7.9A5 5 0 0 1 17.5 9 3 3 0 0 1 17 15H7Z" />
               <path d="M8 18l-1 2M12 18l-1 2M16 18l-1 2" />
             </svg>
-            Lluvia
+            {t.rain}
           </button>
           <span className="mx-1 h-6 w-px bg-rule" aria-hidden="true" />
-          <button type="button" onClick={toggleTheme} className={btn(false)} aria-label={night ? "Cambiar a modo día" : "Cambiar a modo noche"}>
+          <button type="button" onClick={toggleTheme} className={btn(false)} aria-label={night ? t.toDay : t.toNight}>
             {night ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="4" />
@@ -790,10 +802,10 @@ export function InteractiveField() {
                 <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" />
               </svg>
             )}
-            {night ? "Día" : "Noche"}
+            {night ? t.day : t.night}
           </button>
           <button type="button" onClick={() => api.current?.clear()} className={btn(false)}>
-            Limpiar
+            {t.clear}
           </button>
         </div>
       </div>

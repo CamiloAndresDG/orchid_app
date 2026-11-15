@@ -3,10 +3,131 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ClimaExplorer } from "./climate";
 import { ChevronIcon, ExternalIcon, ShieldIcon } from "./icons";
-import { MONTH_NAMES } from "./shared";
-import { SOURCE_LABEL, powerUrl } from "./sources";
+import { Lang, useLang } from "./i18n";
+import { MONTHS as MONTH_NAMES } from "./shared";
+import { SOURCE_LABELS, powerUrl } from "./sources";
 
-export const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+export const MONTHS_SHORT: Record<Lang, string[]> = {
+  es: ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
+  en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+};
+
+const T = {
+  es: {
+    and: "y",
+    yourField: "tu terreno",
+    example: "ejemplo",
+    official: "Ver dato oficial",
+    currentRat: (bare: number) => `Es lo que se siembra hoy en la zona. Deja el suelo sin cultivo ${bare} ${bare === 1 ? "mes" : "meses"} al año.`,
+    coverRat: "Añade una cobertura para los meses en que hoy el suelo queda sin cultivo.",
+    longRat: "Alarga la rotación para cortar ciclos de plagas y malezas. No cambia los meses sin cultivo.",
+    hardMonthsHere: "Los meses más difíciles del clima aquí son",
+    current: "lo que se siembra hoy",
+    pros: "Ventajas",
+    careful: "Ten cuidado con",
+    whereFrom: "¿De dónde sale esto?",
+    notQueried: "(no consultado en este ejemplo)",
+    missing: "Falta saber:",
+    rulesNote: "Ventajas y riesgos son reglas que escribimos nosotros; todavía no las ha revisado un agrónomo de la zona.",
+    climateOf: "Clima de",
+    climateLead: "Lluvia, temperatura y humedad del suelo medidas por la NASA en tu punto.",
+    clickOther: "Haz clic en otro lugar del mapa para ver otro punto.",
+    avgTitle: "Cómo es cada mes, en promedio",
+    avgLead: (y0: number, y1: number) => `Promedio de ${y0} a ${y1}. En terracota, los meses más difíciles.`,
+    seePower: "Ver en NASA POWER",
+    month: "Mes",
+    meaning: "Qué significa cada dato",
+    nasaName: (tech: string) => `En la página de la NASA se llama ${tech} y viene en unidades métricas.`,
+    vars: {
+      precip_mm_day: { title: "Lluvia del mes", unit: "pulgadas", what: "Cuánta agua cae en el mes. Si cae fuera de la siembra o del crecimiento, el cultivo no la aprovecha." },
+      temp_c: { title: "Temperatura media", unit: "°F", what: "Temperatura media del aire. Con más calor el suelo pierde agua más rápido y el cultivo se estresa." },
+      soil_wetness: { title: "Suelo", unit: "seco, medio o húmedo", what: "Agua que hay donde están las raíces. Es la reserva que aguanta las semanas sin lluvia." },
+    },
+    dry: "seco",
+    mid: "medio",
+    wet: "húmedo",
+    hardIn: "Meses difíciles en",
+    hardLead: "Cada mes recibe una nota de 0 a 1 según su calor, lo seco del suelo y la falta de lluvia. Más alta, más difícil para un cultivo sin riego. Los más difíciles aquí son",
+    heat: "Calor",
+    drySoil: "Suelo seco",
+    lowRain: "Poca lluvia",
+    bareTitle: "Cuándo queda el suelo sin cultivo",
+    bareLead: (crops: string) => `Con la rotación de hoy (${crops}), según un calendario típico. Si un mes difícil cae sin cultivo, ahí ayuda una cobertura.`,
+    bare: "sin cultivo",
+    cropped: "con cultivo",
+    hardMonth: "mes difícil",
+    bareLegend: "Verde: con cultivo. Blanco: sin cultivo. Contorno terracota: mes difícil.",
+    howScore: "Cómo calculamos la nota",
+    scoreText: (h: number, d: number, r: number) =>
+      `Sumamos ${h}% del calor del mes, ${d}% de lo seco del suelo y ${r}% de la falta de lluvia, comparando cada mes con los demás del mismo lugar. Los datos de clima son de la NASA; la fórmula y sus pesos los elegimos nosotros. No predice cosechas.`,
+    seeClimate: "Ver los datos de clima",
+    srcTitle: "De dónde salen los datos",
+    srcLead: (live: number, pending: number) =>
+      `Todo lo que mostramos viene de fuentes públicas (NASA, USDA, FAO y una red de pluviómetros voluntarios) y lo puedes comprobar en su sitio oficial. Usamos ${live} fuentes${pending > 0 ? `; ${pending} más están pendientes y no las mostramos como si las tuviéramos` : ""}. Las recomendaciones combinan esos datos con reglas que escribimos nosotros: están explicadas en el informe completo.`,
+    used: "Las que usamos",
+    pending: "Pendientes",
+    site: "Sitio oficial",
+    disclaimer: "Herramienta de apoyo a la decisión. Valida siempre con un experto local.",
+    crops: { wheat: "trigo", corn: "maíz", soybean: "soja", sorghum: "sorgo" } as Record<string, string>,
+  },
+  en: {
+    and: "and",
+    yourField: "your field",
+    example: "example",
+    official: "See official data",
+    currentRat: (bare: number) => `It's what is planted in the area today. It leaves the soil bare ${bare} ${bare === 1 ? "month" : "months"} a year.`,
+    coverRat: "Adds a cover crop for the months when the soil is bare today.",
+    longRat: "Lengthens the rotation to break pest and weed cycles. It doesn't change the bare months.",
+    hardMonthsHere: "The hardest months for the weather here are",
+    current: "what's planted today",
+    pros: "Benefits",
+    careful: "Watch out for",
+    whereFrom: "Where does this come from?",
+    notQueried: "(not queried in this example)",
+    missing: "Still unknown:",
+    rulesNote: "Benefits and risks are rules we wrote ourselves; a local agronomist hasn't reviewed them yet.",
+    climateOf: "Climate of",
+    climateLead: "Rain, temperature and soil moisture measured by NASA at your spot.",
+    clickOther: "Click elsewhere on the map to see another spot.",
+    avgTitle: "What each month is like, on average",
+    avgLead: (y0: number, y1: number) => `Average from ${y0} to ${y1}. The hardest months are in terracotta.`,
+    seePower: "See on NASA POWER",
+    month: "Month",
+    meaning: "What each figure means",
+    nasaName: (tech: string) => `On the NASA page it's called ${tech} and comes in metric units.`,
+    vars: {
+      precip_mm_day: { title: "Monthly rain", unit: "inches", what: "How much water falls in the month. If it falls outside planting or growth, the crop can't use it." },
+      temp_c: { title: "Average temperature", unit: "°F", what: "Average air temperature. With more heat the soil loses water faster and the crop gets stressed." },
+      soil_wetness: { title: "Soil", unit: "dry, medium or wet", what: "Water where the roots are. It's the reserve that carries the crop through weeks without rain." },
+    },
+    dry: "dry",
+    mid: "medium",
+    wet: "wet",
+    hardIn: "Hard months in",
+    hardLead: "Each month gets a score from 0 to 1 based on its heat, how dry the soil is and the lack of rain. Higher means harder for a crop without irrigation. The hardest here are",
+    heat: "Heat",
+    drySoil: "Dry soil",
+    lowRain: "Little rain",
+    bareTitle: "When the soil is left without a crop",
+    bareLead: (crops: string) => `With today's rotation (${crops}), on a typical calendar. If a hard month falls with no crop, a cover crop helps there.`,
+    bare: "no crop",
+    cropped: "with crop",
+    hardMonth: "hard month",
+    bareLegend: "Green: with crop. White: no crop. Terracotta outline: hard month.",
+    howScore: "How we calculate the score",
+    scoreText: (h: number, d: number, r: number) =>
+      `We add ${h}% of the month's heat, ${d}% of how dry the soil is and ${r}% of the lack of rain, comparing each month with the others at the same place. The climate data is from NASA; we chose the formula and its weights. It doesn't predict harvests.`,
+    seeClimate: "See the climate data",
+    srcTitle: "Where the data comes from",
+    srcLead: (live: number, pending: number) =>
+      `Everything we show comes from public sources (NASA, USDA, FAO and a volunteer rain-gauge network) and you can check it on their official site. We use ${live} sources${pending > 0 ? `; ${pending} more are pending and we don't show them as if we had them` : ""}. The recommendations combine that data with rules we wrote ourselves: they're explained in the full report.`,
+    used: "The ones we use",
+    pending: "Pending",
+    site: "Official site",
+    disclaimer: "Decision-support tool. Always check with a local expert.",
+    crops: { wheat: "wheat", corn: "corn", soybean: "soybeans", sorghum: "sorghum" } as Record<string, string>,
+  },
+};
 
 export type Zone = { id: string; name: string; lat: number; lon: number; focus: string; current_rotation: string[] };
 export type Strategy = {
@@ -44,15 +165,16 @@ export type Analysis = {
 };
 export type TabId = "terreno" | "precios" | "estrategias" | "clima" | "vulnerabilidad" | "fuentes";
 
-const CROP_NAMES: Record<string, string> = { wheat: "trigo", corn: "maíz", soybean: "soja", sorghum: "sorgo" };
 const tooltipStyle = { background: "var(--paper)", border: "1px solid var(--rule)", color: "var(--ink)" };
-const monthList = (ms: number[]) => {
-  const n = [...ms].sort((a, b) => a - b).map((m) => MONTH_NAMES[m - 1]);
-  return n.length <= 1 ? n.join("") : `${n.slice(0, -1).join(", ")} y ${n[n.length - 1]}`;
+const monthList = (ms: number[], l: Lang) => {
+  const n = [...ms].sort((a, b) => a - b).map((m) => MONTH_NAMES[l][m - 1]);
+  return n.length <= 1 ? n.join("") : `${n.slice(0, -1).join(", ")} ${T[l].and} ${n[n.length - 1]}`;
 };
-const placeName = (d: Analysis) => (d.zone.id === "custom" ? "tu terreno" : `${d.zone.name} (ejemplo)`);
+const placeName = (d: Analysis, l: Lang) => (d.zone.id === "custom" ? T[l].yourField : `${d.zone.name} (${T[l].example})`);
 
-function OfficialLink({ href, title, children = "Ver dato oficial" }: { href: string; title?: string; children?: React.ReactNode }) {
+function OfficialLink({ href, title, children }: { href: string; title?: string; children?: React.ReactNode }) {
+  const t = T[useLang()];
+  children ??= t.official;
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" title={title} className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-moss underline">
       {children} <ExternalIcon />
@@ -73,33 +195,33 @@ function Fold({ title, children }: { title: string; children: React.ReactNode })
 
 /* ------------------------------- Ejemplos -------------------------------- */
 
-function rationale(s: Strategy, bare: number): string {
-  if (s.is_current) return `Es lo que se siembra hoy en la zona. Deja el suelo sin cultivo ${bare} ${bare === 1 ? "mes" : "meses"} al año.`;
+function rationale(s: Strategy, bare: number, l: Lang): string {
+  if (s.is_current) return T[l].currentRat(bare);
   const covers = s.sequence.some((c) => ["cover_crop", "cereal_rye", "oats_clover"].includes(c));
-  return covers
-    ? "Añade una cobertura para los meses en que hoy el suelo queda sin cultivo."
-    : "Alarga la rotación para cortar ciclos de plagas y malezas. No cambia los meses sin cultivo.";
+  return covers ? T[l].coverRat : T[l].longRat;
 }
 
 export function EstrategiasPanel({ data }: { data: Analysis; go?: (t: TabId) => void }) {
+  const l = useLang();
+  const t = T[l];
   return (
     <div className="space-y-8">
       <div>
         <h2 className="font-serif text-2xl font-semibold">{data.zone.name}</h2>
         <p className="mt-1 max-w-prose text-base text-ink-soft">
-          {data.zone.focus}. Los meses más difíciles del clima aquí son {monthList(data.most_vulnerable_months)}.
+          {data.zone.focus}. {t.hardMonthsHere} {monthList(data.most_vulnerable_months, l)}.
         </p>
       </div>
       {data.strategies.map((s) => (
         <section key={s.id} className="border-t border-rule pt-6">
           <h3 className="font-serif text-xl font-semibold">
-            {s.name.replace(" (actual)", "")}
-            {s.is_current && <span className="ml-3 align-middle font-sans text-sm font-normal text-ink-soft">lo que se siembra hoy</span>}
+            {s.name.replace(" (actual)", "").replace(" (current)", "")}
+            {s.is_current && <span className="ml-3 align-middle font-sans text-sm font-normal text-ink-soft">{t.current}</span>}
           </h3>
-          <p className="mt-1 text-base text-ink-soft">{rationale(s, data.bare_soil_months.length)}</p>
+          <p className="mt-1 text-base text-ink-soft">{rationale(s, data.bare_soil_months.length, l)}</p>
           <div className="mt-3 grid gap-4 text-base sm:grid-cols-2">
             <div>
-              <p className="font-semibold text-ink">Ventajas</p>
+              <p className="font-semibold text-ink">{t.pros}</p>
               <ul className="mt-1 list-disc space-y-1 pl-5 text-ink-soft marker:text-moss">
                 {s.benefits.map((b) => (
                   <li key={b}>{b}</li>
@@ -107,7 +229,7 @@ export function EstrategiasPanel({ data }: { data: Analysis; go?: (t: TabId) => 
               </ul>
             </div>
             <div>
-              <p className="font-semibold text-ink">Ten cuidado con</p>
+              <p className="font-semibold text-ink">{t.careful}</p>
               <ul className="mt-1 list-disc space-y-1 pl-5 text-ink-soft marker:text-clay">
                 {s.risks.map((b) => (
                   <li key={b}>{b}</li>
@@ -117,27 +239,29 @@ export function EstrategiasPanel({ data }: { data: Analysis; go?: (t: TabId) => 
           </div>
           <details className="mt-3">
             <summary className="inline-flex cursor-pointer items-center gap-1.5 text-base text-moss hover:underline">
-              <ShieldIcon className="size-5" /> ¿De dónde sale esto?
+              <ShieldIcon className="size-5" /> {t.whereFrom}
             </summary>
             <ul className="mt-3 space-y-2 text-sm text-ink-soft">
               {s.evidence.map((e) => (
                 <li key={e}>
                   {e}.{" "}
                   {e.includes("NASA POWER") ? (
-                    <OfficialLink href={powerUrl(data.zone.lat, data.zone.lon)} title={SOURCE_LABEL.power} />
+                    <OfficialLink href={powerUrl(data.zone.lat, data.zone.lon)} title={SOURCE_LABELS[l].power} />
                   ) : (
-                    <span className="text-ink-faint">(no consultado en este ejemplo)</span>
+                    <span className="text-ink-faint">{t.notQueried}</span>
                   )}
                 </li>
               ))}
               {s.gaps.map((g) => (
-                <li key={g}>Falta saber: {g.toLowerCase()}.</li>
+                <li key={g}>
+                  {t.missing} {g.toLowerCase()}.
+                </li>
               ))}
             </ul>
           </details>
         </section>
       ))}
-      <p className="text-sm text-ink-soft">Ventajas y riesgos son reglas que escribimos nosotros; todavía no las ha revisado un agrónomo de la zona.</p>
+      <p className="text-sm text-ink-soft">{t.rulesNote}</p>
     </div>
   );
 }
@@ -145,49 +269,53 @@ export function EstrategiasPanel({ data }: { data: Analysis; go?: (t: TabId) => 
 /* --------------------------------- Clima --------------------------------- */
 
 const CLIMATE_VARS = [
-  { key: "precip_mm_day" as const, title: "Lluvia del mes", unit: "pulgadas", max: 5, tech: "PRECTOTCORR", what: "Cuánta agua cae en el mes. Si cae fuera de la siembra o del crecimiento, el cultivo no la aprovecha." },
-  { key: "temp_c" as const, title: "Temperatura media", unit: "°F", max: 30, tech: "T2M", what: "Temperatura media del aire. Con más calor el suelo pierde agua más rápido y el cultivo se estresa." },
-  { key: "soil_wetness" as const, title: "Suelo", unit: "seco, medio o húmedo", max: 1, tech: "GWETROOT", what: "Agua que hay donde están las raíces. Es la reserva que aguanta las semanas sin lluvia." },
+  { key: "precip_mm_day" as const, max: 5, tech: "PRECTOTCORR" },
+  { key: "temp_c" as const, max: 30, tech: "T2M" },
+  { key: "soil_wetness" as const, max: 1, tech: "GWETROOT" },
 ];
 
-function climateCell(key: "precip_mm_day" | "temp_c" | "soil_wetness", v: number) {
+function climateCell(key: "precip_mm_day" | "temp_c" | "soil_wetness", v: number, l: Lang) {
   if (key === "precip_mm_day") {
     const mm = v * 30.4;
     return { main: `${(mm / 25.4).toFixed(1)} in`, alt: `${mm.toFixed(0)} mm` };
   }
   if (key === "temp_c") return { main: `${((v * 9) / 5 + 32).toFixed(0)} °F`, alt: `${v.toFixed(0)} °C` };
-  return { main: v < 0.35 ? "seco" : v < 0.55 ? "medio" : "húmedo", alt: "" };
+  return { main: v < 0.35 ? T[l].dry : v < 0.55 ? T[l].mid : T[l].wet, alt: "" };
 }
 
 export function ClimaPanel({ data }: { data: Analysis }) {
+  const l = useLang();
+  const t = T[l];
   const crit = data.most_vulnerable_months;
   const [y0, y1] = data.method.climate_period;
   return (
     <div className="space-y-10">
       <div>
-        <h2 className="font-serif text-2xl font-semibold">Clima de {placeName(data)}</h2>
+        <h2 className="font-serif text-2xl font-semibold">
+          {t.climateOf} {placeName(data, l)}
+        </h2>
         <p className="mt-1 max-w-prose text-base text-ink-soft">
-          Lluvia, temperatura y humedad del suelo medidas por la NASA en tu punto. {data.zone.id === "custom" && "Haz clic en otro lugar del mapa para ver otro punto."}
+          {t.climateLead} {data.zone.id === "custom" && t.clickOther}
         </p>
       </div>
 
       <ClimaExplorer lat={data.zone.lat} lon={data.zone.lon} />
 
       <section>
-        <h3 className="font-serif text-xl font-semibold">Cómo es cada mes, en promedio</h3>
+        <h3 className="font-serif text-xl font-semibold">{t.avgTitle}</h3>
         <p className="mt-1 text-base text-ink-soft">
-          Promedio de {y0} a {y1}. En terracota, los meses más difíciles.{" "}
-          <OfficialLink href={powerUrl(data.zone.lat, data.zone.lon)} title={SOURCE_LABEL.power}>
-            Ver en NASA POWER
+          {t.avgLead(y0, y1)}{" "}
+          <OfficialLink href={powerUrl(data.zone.lat, data.zone.lon)} title={SOURCE_LABELS[l].power}>
+            {t.seePower}
           </OfficialLink>
         </p>
         <table className="mt-4 w-full text-base">
           <thead>
             <tr className="border-b border-rule text-left text-sm text-ink-soft">
-              <th className="py-2 pr-3 font-semibold">Mes</th>
+              <th className="py-2 pr-3 font-semibold">{t.month}</th>
               {CLIMATE_VARS.map((v) => (
                 <th key={v.key} className="py-2 pr-3 font-semibold">
-                  {v.title} <span className="font-normal">({v.unit})</span>
+                  {t.vars[v.key].title} <span className="font-normal">({t.vars[v.key].unit})</span>
                 </th>
               ))}
             </tr>
@@ -195,13 +323,13 @@ export function ClimaPanel({ data }: { data: Analysis }) {
           <tbody>
             {data.months.map((m) => (
               <tr key={m.month} className={`border-b border-rule/70 ${crit.includes(m.month) ? "text-clay" : ""}`}>
-                <td className="py-2 pr-3 font-semibold capitalize">{MONTH_NAMES[m.month - 1]}</td>
+                <td className="py-2 pr-3 font-semibold capitalize">{MONTH_NAMES[l][m.month - 1]}</td>
                 {CLIMATE_VARS.map((v) => (
                   <td key={v.key} className="py-2 pr-3">
                     <div className="flex items-center gap-2">
                       <span className="w-[4.5rem] tabular-nums">
-                        {climateCell(v.key, m[v.key]).main}
-                        {climateCell(v.key, m[v.key]).alt && <span className="block text-sm text-ink-soft">{climateCell(v.key, m[v.key]).alt}</span>}
+                        {climateCell(v.key, m[v.key], l).main}
+                        {climateCell(v.key, m[v.key], l).alt && <span className="block text-sm text-ink-soft">{climateCell(v.key, m[v.key], l).alt}</span>}
                       </span>
                       <span className="h-1.5 w-14 rounded-full bg-paper-deep">
                         <span className="block h-full rounded-full bg-current opacity-70" style={{ width: `${Math.max(3, Math.min(100, (m[v.key] / v.max) * 100))}%` }} />
@@ -215,13 +343,13 @@ export function ClimaPanel({ data }: { data: Analysis }) {
         </table>
       </section>
 
-      <Fold title="Qué significa cada dato">
+      <Fold title={t.meaning}>
         <dl className="space-y-4">
           {CLIMATE_VARS.map((v) => (
             <div key={v.key}>
-              <dt className="font-semibold text-ink">{v.title}</dt>
+              <dt className="font-semibold text-ink">{t.vars[v.key].title}</dt>
               <dd className="mt-0.5 max-w-prose text-ink-soft">
-                {v.what} <span className="text-sm text-ink-faint">En la página de la NASA se llama {v.tech} y viene en unidades métricas.</span>
+                {t.vars[v.key].what} <span className="text-sm text-ink-faint">{t.nasaName(v.tech)}</span>
               </dd>
             </div>
           ))}
@@ -234,13 +362,15 @@ export function ClimaPanel({ data }: { data: Analysis }) {
 /* ---------------------------- Meses difíciles ---------------------------- */
 
 export function VulnerabilidadPanel({ data }: { data: Analysis }) {
+  const l = useLang();
+  const t = T[l];
   const w = data.method.weights;
   const crit = data.most_vulnerable_months;
   const rows = data.months.map((m) => ({
-    name: MONTHS[m.month - 1],
-    Calor: +(m.components.heat * w.heat).toFixed(3),
-    "Suelo seco": +(m.components.dryness * w.dryness).toFixed(3),
-    "Poca lluvia": +(m.components.low_rain * w.low_rain).toFixed(3),
+    name: MONTHS_SHORT[l][m.month - 1],
+    heat: +(m.components.heat * w.heat).toFixed(3),
+    dry: +(m.components.dryness * w.dryness).toFixed(3),
+    rain: +(m.components.low_rain * w.low_rain).toFixed(3),
   }));
   const crops = Object.keys(data.method.crop_months);
   const showCalendar = data.zone.id !== "custom" && crops.length > 0;
@@ -248,10 +378,11 @@ export function VulnerabilidadPanel({ data }: { data: Analysis }) {
   return (
     <div className="space-y-10">
       <div>
-        <h2 className="font-serif text-2xl font-semibold">Meses difíciles en {placeName(data)}</h2>
+        <h2 className="font-serif text-2xl font-semibold">
+          {t.hardIn} {placeName(data, l)}
+        </h2>
         <p className="mt-1 max-w-prose text-base text-ink-soft">
-          Cada mes recibe una nota de 0 a 1 según su calor, lo seco del suelo y la falta de lluvia. Más alta, más difícil para un cultivo sin riego. Los
-          más difíciles aquí son <strong className="text-clay">{monthList(crit)}</strong>.
+          {t.hardLead} <strong className="text-clay">{monthList(crit, l)}</strong>.
         </p>
       </div>
 
@@ -263,20 +394,17 @@ export function VulnerabilidadPanel({ data }: { data: Analysis }) {
             <YAxis domain={[0, 1]} stroke="var(--ink-soft)" fontSize={12} width={32} />
             <Tooltip contentStyle={tooltipStyle} />
             <Legend wrapperStyle={{ fontSize: 14 }} />
-            <Bar dataKey="Calor" stackId="v" fill="var(--clay)" />
-            <Bar dataKey="Suelo seco" stackId="v" fill="var(--moss)" />
-            <Bar dataKey="Poca lluvia" stackId="v" fill="var(--field)" />
+            <Bar dataKey="heat" name={t.heat} stackId="v" fill="var(--clay)" />
+            <Bar dataKey="dry" name={t.drySoil} stackId="v" fill="var(--moss)" />
+            <Bar dataKey="rain" name={t.lowRain} stackId="v" fill="var(--field)" />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
       {showCalendar && (
         <section>
-          <h3 className="font-serif text-xl font-semibold">Cuándo queda el suelo sin cultivo</h3>
-          <p className="mt-1 max-w-prose text-base text-ink-soft">
-            Con la rotación de hoy ({crops.map((c) => CROP_NAMES[c] ?? c).join(", ")}), según un calendario típico. Si un mes difícil cae sin cultivo, ahí
-            ayuda una cobertura.
-          </p>
+          <h3 className="font-serif text-xl font-semibold">{t.bareTitle}</h3>
+          <p className="mt-1 max-w-prose text-base text-ink-soft">{t.bareLead(crops.map((c) => t.crops[c] ?? c).join(", "))}</p>
           <div className="mt-4 grid grid-cols-12 gap-1.5 text-center text-sm">
             {data.months.map((m) => {
               const bare = data.bare_soil_months.includes(m.month);
@@ -285,23 +413,22 @@ export function VulnerabilidadPanel({ data }: { data: Analysis }) {
                 <div
                   key={m.month}
                   className={`rounded-md py-2.5 ${bare ? "border border-field text-ink" : "bg-moss text-paper"} ${isCrit ? "outline-2 outline-offset-2 outline-clay" : ""}`}
-                  title={`${MONTH_NAMES[m.month - 1]}: ${bare ? "sin cultivo" : "con cultivo"}${isCrit ? ", mes difícil" : ""}`}
+                  title={`${MONTH_NAMES[l][m.month - 1]}: ${bare ? t.bare : t.cropped}${isCrit ? `, ${t.hardMonth}` : ""}`}
                 >
-                  {MONTHS[m.month - 1]}
+                  {MONTHS_SHORT[l][m.month - 1]}
                 </div>
               );
             })}
           </div>
-          <p className="mt-3 text-sm text-ink-soft">Verde: con cultivo. Blanco: sin cultivo. Contorno terracota: mes difícil.</p>
+          <p className="mt-3 text-sm text-ink-soft">{t.bareLegend}</p>
         </section>
       )}
 
-      <Fold title="Cómo calculamos la nota">
+      <Fold title={t.howScore}>
         <p className="max-w-prose text-ink-soft">
-          Sumamos {w.heat * 100}% del calor del mes, {w.dryness * 100}% de lo seco del suelo y {w.low_rain * 100}% de la falta de lluvia, comparando
-          cada mes con los demás del mismo lugar. Los datos de clima son de la NASA; la fórmula y sus pesos los elegimos nosotros. No predice cosechas.{" "}
-          <OfficialLink href={powerUrl(data.zone.lat, data.zone.lon)} title={SOURCE_LABEL.power}>
-            Ver los datos de clima
+          {t.scoreText(w.heat * 100, w.dryness * 100, w.low_rain * 100)}{" "}
+          <OfficialLink href={powerUrl(data.zone.lat, data.zone.lon)} title={SOURCE_LABELS[l].power}>
+            {t.seeClimate}
           </OfficialLink>
         </p>
       </Fold>
@@ -314,7 +441,21 @@ export function VulnerabilidadPanel({ data }: { data: Analysis }) {
 type Src = { topic: string; name: string; live: boolean; what: string; use: string; site: string };
 
 // Fuente unica de verdad sobre que esta conectado.
-export const SOURCES: Src[] = [
+const SOURCES_EN: Src[] = [
+  { topic: "Climate", name: "NASA POWER", live: true, what: "Rain, temperature and soil moisture for any point, since 1981.", use: "Hard months, climate by date and water risk for each option.", site: "https://power.larc.nasa.gov/data-access-viewer/" },
+  { topic: "Field greenness", name: "MODIS · NASA", live: true, what: "How green your field looks from the satellite, every 16 days (NDVI).", use: "Finds the months when your soil was left uncovered.", site: "https://modis.ornl.gov/globalsubset/" },
+  { topic: "Soil", name: "SSURGO · USDA", live: true, what: "Soil type, drainage and how much water it holds, in the U.S.", use: "Adjusts drought or waterlogging risk and when a cover crop pays off.", site: "https://websoilsurvey.nrcs.usda.gov/" },
+  { topic: "Crops in the area", name: "CDL · USDA", live: true, what: "What was planted on every U.S. field each year.", use: "Favors crops that already have markets and machinery near you.", site: "https://croplandcros.scinet.usda.gov/" },
+  { topic: "Prices", name: "QuickStats · USDA", live: true, what: "Average price paid to farmers in each state.", use: "In My prices, with your own free key. Without it, we only use the prices you enter.", site: "https://quickstats.nass.usda.gov/" },
+  { topic: "Satellite soil moisture", name: "SMAP · NASA", live: true, what: "Moisture in the top few centimeters of soil, measured from space every 2 or 3 days.", use: "How much water the surface of your soil holds today.", site: "https://nsidc.org/data/spl3smp_e/versions/6" },
+  { topic: "Satellite rainfall", name: "GPM IMERG · NASA", live: true, what: "Daily rainfall estimated by a constellation of satellites.", use: "How much it rained on your field in the last 30 days.", site: "https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGDL_07/summary" },
+  { topic: "Water in the soil", name: "NLDAS-2 · NASA", live: true, what: "Monthly model of the water the soil holds, evaporates and runs off, in the U.S.", use: "Whether your soil has more or less water than normal; flags thirsty crops.", site: "https://disc.gsfc.nasa.gov/datasets/NLDAS_NOAH0125_M_2.0/summary" },
+  { topic: "What grows well here", name: "GAEZ · FAO", live: true, what: "Suitability and attainable yield for each crop, and the growing season, based on 1981–2010 climate.", use: "In the report: which crops do well in your area and how much they yielded.", site: "https://gaez.fao.org/pages/data-viewer" },
+  { topic: "Your neighbors' rain", name: "CoCoRaHS · NOAA", live: true, what: "Rain measured every morning by volunteers with rain gauges.", use: "Compares rain measured in your area with NASA's estimate.", site: "https://www.cocorahs.org/" },
+  { topic: "Terrain", name: "SRTM · NASA", live: true, what: "Ground elevation every 30 m, measured by radar from the Space Shuttle.", use: "Your field's slope and erosion risk; favors cover crops on sloping ground.", site: "https://lpdaac.usgs.gov/products/srtmgl1v003/" },
+];
+
+const SOURCES_ES: Src[] = [
   { topic: "Clima", name: "NASA POWER", live: true, what: "Lluvia, temperatura y humedad del suelo para cualquier punto, desde 1981.", use: "Meses difíciles, clima por fecha y riesgo de agua de cada opción.", site: "https://power.larc.nasa.gov/data-access-viewer/" },
   { topic: "Verdor del campo", name: "MODIS · NASA", live: true, what: "Qué tan verde se ve tu campo desde el satélite, cada 16 días (NDVI).", use: "Detecta los meses en que tu suelo quedó sin cubrir.", site: "https://modis.ornl.gov/globalsubset/" },
   { topic: "Suelo", name: "SSURGO · USDA", live: true, what: "Tipo de suelo, drenaje y cuánta agua guarda, en EE. UU.", use: "Ajusta el riesgo de sequía o encharcamiento y cuándo conviene una cobertura.", site: "https://websoilsurvey.nrcs.usda.gov/" },
@@ -328,22 +469,22 @@ export const SOURCES: Src[] = [
   { topic: "Relieve", name: "SRTM · NASA", live: true, what: "Altura del terreno cada 30 m, medida por radar desde el transbordador espacial.", use: "La pendiente de tu terreno y su riesgo de erosión; favorece las coberturas en terrenos inclinados.", site: "https://lpdaac.usgs.gov/products/srtmgl1v003/" },
 ];
 
+export const SOURCES: Record<Lang, Src[]> = { es: SOURCES_ES, en: SOURCES_EN };
+
 export function FuentesPanel({ data }: { data: Analysis | null }) {
-  const live = SOURCES.filter((s) => s.live);
-  const pending = SOURCES.filter((s) => !s.live);
+  const l = useLang();
+  const t = T[l];
+  const live = SOURCES[l].filter((s) => s.live);
+  const pending = SOURCES[l].filter((s) => !s.live);
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="font-serif text-2xl font-semibold">De dónde salen los datos</h2>
-        <p className="mt-1 max-w-prose text-base text-ink-soft">
-          Todo lo que mostramos viene de fuentes públicas (NASA, USDA, FAO y una red de pluviómetros voluntarios) y lo puedes comprobar en su sitio oficial.
-          Usamos {live.length} fuentes{pending.length > 0 && <>; {pending.length} más están pendientes y no las mostramos como si las tuviéramos</>}. Las
-          recomendaciones combinan esos datos con reglas que escribimos nosotros: están explicadas en el informe completo.
-        </p>
+        <h2 className="font-serif text-2xl font-semibold">{t.srcTitle}</h2>
+        <p className="mt-1 max-w-prose text-base text-ink-soft">{t.srcLead(live.length, pending.length)}</p>
       </div>
       {[
-        ["Las que usamos", live],
-        ["Pendientes", pending],
+        [t.used, live],
+        [t.pending, pending],
       ].map(([title, list]) => (
         <section key={title as string}>
           <h3 className="font-serif text-xl font-semibold">{title as string}</h3>
@@ -358,7 +499,7 @@ export function FuentesPanel({ data }: { data: Analysis | null }) {
                   <p>{s.what}</p>
                   <p className="mt-1 text-ink">{s.use}</p>
                   <p className="mt-1 text-sm">
-                    <OfficialLink href={s.site}>Sitio oficial</OfficialLink>
+                    <OfficialLink href={s.site}>{t.site}</OfficialLink>
                   </p>
                 </div>
               </li>
@@ -366,7 +507,7 @@ export function FuentesPanel({ data }: { data: Analysis | null }) {
           </ul>
         </section>
       ))}
-      <p className="text-sm text-ink-soft">{data?.disclaimer ?? "Herramienta de apoyo a la decisión. Valida siempre con un experto local."}</p>
+      <p className="text-sm text-ink-soft">{data?.disclaimer ?? t.disclaimer}</p>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { ExternalIcon, Spinner } from "./icons";
 import { Mascot, type MascotState } from "./mascot";
 import { API } from "./shared";
 import type { Point } from "./terreno";
+import { Lang, currentLang, langHeaders, useLang } from "./i18n";
 
 // Brote, la guía de Orchid: chat con IA anclado a las fuentes, por texto o voz (Web Speech API del navegador).
 
@@ -14,12 +15,80 @@ type Source = { n: number; id: string; name: string; url: string | null };
 type Msg = { role: "user" | "assistant"; content: string; sources?: Source[]; error?: boolean };
 
 const SPEAK_KEY = "orchid.guide.speak.v1";
-const SUGGESTIONS = [
-  "¿Qué me conviene sembrar después?",
-  "¿Cómo es el suelo de mi terreno?",
-  "¿Cuáles son los meses más secos en mi campo?",
-  "¿Qué se siembra en Ames, Iowa?",
-];
+const T = {
+  es: {
+    suggestions: [
+      "¿Qué me conviene sembrar después?",
+      "¿Cómo es el suelo de mi terreno?",
+      "¿Cuáles son los meses más secos en mi campo?",
+      "¿Qué se siembra en Ames, Iowa?",
+    ],
+    thinking: "Pensando…",
+    expired: "Tu sesión venció. Vuelve a iniciar sesión.",
+    failed: "No pudimos hablar con la Guía. Intenta de nuevo.",
+    noAnswer: "No recibí respuesta. Intenta de nuevo.",
+    ask: "Pregúntale a Brote",
+    dialog: "Brote, tu guía de campo",
+    tagline: "Tu guía de campo. Responde con datos de NASA, USDA y FAO.",
+    speakOff: "No leer las respuestas en voz alta",
+    speakOn: "Leer las respuestas en voz alta",
+    readAloud: "Leer en voz alta",
+    close: "Cerrar",
+    closeGuide: "Cerrar la guía",
+    guest1: "Soy Brote. Respondo preguntas sobre tu terreno con datos oficiales, por texto o por voz.",
+    guest2: "Para usarla necesitas una cuenta gratuita (así tus preguntas usan tu terreno guardado).",
+    signIn: "Crear cuenta o iniciar sesión",
+    unavailable: "Brote todavía no está disponible en este servidor. Vuelve a intentarlo más tarde.",
+    hello: (name: string) =>
+      `Hola${name ? `, ${name}` : ""}. Soy Brote. Pregúntame sobre tu terreno o sobre otro lugar: respondo solo con datos de las fuentes y te digo de dónde sale cada uno.`,
+    sources: "Fuentes consultadas",
+    write: "Escribe tu pregunta",
+    listening: "Te escucho…",
+    placeholder: "Escribe o dicta tu pregunta",
+    stop: "Dejar de escuchar",
+    talk: "Hablar",
+    dictate: "Dictar la pregunta",
+    send: "Enviar",
+    disclaimer: "Apoyo a tu decisión: confirma con tu oficina de extensión local.",
+    left: (n: number) => ` Te quedan ${n} preguntas hoy.`,
+  },
+  en: {
+    suggestions: [
+      "What should I plant next?",
+      "What is the soil like on my field?",
+      "Which are the driest months on my field?",
+      "What is planted around Ames, Iowa?",
+    ],
+    thinking: "Thinking…",
+    expired: "Your session expired. Please sign in again.",
+    failed: "We couldn't reach the Guide. Try again.",
+    noAnswer: "I didn't get an answer. Try again.",
+    ask: "Ask Brote",
+    dialog: "Brote, your field guide",
+    tagline: "Your field guide. Answers with NASA, USDA and FAO data.",
+    speakOff: "Stop reading answers aloud",
+    speakOn: "Read answers aloud",
+    readAloud: "Read aloud",
+    close: "Close",
+    closeGuide: "Close the guide",
+    guest1: "I'm Brote. I answer questions about your field with official data, by text or voice.",
+    guest2: "To use it you need a free account (so your questions use your saved field).",
+    signIn: "Create an account or sign in",
+    unavailable: "Brote isn't available on this server yet. Try again later.",
+    hello: (name: string) =>
+      `Hi${name ? `, ${name}` : ""}. I'm Brote. Ask me about your field or another place: I only answer with data from the sources and tell you where each figure comes from.`,
+    sources: "Sources consulted",
+    write: "Type your question",
+    listening: "I'm listening…",
+    placeholder: "Type or dictate your question",
+    stop: "Stop listening",
+    talk: "Talk",
+    dictate: "Dictate the question",
+    send: "Send",
+    disclaimer: "Decision support: check with your local extension office.",
+    left: (n: number) => ` You have ${n} questions left today.`,
+  },
+};
 
 type Recognition = {
   lang: string;
@@ -38,7 +107,11 @@ function getRecognition(): (new () => Recognition) | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-const speechLang = () => (typeof navigator !== "undefined" && navigator.language?.startsWith("es") ? navigator.language : "es-US");
+// Voz en el idioma elegido; en español se respeta la variante del navegador (es-MX, es-US…).
+const speechLang = (l: Lang) => {
+  if (l === "en") return "en-US";
+  return typeof navigator !== "undefined" && navigator.language?.startsWith("es") ? navigator.language : "es-US";
+};
 
 /** Texto apto para leer en voz alta: sin citas [n] ni marcas de formato. */
 const forSpeech = (t: string) => t.replace(/\[\d+\]/g, "").replace(/\*\*/g, "").replace(/^\s*-\s+/gm, "");
@@ -90,6 +163,8 @@ function Rich({ text, sources }: { text: string; sources?: Source[] }) {
 }
 
 export function Guide({ point }: { point: Point | null }) {
+  const lang = useLang();
+  const t = T[lang];
   const [session, setSession] = useState<Session | null>(null);
   const [open, setOpen] = useState(false);
   const [enabled, setEnabled] = useState<boolean | null>(null);
@@ -115,7 +190,7 @@ export function Guide({ point }: { point: Point | null }) {
       setSpeak(localStorage.getItem(SPEAK_KEY) === "1");
     } catch {}
     /* eslint-enable react-hooks/set-state-in-effect */
-    fetch(`${API}/assistant/status`)
+    fetch(`${API}/assistant/status`, { headers: langHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => setEnabled(!!j?.enabled))
       .catch(() => setEnabled(false));
@@ -150,7 +225,7 @@ export function Guide({ point }: { point: Point | null }) {
       if (!speak || typeof window === "undefined" || !window.speechSynthesis) return;
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(forSpeech(text));
-      u.lang = speechLang();
+      u.lang = speechLang(currentLang());
       u.onstart = () => setSpeaking(true);
       u.onend = () => setSpeaking(false);
       u.onerror = () => setSpeaking(false);
@@ -168,7 +243,7 @@ export function Guide({ point }: { point: Point | null }) {
     setMessages([...history, { role: "assistant", content: "" }]);
     setInput("");
     setBusy(true);
-    setStatus("Pensando…");
+    setStatus(t.thinking);
     const ctl = new AbortController();
     abortRef.current = ctl;
     let answer = "";
@@ -183,10 +258,11 @@ export function Guide({ point }: { point: Point | null }) {
     try {
       const r = await fetch(`${API}/assistant/chat`, {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        headers: langHeaders({ "content-type": "application/json", authorization: `Bearer ${token}` }),
         body: JSON.stringify({
           messages: history.slice(-12).map((m) => ({ role: m.role, content: m.content.slice(0, 4000) })),
           map_point: point,
+          lang,
         }),
         signal: ctl.signal,
       });
@@ -194,10 +270,10 @@ export function Guide({ point }: { point: Point | null }) {
         const j = await r.json().catch(() => ({}));
         throw new Error(
           r.status === 401
-            ? "Tu sesión venció. Vuelve a iniciar sesión."
+            ? t.expired
             : typeof j.detail === "string"
               ? j.detail
-              : "No pudimos hablar con la Guía. Intenta de nuevo.",
+              : t.failed,
         );
       }
       const reader = r.body.getReader();
@@ -229,7 +305,7 @@ export function Guide({ point }: { point: Point | null }) {
           } else if (ev.type === "done") setRemaining(ev.remaining);
         }
       }
-      if (!answer) update({ content: "No recibí respuesta. Intenta de nuevo.", error: true });
+      if (!answer) update({ content: t.noAnswer, error: true });
       else if (!failed) say(answer);
     } catch (e) {
       if ((e as Error).name !== "AbortError") update({ content: (e as Error).message, error: true });
@@ -254,7 +330,7 @@ export function Guide({ point }: { point: Point | null }) {
     }
     window.speechSynthesis?.cancel();
     const rec = new R();
-    rec.lang = speechLang();
+    rec.lang = speechLang(lang);
     rec.interimResults = true;
     rec.continuous = false;
     let finalText = "";
@@ -287,7 +363,7 @@ export function Guide({ point }: { point: Point | null }) {
       {!open && (
         <button type="button" onClick={() => setOpen(true)} className="brote-launcher group fixed bottom-12 right-5 z-40 flex items-center gap-2.5">
           <span className="rounded-full bg-paper px-3.5 py-1.5 text-sm font-semibold text-ink shadow-[0_4px_14px_rgb(0_0_0/0.3)] group-hover:text-moss">
-            Pregúntale a Brote
+            {t.ask}
           </span>
           <span className="grid size-16 place-items-center rounded-full border-2 border-moss bg-paper shadow-[0_8px_22px_-4px_rgb(0_0_0/0.45)] transition-transform duration-300 ease-out group-hover:-translate-y-1">
             <Mascot size={50} decorative />
@@ -297,7 +373,7 @@ export function Guide({ point }: { point: Point | null }) {
       {open && (
         <section
           role="dialog"
-          aria-label="Brote, tu guía de campo"
+          aria-label={t.dialog}
           className="fixed bottom-12 right-5 top-20 z-50 flex w-[420px] flex-col overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_24px_60px_-20px_rgb(0_0_0/0.55)]"
         >
           <header className="flex items-start justify-between gap-3 border-b border-rule px-5 py-4">
@@ -305,7 +381,7 @@ export function Guide({ point }: { point: Point | null }) {
               <Mascot state={mood} size={56} className="shrink-0" decorative />
               <div>
                 <h2 className="font-serif text-xl font-semibold leading-tight">Brote</h2>
-                <p className="text-sm text-ink-soft">Tu guía de campo. Responde con datos de NASA, USDA y FAO.</p>
+                <p className="text-sm text-ink-soft">{t.tagline}</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -313,15 +389,15 @@ export function Guide({ point }: { point: Point | null }) {
                 type="button"
                 onClick={toggleSpeak}
                 aria-pressed={speak}
-                title={speak ? "No leer las respuestas en voz alta" : "Leer las respuestas en voz alta"}
+                title={speak ? t.speakOff : t.speakOn}
                 className={`rounded-md p-2 ${speak ? "bg-moss text-paper" : "text-ink-soft hover:text-ink"}`}
               >
                 <SpeakerIcon />
-                <span className="sr-only">Leer en voz alta</span>
+                <span className="sr-only">{t.readAloud}</span>
               </button>
-              <button type="button" onClick={() => setOpen(false)} className="rounded-md p-2 text-ink-soft hover:text-ink" title="Cerrar">
+              <button type="button" onClick={() => setOpen(false)} className="rounded-md p-2 text-ink-soft hover:text-ink" title={t.close}>
                 <CloseIcon />
-                <span className="sr-only">Cerrar la guía</span>
+                <span className="sr-only">{t.closeGuide}</span>
               </button>
             </div>
           </header>
@@ -329,24 +405,21 @@ export function Guide({ point }: { point: Point | null }) {
           <div className="flex-1 overflow-y-auto px-5 py-4" aria-live="polite">
             {!loggedIn ? (
               <div className="space-y-3 text-base">
-                <p>Soy Brote. Respondo preguntas sobre tu terreno con datos oficiales, por texto o por voz.</p>
-                <p className="text-ink-soft">Para usarla necesitas una cuenta gratuita (así tus preguntas usan tu terreno guardado).</p>
+                <p>{t.guest1}</p>
+                <p className="text-ink-soft">{t.guest2}</p>
                 <Link href="/login" className="inline-block rounded-md bg-moss px-5 py-2.5 font-semibold text-paper hover:bg-moss-deep">
-                  Crear cuenta o iniciar sesión
+                  {t.signIn}
                 </Link>
               </div>
             ) : enabled === false ? (
               <p className="rounded-lg border border-clay/40 bg-paper-deep p-4 text-base text-clay">
-                Brote todavía no está disponible en este servidor. Vuelve a intentarlo más tarde.
+                {t.unavailable}
               </p>
             ) : messages.length === 0 ? (
               <div className="space-y-4">
-                <p className="text-base">
-                  Hola{session?.name ? `, ${session.name.split(" ")[0]}` : ""}. Soy Brote. Pregúntame sobre tu terreno o sobre otro lugar: respondo
-                  solo con datos de las fuentes y te digo de dónde sale cada uno.
-                </p>
+                <p className="text-base">{t.hello(session?.name ? session.name.split(" ")[0] : "")}</p>
                 <div className="flex flex-col gap-2">
-                  {SUGGESTIONS.map((s) => (
+                  {t.suggestions.map((s) => (
                     <button
                       key={s}
                       type="button"
@@ -369,7 +442,7 @@ export function Guide({ point }: { point: Point | null }) {
                         {m.content ? <Rich text={m.content} sources={m.sources} /> : null}
                         {!!m.sources?.length && (
                           <div className="mt-3 border-t border-rule pt-2">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Fuentes consultadas</p>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{t.sources}</p>
                             <ul className="mt-1 space-y-1 text-sm">
                               {m.sources.map((s) => (
                                 <li key={s.n} className="flex gap-1.5">
@@ -404,7 +477,7 @@ export function Guide({ point }: { point: Point | null }) {
             <form onSubmit={onSubmit} className="border-t border-rule px-4 py-3">
               <div className="flex items-end gap-2">
                 <label htmlFor="guide-input" className="sr-only">
-                  Escribe tu pregunta
+                  {t.write}
                 </label>
                 <textarea
                   id="guide-input"
@@ -419,7 +492,7 @@ export function Guide({ point }: { point: Point | null }) {
                       send(input);
                     }
                   }}
-                  placeholder={listening ? "Te escucho…" : "Escribe o dicta tu pregunta"}
+                  placeholder={listening ? t.listening : t.placeholder}
                   className="min-h-[2.75rem] flex-1 resize-none rounded-md border border-field bg-paper px-3 py-2 text-base text-ink placeholder:text-ink-soft focus:border-moss"
                 />
                 {canListen && (
@@ -428,11 +501,11 @@ export function Guide({ point }: { point: Point | null }) {
                     onClick={toggleMic}
                     disabled={busy}
                     aria-pressed={listening}
-                    title={listening ? "Dejar de escuchar" : "Hablar"}
+                    title={listening ? t.stop : t.talk}
                     className={`rounded-md p-2.5 disabled:opacity-45 ${listening ? "animate-pulse bg-clay text-paper" : "border border-field text-ink hover:border-moss"}`}
                   >
                     <MicIcon />
-                    <span className="sr-only">{listening ? "Dejar de escuchar" : "Dictar la pregunta"}</span>
+                    <span className="sr-only">{listening ? t.stop : t.dictate}</span>
                   </button>
                 )}
                 <button
@@ -440,12 +513,12 @@ export function Guide({ point }: { point: Point | null }) {
                   disabled={busy || !input.trim()}
                   className="rounded-md bg-moss px-4 py-2.5 font-semibold text-paper hover:bg-moss-deep disabled:cursor-not-allowed disabled:opacity-45"
                 >
-                  Enviar
+                  {t.send}
                 </button>
               </div>
               <p className="mt-2 text-xs text-ink-soft">
-                Apoyo a tu decisión: confirma con tu oficina de extensión local.
-                {remaining !== null && ` Te quedan ${remaining} preguntas hoy.`}
+                {t.disclaimer}
+                {remaining !== null && t.left(remaining)}
               </p>
             </form>
           )}

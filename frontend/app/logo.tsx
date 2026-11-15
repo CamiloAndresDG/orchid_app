@@ -39,4 +39,7 @@ export function OrchidMark({ size = 32, className = "", title }: { size?: number
 
 /** Crédito del equipo, en una sola línea. */
 export const AUTHORS = "Orbital Farmers";
-export const CREDIT = "Hecho por Orbital Farmers, equipo participante en el NASA Space Apps Challenge 2026";
+export const CREDIT = {
+  es: "Hecho por Orbital Farmers, equipo participante en el NASA Space Apps Challenge 2026",
+  en: "Made by Orbital Farmers, a team taking part in the NASA Space Apps Challenge 2026",
+};

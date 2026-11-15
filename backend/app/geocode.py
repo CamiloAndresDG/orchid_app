@@ -12,6 +12,7 @@ import zipfile
 import httpx
 
 from .config import CACHE_DIR
+from .i18n import t
 GAZ = "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/"
 FILES = {"place": "2024_Gaz_place_national", "county": "2024_Gaz_counties_national", "zcta": "2024_Gaz_zcta_national"}
 CENSUS_ADDRESS = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
@@ -82,7 +83,7 @@ def search(q: str) -> dict | None:
         row = next((r for r in _load("zcta") if r["GEOID"] == m.group(1)), None)
         if row:
             lat, lon = _point(row)
-            return {"lat": lat, "lon": lon, "label": f"Código postal {m.group(1)}", "kind": "zip"}
+            return {"lat": lat, "lon": lon, "label": t(f"Código postal {m.group(1)}", f"ZIP code {m.group(1)}"), "kind": "zip"}
         return None
     # Direccion con numero y calle: geocodificador del Censo desde el servidor
     if re.match(r"^\d+\s+\w", q):

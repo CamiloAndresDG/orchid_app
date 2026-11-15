@@ -1,14 +1,21 @@
 """Motor de reglas: opciones para el proximo cultivo segun historial, clima real y cultivos de la zona."""
 from datetime import date
 
-from .crops import CATALOG
+from .crops import CATALOG, crop_name
+from .i18n import lang, t
 
 MONTHS_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+MONTHS_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+
+def _month(m: int) -> str:
+    return (MONTHS_EN if lang() == "en" else MONTHS_ES)[m - 1]
+
 
 def _rain_text(mm_day: float) -> str:
     """Lluvia del mes en pulgadas (con mm al lado): promedio diario x 30.4 dias."""
     inches = mm_day * 30.4 / 25.4
-    return f"{inches:.1f} pulgadas al mes ({mm_day * 30.4:.0f} mm)"
+    return t(f"{inches:.1f} pulgadas al mes ({mm_day * 30.4:.0f} mm)", f"{inches:.1f} inches a month ({mm_day * 30.4:.0f} mm)")
 
 
 def _temp_text(c: float) -> str:
@@ -16,7 +23,11 @@ def _temp_text(c: float) -> str:
 
 
 def _soil_text(w: float) -> str:
-    return "suelo seco" if w < 0.35 else "humedad media del suelo" if w < 0.55 else "suelo húmedo"
+    if w < 0.35:
+        return t("suelo seco", "dry soil")
+    if w < 0.55:
+        return t("humedad media del suelo", "medium soil moisture")
+    return t("suelo húmedo", "moist soil")
 
 
 WATER_FACTOR = {"low": 0.6, "med": 1.0, "high": 1.4}
@@ -51,6 +62,23 @@ def method_rules() -> list[str]:
     """Las reglas de puntuación en palabras, con los mismos números que usa el cálculo."""
     r = RULES
     w = WATER_FACTOR
+    if lang() == "en":
+        return [
+            f"Each crop starts at {r['base']} points.",
+            f"Repeating the last crop subtracts {abs(r['repeat_crop'])}; repeating its botanical family subtracts {abs(r['same_family'])}; switching family adds {r['other_family']}.",
+            f"A legume (soybeans, clover) after a grass (corn, wheat, sorghum, oats, rye) adds {r['legume_after_grass']} for the nitrogen it returns.",
+            "Water stress = how hard the weather is in the crop's cycle months (NASA POWER) × how much water the crop needs "
+            f"(low {w['low']}, medium {w['med']}, high {w['high']}) × 0.5 if irrigated × an adjustment for how much water the soil holds (SSURGO). "
+            f"Above {r['stress_free']:.2f} it subtracts {r['stress_weight']} points per unit of stress.",
+            f"A cover crop adds {r['cover_bare']} if there were months of bare soil (measured by MODIS or from your history) and subtracts {abs(r['cover_no_bare'])} if the soil is already covered most of the year.",
+            f"A cover crop adds {r['cover_texture']} on sandy or clayey soil and {r['cover_slope']} if the slope is {r['cover_slope_min']}% or more (SRTM).",
+            f"If a crop covers at least {r['local_share_min']:.0%} of the area (CDL) it adds {r['local_grown']}; if it's hardly planted it subtracts {abs(r['local_absent'])}, and if it's planted little it subtracts {abs(r['local_rare'])}. "
+            "Corn, soybeans and wheat are recognized on that map with verified colors; sorghum and sunflower with legend colors we haven't verified yet.",
+            f"With your prices, an option that would lose money subtracts {abs(r['loss'])}.",
+            f"From {r['cash_slope_risk']}% slope we warn about erosion risk, and if the soil holds {abs(r['dry_soil_risk'])}% less water than normal (NLDAS) we warn the thirsty crops; these warnings don't change the score.",
+            f"The highest score is the “Best option”; those within {r['close_gap']} points are “Almost as good”.",
+            "Planting months, cycle length and how much water each crop needs come from our own table of 8 crops.",
+        ]
     return [
         f"Cada cultivo parte de {r['base']} puntos.",
         f"Repetir el último cultivo resta {abs(r['repeat_crop'])}; repetir su familia botánica resta {abs(r['same_family'])}; cambiar de familia suma {r['other_family']}.",
@@ -151,16 +179,22 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
         if crop["kind"] == "cash":
             if key == last_crop:
                 rot_adj += RULES["repeat_crop"]
-                risks.append("Repetir el mismo cultivo aumenta plagas y enfermedades.")
+                risks.append(t("Repetir el mismo cultivo aumenta plagas y enfermedades.", "Planting the same crop again increases pests and diseases."))
             elif crop["family"] == last_family:
                 rot_adj += RULES["same_family"]
-                risks.append(f"Es de la misma familia que tu último cultivo ({CATALOG[last_crop]['name'].lower()}): más plagas y enfermedades.")
+                lc = crop_name(last_crop).lower()
+                risks.append(t(f"Es de la misma familia que tu último cultivo ({lc}): más plagas y enfermedades.",
+                               f"It's in the same family as your last crop ({lc}): more pests and diseases."))
             elif last_crop in CATALOG:
                 rot_adj += RULES["other_family"]
-                why.append(f"Es de otra familia que tu último cultivo ({CATALOG[last_crop]['name'].lower()}): ayuda a cortar plagas.")
+                lc = crop_name(last_crop).lower()
+                why.append(t(f"Es de otra familia que tu último cultivo ({lc}): ayuda a cortar plagas.",
+                             f"It's in a different family from your last crop ({lc}): it helps break pest cycles."))
             if crop.get("fixes_n") and last_family == "gramineas":
                 rot_adj += RULES["legume_after_grass"]
-                why.append(f"Devuelve nitrógeno al suelo después {'del' if ART.get(last_crop, 'el') == 'el' else 'de la'} {CATALOG[last_crop]['name'].lower()}.")
+                lc = crop_name(last_crop).lower()
+                why.append(t(f"Devuelve nitrógeno al suelo después {'del' if ART.get(last_crop, 'el') == 'el' else 'de la'} {lc}.",
+                             f"It returns nitrogen to the soil after the {lc}."))
         score += rot_adj
 
         # Agua: vulnerabilidad real de NASA POWER en los meses del cultivo.
@@ -168,76 +202,97 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
         n = len(cyc)
         avg = lambda k: sum(months[x][k] for x in cyc) / n
         evidence.append({
-            "text": f"En sus meses de ciclo, en promedio: lluvia {_rain_text(avg('precip_mm_day'))}, temperatura {_temp_text(avg('temp_c'))}, {_soil_text(avg('soil_wetness'))} (NASA POWER, 2015–2024)",
+            "text": t(f"En sus meses de ciclo, en promedio: lluvia {_rain_text(avg('precip_mm_day'))}, temperatura {_temp_text(avg('temp_c'))}, {_soil_text(avg('soil_wetness'))} (NASA POWER, 2015–2024)",
+                      f"Over its cycle months, on average: rain {_rain_text(avg('precip_mm_day'))}, temperature {_temp_text(avg('temp_c'))}, {_soil_text(avg('soil_wetness'))} (NASA POWER, 2015–2024)"),
             "kind": "real", "source": "power",
         })
         evidence.append({
-            "text": f"Dificultad del clima de {MONTHS_ES[cyc[0] - 1]} a {MONTHS_ES[cyc[-1] - 1]}: {'alta' if v_cycle >= 0.6 else 'media' if v_cycle >= 0.4 else 'baja'}. La calculamos nosotros (calor, suelo seco y poca lluvia; los pesos y la duración del ciclo son supuestos)",
+            "text": t(f"Dificultad del clima de {_month(cyc[0])} a {_month(cyc[-1])}: {'alta' if v_cycle >= 0.6 else 'media' if v_cycle >= 0.4 else 'baja'}. La calculamos nosotros (calor, suelo seco y poca lluvia; los pesos y la duración del ciclo son supuestos)",
+                      f"How hard the weather is from {_month(cyc[0])} to {_month(cyc[-1])}: {'high' if v_cycle >= 0.6 else 'medium' if v_cycle >= 0.4 else 'low'}. We calculate it ourselves (heat, dry soil and little rain; the weights and cycle length are assumptions)"),
             "kind": "calc",
         })
         if stress > 0.5:
-            risks.append("Alta demanda de agua frente al clima de estos meses" + ("" if irrigated else " y sin riego."))
+            risks.append(t("Alta demanda de agua frente al clima de estos meses", "High water demand for the weather in these months")
+                         + ("" if irrigated else t(" y sin riego.", " and no irrigation.")))
         elif stress < 0.3:
-            why.append("El clima de sus meses de ciclo es favorable en agua.")
+            why.append(t("El clima de sus meses de ciclo es favorable en agua.", "The weather in its cycle months is favorable for water."))
 
         # Suelo real (SSURGO)
         if sc:
             if awc is not None and awc < 0.12 and crop["water"] != "low":
-                risks.append("Tu suelo guarda poca agua y este cultivo necesita bastante: sufre más en sequía.")
-                evidence.append({"text": "Tu suelo guarda poca agua (mapa de suelos USDA)", "kind": "real", "source": "ssurgo"})
+                risks.append(t("Tu suelo guarda poca agua y este cultivo necesita bastante: sufre más en sequía.",
+                               "Your soil holds little water and this crop needs a lot: it suffers more in drought."))
+                evidence.append({"text": t("Tu suelo guarda poca agua (mapa de suelos USDA)", "Your soil holds little water (USDA soil map)"), "kind": "real", "source": "ssurgo"})
             if crop["kind"] == "cover" and (sandy or heavy):
                 score += RULES["cover_texture"]
-                why.append("Tu suelo " + ("es arenoso: la cobertura aporta materia orgánica y retiene humedad." if sandy else "es arcilloso: la cobertura mejora la infiltración."))
-                evidence.append({"text": f"Textura: {sc['sand']:.0f}% arena y {sc['clay']:.0f}% arcilla (SSURGO)", "kind": "real", "source": "ssurgo"})
+                if sandy:
+                    why.append(t("Tu suelo es arenoso: la cobertura aporta materia orgánica y retiene humedad.",
+                                 "Your soil is sandy: the cover crop adds organic matter and holds moisture."))
+                else:
+                    why.append(t("Tu suelo es arcilloso: la cobertura mejora la infiltración.", "Your soil is clayey: the cover crop improves infiltration."))
+                evidence.append({"text": t(f"Textura: {sc['sand']:.0f}% arena y {sc['clay']:.0f}% arcilla (SSURGO)",
+                                           f"Texture: {sc['sand']:.0f}% sand and {sc['clay']:.0f}% clay (SSURGO)"), "kind": "real", "source": "ssurgo"})
         else:
-            gaps.append("Sin datos de suelo de SSURGO en este punto")
+            gaps.append(t("Sin datos de suelo de SSURGO en este punto", "No SSURGO soil data at this point"))
 
         # Suelo desnudo: coberturas ayudan si hay meses sin cultivo.
         if crop["kind"] == "cover":
             if bare:
                 score += RULES["cover_bare"]
                 if bare_source == "ndvi":
-                    why.append(f"Cubre el suelo en meses con poca vegetación medida por satélite ({len(bare)} en el último año).")
-                    evidence.append({"text": f"Poca vegetación en {len(bare)} de los últimos 12 meses (satélite MODIS, medido; nuestro umbral de verdor)", "kind": "real", "source": "ndvi"})
+                    why.append(t(f"Cubre el suelo en meses con poca vegetación medida por satélite ({len(bare)} en el último año).",
+                                 f"It covers the soil in months with little vegetation measured by satellite ({len(bare)} in the last year)."))
+                    evidence.append({"text": t(f"Poca vegetación en {len(bare)} de los últimos 12 meses (satélite MODIS, medido; nuestro umbral de verdor)",
+                                               f"Little vegetation in {len(bare)} of the last 12 months (MODIS satellite, measured; our greenness cutoff)"), "kind": "real", "source": "ndvi"})
                 else:
-                    why.append(f"Cubre el suelo en meses que hoy están sin cultivo ({len(bare)} en el último año).")
+                    why.append(t(f"Cubre el suelo en meses que hoy están sin cultivo ({len(bare)} en el último año).",
+                                 f"It covers the soil in months that are bare today ({len(bare)} in the last year)."))
             else:
                 score += RULES["cover_no_bare"]
-                risks.append("Tu suelo ya tiene cultivo casi todo el año; la cobertura aporta menos.")
+                risks.append(t("Tu suelo ya tiene cultivo casi todo el año; la cobertura aporta menos.",
+                               "Your soil already has a crop most of the year; a cover crop adds less."))
 
         # Pendiente real (SRTM): en terrenos inclinados el suelo desnudo se lava con la lluvia.
         if slope is not None:
-            slope_ev = {"text": f"Pendiente promedio de {slope:.1f}% alrededor de tu punto (relieve SRTM de la NASA)", "kind": "real", "source": "srtm"}
+            slope_ev = {"text": t(f"Pendiente promedio de {slope:.1f}% alrededor de tu punto (relieve SRTM de la NASA)",
+                                  f"Average slope of {slope:.1f}% around your point (NASA SRTM terrain)"), "kind": "real", "source": "srtm"}
             if crop["kind"] == "cover" and slope >= RULES["cover_slope_min"]:
                 score += RULES["cover_slope"]
-                why.append(f"Tu terreno tiene pendiente ({slope:.1f}%): la cobertura frena la erosión cuando llueve fuerte.")
+                why.append(t(f"Tu terreno tiene pendiente ({slope:.1f}%): la cobertura frena la erosión cuando llueve fuerte.",
+                             f"Your field is sloped ({slope:.1f}%): the cover crop slows erosion in heavy rain."))
                 evidence.append(slope_ev)
             elif crop["kind"] == "cash" and slope >= RULES["cash_slope_risk"]:
-                risks.append(f"Con {slope:.1f}% de pendiente, el suelo desnudo entre cosecha y siembra se erosiona: deja rastrojo o una cobertura.")
+                risks.append(t(f"Con {slope:.1f}% de pendiente, el suelo desnudo entre cosecha y siembra se erosiona: deja rastrojo o una cobertura.",
+                               f"With a {slope:.1f}% slope, bare soil between harvest and planting erodes: leave residue or a cover crop."))
                 evidence.append(slope_ev)
 
         # Agua guardada en el suelo hoy (NLDAS): si está muy por debajo de lo normal, los cultivos sedientos arrancan en desventaja.
         if soil_anom is not None and soil_anom <= RULES["dry_soil_risk"] and crop["kind"] == "cash" and crop["water"] == "high" and not irrigated:
-            risks.append(f"Hoy tu suelo guarda {abs(soil_anom)}% menos agua que lo normal para esta época: arrancaría con poca reserva.")
-            evidence.append({"text": f"Humedad del suelo hasta 1 m en {water['latest_month']}: {abs(soil_anom)}% por debajo de su promedio de 10 años (modelo NLDAS de la NASA)", "kind": "real", "source": "nldas"})
+            risks.append(t(f"Hoy tu suelo guarda {abs(soil_anom)}% menos agua que lo normal para esta época: arrancaría con poca reserva.",
+                           f"Your soil holds {abs(soil_anom)}% less water than normal for this time of year: it would start with a low reserve."))
+            evidence.append({"text": t(f"Humedad del suelo hasta 1 m en {water['latest_month']}: {abs(soil_anom)}% por debajo de su promedio de 10 años (modelo NLDAS de la NASA)",
+                                       f"Soil moisture down to 1 m in {water['latest_month']}: {abs(soil_anom)}% below its 10-year average (NASA NLDAS model)"), "kind": "real", "source": "nldas"})
 
         # Cultivos de la zona (CDL): proxy de mercado y maquinaria.
         if local.get("available"):
             share = local_share.get(key, 0.0)
             if share >= RULES["local_share_min"]:
                 score += RULES["local_grown"]
-                evidence.append({"text": f"Ocupa ~{share*100:.0f}% de la zona cercana (mapa de cultivos USDA, 2021–2025)", "kind": "real", "source": "cdl"})
-                why.append("Ya se cultiva en la zona: hay mercado y maquinaria cercanos.")
+                evidence.append({"text": t(f"Ocupa ~{share*100:.0f}% de la zona cercana (mapa de cultivos USDA, 2021–2025)",
+                                           f"Covers ~{share*100:.0f}% of the nearby area (USDA crop map, 2021–2025)"), "kind": "real", "source": "cdl"})
+                why.append(t("Ya se cultiva en la zona: hay mercado y maquinaria cercanos.", "It's already grown in the area: there are buyers and machinery nearby."))
             elif crop["kind"] == "cash":
                 score += RULES["local_absent"] if share < 0.01 else RULES["local_rare"]
                 risks.append(
-                    "No se siembra en tu zona: confirma que haya comprador, contrato y maquinaria antes de sembrar."
+                    t("No se siembra en tu zona: confirma que haya comprador, contrato y maquinaria antes de sembrar.",
+                      "It isn't planted in your area: make sure there's a buyer, a contract and machinery before planting.")
                     if share < 0.01
-                    else "Se siembra poco en tu zona: confirma comprador y maquinaria."
+                    else t("Se siembra poco en tu zona: confirma comprador y maquinaria.", "Little of it is planted in your area: check for a buyer and machinery.")
                 )
-                evidence.append({"text": f"Ocupa {share*100:.0f}% de la zona cercana (mapa de cultivos USDA, 2021–2025)", "kind": "real", "source": "cdl"})
+                evidence.append({"text": t(f"Ocupa {share*100:.0f}% de la zona cercana (mapa de cultivos USDA, 2021–2025)",
+                                           f"Covers {share*100:.0f}% of the nearby area (USDA crop map, 2021–2025)"), "kind": "real", "source": "cdl"})
         else:
-            gaps.append("Sin datos de cultivos de la zona (CDL solo cubre EE. UU.)")
+            gaps.append(t("Sin datos de cultivos de la zona (CDL solo cubre EE. UU.)", "No data on crops in the area (CDL only covers the U.S.)"))
 
         # Economia: solo con los datos que declara el agricultor.
         econ = None
@@ -246,24 +301,24 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
             m_ha = p["yield_per_ha"] * p["price_per_unit"] - p["cost_per_ha"]
             econ = {"margin_per_ha": round(m_ha, 2), "margin_total": round(m_ha * area_ha, 2), "loss": m_ha < 0}
             if m_ha < 0:
-                risks.append("Con tus números daría pérdida.")
+                risks.append(t("Con tus números daría pérdida.", "With your numbers it would lose money."))
                 score += RULES["loss"]
         elif p and p.get("cost_per_ha") is not None and crop["kind"] == "cover":
             econ = {"margin_per_ha": -round(p["cost_per_ha"], 2), "margin_total": -round(p["cost_per_ha"] * area_ha, 2), "loss": False, "investment": True}
         else:
-            gaps.append("Falta rendimiento, precio y costo para estimar el margen")
+            gaps.append(t("Falta rendimiento, precio y costo para estimar el margen", "Yield, price and cost are missing to estimate the margin"))
 
-        gaps.append("Reglas curadas: validar con extensión agrícola local")
+        gaps.append(t("Reglas curadas: validar con extensión agrícola local", "Curated rules: check with your local extension office"))
         options.append({
             "crop": key,
-            "name": crop["name"],
+            "name": crop_name(key),
             "kind": crop["kind"],
             "family": crop["family"],
             "fixes_n": bool(crop.get("fixes_n")),
             "is_current": key == last_crop,
             "plant_month": start,
             "score": max(0, min(100, round(score))),
-            "why": why or ["Opción compatible con tu historial y clima."],
+            "why": why or [t("Opción compatible con tu historial y clima.", "An option that fits your history and climate.")],
             "risks": risks,
             "evidence": evidence,
             "gaps": gaps,
@@ -297,7 +352,8 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
         "covers": [],
         "today": today.isoformat(),
         "method": method_rules(),
-        "disclaimer": "Herramienta de apoyo a la decisión. Los números económicos salen solo de lo que tú declares. Valida con un experto local.",
+        "disclaimer": t("Herramienta de apoyo a la decisión. Los números económicos salen solo de lo que tú declares. Valida con un experto local.",
+                        "Decision-support tool. The economic figures come only from what you enter. Check with a local expert."),
     }
 
 
@@ -305,7 +361,7 @@ ART = {"corn": "el", "soybean": "la", "wheat": "el", "sorghum": "el", "sunflower
 
 
 def _the(o: dict) -> str:
-    return f"{ART.get(o['crop'], 'el')} {o['name'].lower()}"
+    return t(f"{ART.get(o['crop'], 'el')} {o['name'].lower()}", f"the {o['name'].lower()}")
 
 
 def _cover_for(cover: dict, sell: dict) -> dict:
@@ -314,75 +370,91 @@ def _cover_for(cover: dict, sell: dict) -> dict:
     sell_name = _the(sell)
     if cover["family"] == sell["family"]:
         c["score"] = max(0, c["score"] - 18)
-        c["risks"].insert(0, f"Es de la misma familia que {sell_name}: no corta sus plagas. Mejor otra cobertura.")
+        c["risks"].insert(0, t(f"Es de la misma familia que {sell_name}: no corta sus plagas. Mejor otra cobertura.",
+                               f"It's in the same family as {sell_name}: it doesn't break its pests. Better pick another cover crop."))
     else:
         c["score"] = min(100, c["score"] + 8)
-        c["why"].insert(0, f"Es de otra familia que {sell_name}: corta sus plagas y enfermedades.")
+        c["why"].insert(0, t(f"Es de otra familia que {sell_name}: corta sus plagas y enfermedades.",
+                             f"It's in a different family from {sell_name}: it breaks its pests and diseases."))
     if cover["fixes_n"] and sell["family"] == "gramineas":
         c["score"] = min(100, c["score"] + 8)
-        c["why"].insert(1, f"Devuelve al suelo nitrógeno que se llevó {sell_name}.")
+        c["why"].insert(1, t(f"Devuelve al suelo nitrógeno que se llevó {sell_name}.", f"It returns to the soil the nitrogen that {sell_name} took."))
     return c
 
 
 def _label(rank: int, o: dict, top: int) -> str:
     if o["economics"] and o["economics"].get("loss"):
-        return "Te daría pérdida con tus números"
+        return t("Te daría pérdida con tus números", "Would lose money with your numbers")
     if rank == 0:
-        return "Mejor opción"
+        return t("Mejor opción", "Best option")
     gap = top - o["score"]
     if gap <= RULES["close_gap"]:
-        return "Casi tan buena"
-    return "Más arriesgada"
+        return t("Casi tan buena", "Almost as good")
+    return t("Más arriesgada", "Riskier")
 
 
 def _behind(o: dict, best: dict) -> str | None:
     """Por que queda detras de la mejor, en una frase: su primer riesgo, si tiene."""
     if o["risks"]:
-        return f"Queda detrás de {_the(best)} porque: {o['risks'][0][0].lower() + o['risks'][0][1:].rstrip('.')}."
-    return f"Queda un poco detrás de {_the(best)}."
+        reason = o['risks'][0][0].lower() + o['risks'][0][1:].rstrip('.')
+        return t(f"Queda detrás de {_the(best)} porque: {reason}.", f"It ranks behind {_the(best)} because: {reason}.")
+    return t(f"Queda un poco detrás de {_the(best)}.", f"It ranks slightly behind {_the(best)}.")
 
 
 def _field_notes(sc, drainage, awc, bare, bare_source, terrain=None, water_bal=None, moisture=None) -> list[dict]:
     """Hechos de tu terreno que valen para todas las opciones: se dicen una sola vez."""
     notes = []
     if sc:
-        texture = "arenoso" if (sc["sand"] or 0) >= 70 else "arcilloso" if (sc["clay"] or 0) >= 40 else "limoso" if (sc["silt"] or 0) >= 50 else "franco"
-        water = "guarda poca agua" if awc is not None and awc < 0.12 else "guarda bien el agua" if awc is not None and awc >= 0.18 else "guarda una cantidad media de agua"
-        drain = DRAIN_ES.get(drainage, "sin dato de drenaje")
-        notes.append({"text": f"Tu suelo es {texture}, {water} y {drain}", "kind": "real", "source": "ssurgo"})
+        sand, clay, silt = (sc["sand"] or 0) >= 70, (sc["clay"] or 0) >= 40, (sc["silt"] or 0) >= 50
+        texture = t("arenoso" if sand else "arcilloso" if clay else "limoso" if silt else "franco",
+                    "sandy" if sand else "clayey" if clay else "silty" if silt else "loamy")
+        low, good = awc is not None and awc < 0.12, awc is not None and awc >= 0.18
+        water = t("guarda poca agua" if low else "guarda bien el agua" if good else "guarda una cantidad media de agua",
+                  "holds little water" if low else "holds water well" if good else "holds a medium amount of water")
+        drain = t(DRAIN_ES.get(drainage, "sin dato de drenaje"), DRAIN_EN.get(drainage, "no drainage data"))
+        notes.append({"text": t(f"Tu suelo es {texture}, {water} y {drain}", f"Your soil is {texture}, {water} and {drain}"), "kind": "real", "source": "ssurgo"})
         if "poorly" in drainage.lower():
-            notes.append({"text": "Como se encharca, siembra cuando el suelo esté firme y evita meter maquinaria con el campo mojado", "kind": "calc"})
+            notes.append({"text": t("Como se encharca, siembra cuando el suelo esté firme y evita meter maquinaria con el campo mojado",
+                                    "Since it waterlogs, plant when the soil is firm and keep machinery off the wet field"), "kind": "calc"})
     if bare and bare_source == "ndvi":
-        notes.append({"text": f"El satélite vio tu campo con poca vegetación en {len(bare)} {'mes' if len(bare) == 1 else 'meses'} del último año", "kind": "real", "source": "ndvi"})
+        n = len(bare)
+        notes.append({"text": t(f"El satélite vio tu campo con poca vegetación en {n} {'mes' if n == 1 else 'meses'} del último año",
+                                f"The satellite saw little vegetation on your field in {n} {'month' if n == 1 else 'months'} of the last year"), "kind": "real", "source": "ndvi"})
     if terrain and terrain.get("available"):
-        notes.append({"text": f"Tu terreno es {terrain['slope_word']} ({terrain['slope_pct']:.1f}% de pendiente) y está a {terrain['elevation_ft']} pies "
-                              f"({terrain['elevation_m']} m) sobre el nivel del mar", "kind": "real", "source": "srtm"})
+        notes.append({"text": t(f"Tu terreno es {terrain['slope_word']} ({terrain['slope_pct']:.1f}% de pendiente) y está a {terrain['elevation_ft']} pies "
+                                f"({terrain['elevation_m']} m) sobre el nivel del mar",
+                                f"Your field is {terrain['slope_word']} ({terrain['slope_pct']:.1f}% slope) and sits {terrain['elevation_ft']} feet "
+                                f"({terrain['elevation_m']} m) above sea level"), "kind": "real", "source": "srtm"})
         if terrain["slope_pct"] >= 5:
-            notes.append({"text": "Con esa pendiente, siembra siguiendo las curvas de nivel y no dejes el suelo desnudo en invierno", "kind": "calc"})
+            notes.append({"text": t("Con esa pendiente, siembra siguiendo las curvas de nivel y no dejes el suelo desnudo en invierno",
+                                    "On that slope, plant along the contour and don't leave the soil bare over winter"), "kind": "calc"})
     if moisture and moisture.get("available") and moisture.get("latest"):
         m = moisture["latest"]
-        notes.append({"text": f"El satélite midió la superficie de tu suelo {m['word']} ({m['percent']}% de agua) el {_date_es(m['date'])}",
+        notes.append({"text": t(f"El satélite midió la superficie de tu suelo {m['word']} ({m['percent']}% de agua) el {_date(m['date'])}",
+                                f"The satellite measured your soil surface as {m['word']} ({m['percent']}% water) on {_date(m['date'])}"),
                       "kind": "real", "source": "smap"})
     if water_bal and water_bal.get("available") and water_bal.get("soil_anomaly_pct") is not None:
         a = water_bal["soil_anomaly_pct"]
-        how = "más" if a > 0 else "menos"
+        mon = _month_year(water_bal["latest_month"])
         if abs(a) >= 10:
-            notes.append({"text": f"En {_month_es(water_bal['latest_month'])} tu suelo guardaba {abs(a)}% {how} agua que lo normal hasta 1 metro de profundidad",
+            notes.append({"text": t(f"En {mon} tu suelo guardaba {abs(a)}% {'más' if a > 0 else 'menos'} agua que lo normal hasta 1 metro de profundidad",
+                                    f"In {mon} your soil held {abs(a)}% {'more' if a > 0 else 'less'} water than normal down to 1 meter"),
                           "kind": "real", "source": "nldas"})
         else:
-            notes.append({"text": f"En {_month_es(water_bal['latest_month'])} tu suelo guardaba una cantidad de agua normal hasta 1 metro de profundidad",
+            notes.append({"text": t(f"En {mon} tu suelo guardaba una cantidad de agua normal hasta 1 metro de profundidad",
+                                    f"In {mon} your soil held a normal amount of water down to 1 meter"),
                           "kind": "real", "source": "nldas"})
     return notes
 
 
-def _date_es(iso: str) -> str:
+def _date(iso: str) -> str:
     y, m, d = (int(x) for x in iso.split("-"))
-    return f"{d} de {MONTHS_ES[m - 1]}"
+    return t(f"{d} de {_month(m)}", f"{_month(m)} {d}")
 
 
-def _month_es(ym: str) -> str:
+def _month_year(ym: str) -> str:
     y, m = ym.split("-")
-    return f"{MONTHS_ES[int(m) - 1]} de {y}"
+    return t(f"{_month(int(m))} de {y}", f"{_month(int(m))} {y}")
 
 
 DRAIN_ES = {
@@ -393,4 +465,14 @@ DRAIN_ES = {
     "Somewhat poorly drained": "drena algo mal",
     "Poorly drained": "drena mal (se encharca)",
     "Very poorly drained": "drena muy mal (se encharca)",
+}
+
+DRAIN_EN = {
+    "Excessively drained": "is excessively drained",
+    "Somewhat excessively drained": "is somewhat excessively drained",
+    "Well drained": "is well drained",
+    "Moderately well drained": "is moderately well drained",
+    "Somewhat poorly drained": "is somewhat poorly drained",
+    "Poorly drained": "is poorly drained (waterlogs)",
+    "Very poorly drained": "is very poorly drained (waterlogs)",
 }

@@ -5,6 +5,7 @@ vacios y riesgos, como exige el reto (apoyar el criterio del agricultor, no reem
 "evidence" nombra el tipo de dato que respalda cada punto; no son consultas hechas para el ejemplo.
 Nada de esto lo ha validado todavia la extension agricola local (K-State, Iowa State).
 """
+from .i18n import lang
 
 STRATEGIES = {
     "ks-sumner": [
@@ -74,5 +75,59 @@ STRATEGIES = {
 }
 
 
+# Los mismos textos en inglés, en el mismo orden.
+STRATEGIES_EN = {
+    "ks-sumner": [
+        {
+            "name": "Wheat and fallow (current)",
+            "benefits": ["Saves moisture for the next wheat crop", "Low input cost"],
+            "risks": ["Soil left bare for many months", "Wind erosion and poor water infiltration", "Doesn't break weed and pest cycles"],
+            "evidence": ["Little vegetation during fallow (NDVI)", "Soil moisture (SMAP)"],
+            "gaps": ["Your farm's real costs"],
+        },
+        {
+            "name": "Wheat, sorghum and fallow",
+            "benefits": ["Breaks pest and weed cycles", "Needs less water than corn", "Extra income from sorghum"],
+            "risks": ["Drought risk while sorghum establishes", "Needs machinery and a buyer"],
+            "evidence": ["Precipitation (NASA POWER)"],
+            "gaps": ["Local sorghum price", "Whether contracts are available", "Confirmation from Kansas extension (K-State) that the rotation fits your area"],
+        },
+        {
+            "name": "Wheat, cover crop and soybeans",
+            "benefits": ["Ends bare fallow", "Improves infiltration and organic matter", "Fixes nitrogen"],
+            "risks": ["The cover crop uses water in dry years", "Seed and management cost"],
+            "evidence": ["Vegetation in months without cover (NDVI)", "Soil texture (SSURGO)"],
+            "gaps": ["Best date to terminate the cover crop given the year's rain"],
+        },
+    ],
+    "ia-story": [
+        {
+            "name": "Corn and soybeans (current)",
+            "benefits": ["Well-known, profitable system", "Machinery and markets already in place"],
+            "risks": ["Winter without cover", "Nitrogen loss with runoff", "More pests from repeating crops"],
+            "evidence": ["Little vegetation in winter (NDVI)", "Satellite rainfall (IMERG)"],
+            "gaps": ["Real nitrogen losses on your field"],
+        },
+        {
+            "name": "Corn, soybeans and oats with clover",
+            "benefits": ["Breaks pest cycles", "Reduces nitrogen fertilizer", "Extra income from oats and straw"],
+            "risks": ["Less profit than corn in good-price years", "Planting needs planning"],
+            "evidence": ["Vegetation (NDVI) and soil moisture"],
+            "gaps": ["Local oat prices", "Confirmation from Iowa extension (Iowa State) that the rotation fits your area"],
+        },
+        {
+            "name": "Corn, cereal rye cover and soybeans",
+            "benefits": ["Covers the soil in winter", "Improves infiltration and reduces erosion", "Holds on to nitrogen"],
+            "risks": ["It can delay soybean planting", "Seed cost"],
+            "evidence": ["Vegetation in winter (NDVI)", "Soil drainage (SSURGO)"],
+            "gaps": ["Date to terminate the cover crop given the weather"],
+        },
+    ],
+}
+
+
 def strategies_for(zone_id: str):
-    return STRATEGIES.get(zone_id, [])
+    base = STRATEGIES.get(zone_id, [])
+    if lang() != "en":
+        return base
+    return [{**s, **en} for s, en in zip(base, STRATEGIES_EN.get(zone_id, []))]

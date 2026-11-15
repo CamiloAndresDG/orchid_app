@@ -5,6 +5,7 @@ from datetime import date, datetime
 import httpx
 
 from .config import CACHE_DIR
+from .i18n import t
 DAILY_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
 PARAMS = "PRECTOTCORR,T2M,GWETROOT"
 RESOLUTIONS = ("daily", "monthly", "quarterly", "semester", "yearly")
@@ -37,15 +38,15 @@ def _fetch_daily(lat: float, lon: float, start: str, end: str) -> dict:
 def _bucket(day: str, resolution: str) -> tuple[str, str]:
     y, m = int(day[:4]), int(day[4:6])
     if resolution == "daily":
-        return day, f"{day[6:]}/{day[4:6]}/{day[:4]}"
+        return day, t(f"{day[6:]}/{day[4:6]}/{day[:4]}", f"{day[4:6]}/{day[6:]}/{day[:4]}")
     if resolution == "monthly":
         return f"{y}{m:02d}", f"{y}-{m:02d}"
     if resolution == "quarterly":
         q = (m - 1) // 3 + 1
-        return f"{y}Q{q}", f"{y} T{q}"
+        return f"{y}Q{q}", t(f"{y} T{q}", f"{y} Q{q}")
     if resolution == "semester":
         h = 1 if m <= 6 else 2
-        return f"{y}S{h}", f"{y} S{h}"
+        return f"{y}S{h}", t(f"{y} S{h}", f"{y} H{h}")
     return str(y), str(y)
 
 

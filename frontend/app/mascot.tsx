@@ -3,6 +3,8 @@
 // "thinking" (mira hacia arriba, hojas inquietas) y "talking" (mueve la boca).
 // Con prefers-reduced-motion queda quieto (regla global en globals.css).
 
+import { useLang } from "./i18n";
+
 export type MascotState = "idle" | "listening" | "thinking" | "talking";
 
 export function Mascot({
@@ -16,6 +18,7 @@ export function Mascot({
   className?: string;
   decorative?: boolean; // dentro de un botón con texto: que el lector de pantalla no lo lea dos veces
 }) {
+  const lang = useLang();
   return (
     <svg
       viewBox="0 0 120 120"
@@ -24,7 +27,7 @@ export function Mascot({
       className={`brote ${className}`}
       data-state={state}
       role={decorative ? undefined : "img"}
-      aria-label={decorative ? undefined : "Brote, la guía de Orchid"}
+      aria-label={decorative ? undefined : lang === "en" ? "Brote, Orchid's guide" : "Brote, la guía de Orchid"}
       aria-hidden={decorative || undefined}
     >
       {/* sombra en la tierra */}

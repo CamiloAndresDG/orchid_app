@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Public_Sans } from "next/font/google";
 import "./globals.css";
+import { BOOT_SCRIPT } from "./boot";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -24,8 +25,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
+      suppressHydrationWarning
       className={`${fraunces.variable} ${publicSans.variable} h-full antialiased`}
     >
+      <head>
+        {/* Idioma del navegador y tema del sistema (o lo que el usuario eligió), antes de pintar. */}
+        <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
