@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import * as maplibregl from "maplibre-gl";
+import { Guide } from "../assistant";
 import { ECON_KEY, PLOT_KEY, endSession, useSession } from "../auth";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { AlertIcon, MoonIcon, PinIcon, SunIcon } from "../icons";
@@ -432,6 +433,7 @@ function MapaApp() {
           )}
         </div>
       </aside>
+      <Guide point={point} />
     </main>
   );
 }

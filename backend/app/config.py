@@ -27,3 +27,23 @@ elif DATABASE_URL.startswith(("postgres://", "postgresql://")):
 
 # Días que dura una sesión iniciada.
 SESSION_DAYS = int(os.environ.get("SESSION_DAYS", "30"))
+
+# ---------- Guía de IA (Claude) ----------
+# "foundry": Claude desplegado en Microsoft Foundry (Azure), autenticado con identidad administrada / az login.
+# "anthropic": API directo de Claude (lee ANTHROPIC_API_KEY o un perfil de `ant auth login`).
+ASSISTANT_PROVIDER = os.environ.get("ASSISTANT_PROVIDER", "foundry").strip().lower()
+FOUNDRY_RESOURCE = os.environ.get("FOUNDRY_RESOURCE", "").strip()  # p. ej. orchid-ai-f0dbd8
+FOUNDRY_TOKEN_SCOPE = os.environ.get("FOUNDRY_TOKEN_SCOPE", "https://cognitiveservices.azure.com/.default")
+# En Foundry el modelo es el nombre del despliegue.
+ASSISTANT_MODEL = os.environ.get("ASSISTANT_MODEL", "claude-opus-5-5").strip()
+# Modelo de respaldo si el principal rechaza una petición (middleware del SDK). Vacío = sin respaldo.
+ASSISTANT_FALLBACK_MODEL = os.environ.get("ASSISTANT_FALLBACK_MODEL", "claude-opus-4-8").strip()
+ASSISTANT_DAILY_LIMIT = int(os.environ.get("ASSISTANT_DAILY_LIMIT", "30"))
+
+
+def assistant_enabled() -> bool:
+    if ASSISTANT_PROVIDER == "foundry":
+        return bool(FOUNDRY_RESOURCE)
+    if ASSISTANT_PROVIDER == "anthropic":
+        return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get("ANTHROPIC_PROFILE"))
+    return False
