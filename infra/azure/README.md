@@ -19,7 +19,14 @@ QUICKSTATS_KEY=<clave opcional del USDA> bash infra/azure/setup.sh
 ```
 
 El script crea el grupo de recursos, el registro de contenedores, el entorno de Container Apps, el almacenamiento
-de la caché, el servidor PostgreSQL con la base `orchid`, construye las dos imágenes en Azure (no necesitas Docker instalado), las despliega y configura CORS.
+de la caché, el servidor PostgreSQL con la base `orchid`, construye las dos imágenes, las despliega y configura CORS.
+
+- **Docker:** si Docker Desktop está abierto, las imágenes se construyen en tu equipo y se suben al registro. Sin
+  Docker se usa `az acr build` (ACR Tasks), que algunas suscripciones nuevas o de prueba no permiten.
+- **Región de PostgreSQL:** por defecto `centralus` (`PG_LOCATION`), porque varias regiones como `eastus2` no
+  permiten Flexible Server en suscripciones nuevas. El resto queda en `LOCATION` (`eastus2`).
+- **Se puede volver a correr:** cada paso revisa si el recurso existe. Ojo: si Postgres ya existe, le pone una
+  contraseña nueva y actualiza el secreto del backend.
 Al final imprime las URLs.
 
 Variables que puedes cambiar: `RG`, `LOCATION`, `ACR`, `STORAGE`, `ENV_NAME`, `API_APP`, `WEB_APP`, `PG`, `PG_USER`,
