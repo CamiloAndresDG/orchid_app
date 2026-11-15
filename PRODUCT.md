@@ -20,7 +20,7 @@ Compares at least 3 rotation strategies (including the current one) and, for eac
 
 ## Operating Context
 
-Backend FastAPI (zones, NASA POWER, vulnerability, strategies); frontend Next.js + MapLibre + Recharts. Vulnerability currently uses monthly NASA POWER climate (rainfall, temperature, root-zone moisture); non-crop months come from fixed calendars.
+Backend FastAPI (zones, NASA POWER, vulnerability, strategies); frontend Next.js + MapLibre + Recharts. Vulnerability uses monthly NASA POWER climate with weights chosen by Orchid. For the farmer's plot, bare-soil months come from MODIS NDVI or the declared history; fixed crop calendars are used only for the two example zones. The rotation engine is a set of hand-written rules (RULES in recommend.py) that the full report shows with their numbers; they are not yet validated by an agronomist.
 
 ## Capabilities and Constraints
 

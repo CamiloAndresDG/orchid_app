@@ -10,7 +10,7 @@ from datetime import date
 
 from pydantic import BaseModel, Field, ValidationError
 
-from .analysis import vulnerability_by_month
+from .analysis import WEIGHTS, vulnerability_by_month
 from . import earthdata
 from .crops import CATALOG, local_crops
 from .etl.gaez import growing_at, suitability_at
@@ -280,7 +280,8 @@ def _clima(a: PointArgs, _ctx) -> tuple[dict, str]:
     top = sorted(months, key=lambda m: m["vulnerability"], reverse=True)[:3]
     return {"periodo": "promedio 2015-2024", "meses": rows,
             "meses_mas_vulnerables": [MONTHS_ES[m["month"] - 1] for m in top],
-            "metodo": "Vulnerabilidad = 0.4 calor + 0.35 suelo seco + 0.25 poca lluvia, relativo al propio punto.",
+            "metodo": (f"Vulnerabilidad = {WEIGHTS['heat']} calor + {WEIGHTS['dryness']} suelo seco + {WEIGHTS['low_rain']} poca lluvia, "
+                       "relativo al propio punto. Los pesos los eligió Orchid; los datos son de NASA POWER."),
             "consulta_oficial": f"{POWER_URL}?parameters={POWER_PARAMS}&community=AG&longitude={lon}&latitude={lat}"
                                 f"&start=2015&end=2024&format=JSON"}, "nasa_power"
 
@@ -368,6 +369,7 @@ def _rotacion(a: RotationArgs, ctx: ToolContext) -> tuple[dict, str]:
                         soil=soil_at(a.lat, a.lon), ndvi=ndvi_at(a.lat, a.lon), today=date.today(),
                         terrain=earthdata.srtm_at(a.lat, a.lon), water=earthdata.nldas_at(a.lat, a.lon),
                         moisture=earthdata.smap_at(a.lat, a.lon))
+    out["reglas_de_orchid"] = out.pop("method", [])  # supuestos nuestros, no datos
     out["supuestos"] = {"usa_historial_guardado": bool(plot), "area_acres": round(area_ha / HA_PER_ACRE, 1),
                         "riega": irrigated, "nota_area": None if acres else "Sin área guardada: se usaron 25 acres para los totales."}
     return out, "orchid"

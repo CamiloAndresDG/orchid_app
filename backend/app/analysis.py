@@ -1,6 +1,8 @@
-"""Vulnerabilidad estacional y ventanas de suelo desnudo (MVP con calendarios de cultivo).
+"""Vulnerabilidad estacional y ventanas de suelo desnudo.
 
-Siguiente paso: reemplazar los calendarios por NDVI real (HLS/MODIS via AppEEARS).
+Los pesos del índice (WEIGHTS) los elegimos nosotros; los datos son de NASA POWER. CROP_MONTHS son calendarios
+típicos que solo se usan en las zonas de ejemplo: para el terreno del agricultor, los meses de suelo desnudo salen
+del NDVI de MODIS o de su historial.
 """
 
 # Meses (1-12) con el cultivo en campo, para el cultivo de la rotacion actual.

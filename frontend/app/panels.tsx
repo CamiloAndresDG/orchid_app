@@ -323,6 +323,8 @@ export const SOURCES: Src[] = [
   { topic: "Humedad medida por satélite", name: "SMAP · NASA", live: true, what: "Humedad de los primeros centímetros del suelo, medida desde el espacio cada 2 o 3 días.", use: "Cuánta agua tiene hoy la superficie de tu suelo.", site: "https://nsidc.org/data/spl3smp_e/versions/6" },
   { topic: "Lluvia por satélite", name: "GPM IMERG · NASA", live: true, what: "Lluvia diaria estimada por una constelación de satélites.", use: "Cuánto llovió en tu terreno en los últimos 30 días.", site: "https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGDL_07/summary" },
   { topic: "Agua en el suelo", name: "NLDAS-2 · NASA", live: true, what: "Modelo mensual del agua que guarda el suelo, la que se evapora y la que escurre, en EE. UU.", use: "Si tu suelo tiene más o menos agua que lo normal; avisa a los cultivos que piden mucha agua.", site: "https://disc.gsfc.nasa.gov/datasets/NLDAS_NOAH0125_M_2.0/summary" },
+  { topic: "Qué se da bien aquí", name: "GAEZ · FAO", live: true, what: "Idoneidad y rendimiento posible de cada cultivo, y la temporada de crecimiento, según el clima de 1981 a 2010.", use: "En el informe: qué cultivos se dan bien en tu zona y cuánto se cosechaba.", site: "https://gaez.fao.org/pages/data-viewer" },
+  { topic: "Lluvia de tus vecinos", name: "CoCoRaHS · NOAA", live: true, what: "Lluvia medida cada mañana por voluntarios con pluviómetros.", use: "Compara la lluvia medida en tu zona con la que estima la NASA.", site: "https://www.cocorahs.org/" },
   { topic: "Relieve", name: "SRTM · NASA", live: true, what: "Altura del terreno cada 30 m, medida por radar desde el transbordador espacial.", use: "La pendiente de tu terreno y su riesgo de erosión; favorece las coberturas en terrenos inclinados.", site: "https://lpdaac.usgs.gov/products/srtmgl1v003/" },
 ];
 
@@ -334,8 +336,9 @@ export function FuentesPanel({ data }: { data: Analysis | null }) {
       <div>
         <h2 className="font-serif text-2xl font-semibold">De dónde salen los datos</h2>
         <p className="mt-1 max-w-prose text-base text-ink-soft">
-          Todo lo que mostramos viene de fuentes públicas del gobierno de EE. UU. y lo puedes comprobar en su sitio oficial. Usamos {live.length} fuentes;{" "}
-          {pending.length} más están pendientes y no las mostramos como si las tuviéramos.
+          Todo lo que mostramos viene de fuentes públicas (NASA, USDA, FAO y una red de pluviómetros voluntarios) y lo puedes comprobar en su sitio oficial.
+          Usamos {live.length} fuentes{pending.length > 0 && <>; {pending.length} más están pendientes y no las mostramos como si las tuviéramos</>}. Las
+          recomendaciones combinan esos datos con reglas que escribimos nosotros: están explicadas en el informe completo.
         </p>
       </div>
       {[

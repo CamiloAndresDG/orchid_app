@@ -39,6 +39,7 @@ export type Result = {
   rotations: Rotation[];
   covers: Option[];
   disclaimer: string;
+  method?: string[];
 };
 export type SoilComp = {
   map_unit: string; name: string; pct: number | null; drainage: string | null; hydgrp: string | null; slope: number | null;
@@ -47,7 +48,7 @@ export type SoilComp = {
 };
 export type Ndvi = { available: boolean; series: { date: string; ndvi: number }[]; threshold: number; low_months?: number[]; product: string; note: string };
 export type Soil = { available: boolean; components: SoilComp[]; sql: string; query_page: string; note: string };
-export type LocalCrops = { available: boolean; years: Record<string, Record<string, number>>; note: string; radius_km: number };
+export type LocalCrops = { available: boolean; years: Record<string, Record<string, number>>; note: string; radius_km: number; unverified?: string[] };
 
 const THIS_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 7 }, (_, i) => THIS_YEAR - i);
@@ -715,6 +716,21 @@ export function ReportResults({ r, name, point }: { r: Result; name: string; poi
         </div>
       )}
 
+      {r.method && r.method.length > 0 && (
+        <div className="report-section">
+          <h3 className="font-serif text-xl font-semibold">Cómo elegimos las opciones</h3>
+          <p className="mt-1 max-w-prose text-base text-ink-soft">
+            Los datos son reales; la forma de puntuarlos es una regla que escribimos nosotros y que todavía no revisó un agrónomo de tu zona. Estos son
+            los números exactos que usamos:
+          </p>
+          <ul className="mt-3 list-disc space-y-1.5 pl-5 text-base text-ink-soft marker:text-field">
+            {r.method.map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <p className="text-sm text-ink-soft">{r.disclaimer}</p>
     </section>
   );
@@ -768,7 +784,10 @@ export function AboutCrops({ point, local }: { point: Point; local: LocalCrops |
         <ul className="mt-3 max-w-md space-y-2">
           {nearby.map(([k, v]) => (
             <li key={k} className="grid grid-cols-[9rem_1fr_3rem] items-center gap-3">
-              <span>{cap(CROPS[k] ?? k)}</span>
+              <span>
+                {cap(CROPS[k] ?? k)}
+                {local.unverified?.includes(k) && <span className="text-ink-faint">*</span>}
+              </span>
               <span className="h-2.5 rounded-full bg-paper-deep">
                 <span className="block h-full rounded-full bg-moss" style={{ width: `${Math.max(2, v * 100)}%` }} />
               </span>
@@ -776,6 +795,11 @@ export function AboutCrops({ point, local }: { point: Point; local: LocalCrops |
             </li>
           ))}
         </ul>
+      )}
+      {local?.available && nearby.some(([k]) => local.unverified?.includes(k)) && (
+        <p className="mt-2 text-sm text-ink-soft">
+          * Lo reconocemos por el color de la leyenda del mapa, todavía sin verificar con un punto real: tómalo con cuidado.
+        </p>
       )}
       <p className="mt-2">
         <SourceLink href={cdlUrl(point.lat, point.lon)} title={SOURCE_LABEL.cdl}>Ver mapa oficial de cultivos (USDA)</SourceLink>

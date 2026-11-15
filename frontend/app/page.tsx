@@ -26,7 +26,7 @@ const FARMER_STEPS = [
 const REQUIREMENTS = [
   "Compara al menos tres estrategias de rotación, incluida la actual.",
   "Para cada una: por qué se sugiere, qué evidencia la respalda, beneficios, vacíos de información y riesgos.",
-  "Usa datos reales de la NASA, el USDA y el Censo de EE. UU. Lo que aún no está conectado aparece como pendiente, nunca como si ya existiera.",
+  "Usa datos reales de la NASA, el USDA, la FAO y una red de pluviómetros voluntarios. Lo que aún no está conectado aparece como pendiente, nunca como si ya existiera.",
   "Apoya el criterio del agricultor: no lo reemplaza.",
 ];
 
@@ -35,9 +35,13 @@ const SOURCES: { name: string; status: "Conectado" | "Pendiente"; use: string }[
   { name: "MODIS · NDVI (NASA)", status: "Conectado", use: "Qué tan verde se ve tu campo desde el satélite, cada 16 días." },
   { name: "SSURGO (USDA)", status: "Conectado", use: "Tipo de suelo, drenaje y cuánta agua guarda." },
   { name: "CDL (USDA)", status: "Conectado", use: "Qué se siembra alrededor de tu terreno, de 2021 a 2025." },
+  { name: "SMAP (NASA)", status: "Conectado", use: "Humedad de la superficie del suelo medida por satélite en las últimas semanas." },
+  { name: "GPM IMERG (NASA)", status: "Conectado", use: "Lluvia diaria por satélite de los últimos 30 días." },
+  { name: "NLDAS-2 (NASA)", status: "Conectado", use: "Cuánta agua guarda tu suelo frente a lo normal, mes a mes." },
+  { name: "SRTM (NASA)", status: "Conectado", use: "Altura y pendiente de tu terreno, para el riesgo de erosión." },
   { name: "QuickStats (USDA)", status: "Conectado", use: "Precio promedio de tu estado, con tu propia clave gratuita." },
-  { name: "SMAP (NASA)", status: "Pendiente", use: "Humedad del suelo medida por satélite. Pide cuenta de NASA Earthdata." },
-  { name: "IMERG (NASA)", status: "Pendiente", use: "Lluvia por satélite cada media hora. Pide cuenta de NASA Earthdata." },
+  { name: "GAEZ (FAO)", status: "Conectado", use: "Qué cultivos se dan bien en tu zona y cuánto pueden rendir." },
+  { name: "CoCoRaHS (voluntarios, NOAA)", status: "Conectado", use: "Lluvia medida por pluviómetros de tus vecinos." },
 ];
 
 export default function Home() {

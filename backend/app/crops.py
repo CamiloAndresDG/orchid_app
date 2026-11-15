@@ -32,6 +32,9 @@ CDL_COLORS = {
     (255, 158, 11): "sorghum",
     (255, 255, 0): "sunflower",
 }
+# Clases reconocidas solo por el color de la leyenda, sin verificar con un punto real.
+UNVERIFIED = {"sorghum", "sunflower", "alfalfa/heno", "barbecho", "algodon", "arroz"}
+
 CDL_OTHER = {
     (233, 255, 190): "pastizal",
     (255, 168, 227): "alfalfa/heno",
@@ -76,7 +79,7 @@ def local_crops(lat: float, lon: float, years=(2021, 2022, 2023, 2024, 2025)) ->
     """Mezcla de cultivos alrededor del punto (~1 km) por año, segun CDL. Solo EE. UU."""
     key = CACHE_DIR / f"cdl_{round(lat, 3)}_{round(lon, 3)}_{years[0]}_{years[-1]}.json"
     if key.exists():
-        return json.loads(key.read_text(encoding="utf8"))
+        return _mark_unverified(json.loads(key.read_text(encoding="utf8")))
     with ThreadPoolExecutor(max_workers=5) as ex:
         results = list(ex.map(lambda y: _cdl_year(lat, lon, y), years))
     by_year = {y: r for y, r in zip(years, results) if r}
@@ -89,4 +92,11 @@ def local_crops(lat: float, lon: float, years=(2021, 2022, 2023, 2024, 2025)) ->
     else:
         out = {"available": True, "radius_km": 1.1, "years": by_year, "note": "Clasificado por el color de la capa CDL (USDA NASS)."}
     key.write_text(json.dumps(out), encoding="utf8")
+    return _mark_unverified(out)
+
+
+def _mark_unverified(out: dict) -> dict:
+    """Agrega qué clases presentes se reconocieron con un color de la leyenda que aún no verificamos."""
+    seen = {k for y in out.get("years", {}).values() for k in y}
+    out["unverified"] = sorted(seen & UNVERIFIED)
     return out

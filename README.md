@@ -115,7 +115,17 @@ se hace con `bash infra/azure/setup.sh` y los siguientes con GitHub Actions. Pas
 
 ## Estado del MVP
 
-Zonas de demo: Sumner County (Kansas, trigo-barbecho) y Story County (Iowa, maíz-soja).
-Hoy la vulnerabilidad usa clima mensual de NASA POWER (lluvia, temperatura, humedad de zona radicular)
-y los meses sin cultivo salen de calendarios fijos. Pendiente: NDVI real (HLS/MODIS), CDL para
-el historial de rotación, SSURGO para suelos, SMAP, y el agente con Claude API.
+**Datos reales, consultados en vivo para el punto del agricultor:** NASA POWER (clima), MODIS (NDVI), SMAP (humedad
+del suelo), GPM IMERG (lluvia por satélite), NLDAS-2 (agua en el suelo), SRTM (relieve), SSURGO (suelo), CDL (cultivos
+de la zona), FAO GAEZ (idoneidad), CoCoRaHS (pluviómetros), Censo de EE. UU. (geocodificación) y QuickStats (precios,
+con clave). La economía usa solo los números que declara el agricultor.
+
+**Reglas nuestras, no datos (todavía sin validar por un agrónomo):** el motor de rotaciones (`backend/app/recommend.py`:
+catálogo de 8 cultivos con meses de siembra, ciclo y necesidad de agua, y los pesos de `RULES`), los pesos del índice
+de meses difíciles (`analysis.py`, `WEIGHTS`) y las estrategias de las dos zonas de ejemplo (`rotations.py`, Sumner
+County, Kansas, y Story County, Iowa, con una rotación actual supuesta). El informe completo muestra las reglas con sus
+números. Algunos colores del mapa CDL (sorgo, girasol, alfalfa, barbecho, algodón, arroz) aún no se verificaron con un
+punto real y se marcan como tales.
+
+**Pendiente:** validar las reglas con la extensión agrícola (K-State, Iowa State) o un agrónomo; la clave de QuickStats
+del servidor; las tablas del ETL que necesitan Earthdata (clima GLDAS/NLDAS, cobertura NLCD).
