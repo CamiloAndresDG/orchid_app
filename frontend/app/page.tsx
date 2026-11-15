@@ -12,8 +12,8 @@ const FARMER_STEPS = [
   },
   {
     n: "2",
-    title: "Compara tres rotaciones",
-    text: "Ves tu rotación actual y dos alternativas. Cada una explica por qué se sugiere, qué beneficios trae y qué riesgos tiene.",
+    title: "Compara rotaciones",
+    text: "Ves la mejor rotación para tu terreno, otras alternativas y lo que pasa si sigues igual. Cada una explica por qué se sugiere, qué ventajas trae y qué riesgos tiene.",
   },
   {
     n: "3",
@@ -25,16 +25,18 @@ const FARMER_STEPS = [
 const REQUIREMENTS = [
   "Compara al menos tres estrategias de rotación, incluida la actual.",
   "Para cada una: por qué se sugiere, qué evidencia la respalda, beneficios, vacíos de información y riesgos.",
-  "Usa datos reales de NASA POWER. Lo que aún no está conectado aparece como pendiente, nunca como si ya existiera.",
+  "Usa datos reales de la NASA, el USDA y el Censo de EE. UU. Lo que aún no está conectado aparece como pendiente, nunca como si ya existiera.",
   "Apoya el criterio del agricultor: no lo reemplaza.",
 ];
 
 const SOURCES: { name: string; status: "Conectado" | "Pendiente"; use: string }[] = [
-  { name: "NASA POWER", status: "Conectado", use: "Lluvia, temperatura y humedad de la zona radicular, por mes." },
-  { name: "NDVI (HLS / MODIS)", status: "Pendiente", use: "Verdor real de los campos a lo largo del año." },
-  { name: "SMAP", status: "Pendiente", use: "Humedad superficial del suelo por satélite." },
-  { name: "SSURGO", status: "Pendiente", use: "Textura y propiedades de cada tipo de suelo." },
-  { name: "CDL (USDA)", status: "Pendiente", use: "Historial real de cultivos en tu terreno." },
+  { name: "NASA POWER", status: "Conectado", use: "Lluvia, temperatura y humedad del suelo de tu punto, por día y por mes." },
+  { name: "MODIS · NDVI (NASA)", status: "Conectado", use: "Qué tan verde se ve tu campo desde el satélite, cada 16 días." },
+  { name: "SSURGO (USDA)", status: "Conectado", use: "Tipo de suelo, drenaje y cuánta agua guarda." },
+  { name: "CDL (USDA)", status: "Conectado", use: "Qué se siembra alrededor de tu terreno, de 2021 a 2025." },
+  { name: "QuickStats (USDA)", status: "Conectado", use: "Precio promedio de tu estado, con tu propia clave gratuita." },
+  { name: "SMAP (NASA)", status: "Pendiente", use: "Humedad del suelo medida por satélite. Pide cuenta de NASA Earthdata." },
+  { name: "IMERG (NASA)", status: "Pendiente", use: "Lluvia por satélite cada media hora. Pide cuenta de NASA Earthdata." },
 ];
 
 export default function Home() {

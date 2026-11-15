@@ -19,7 +19,7 @@ const RES: { id: Res; label: string }[] = [
   { id: "yearly", label: "Año" },
 ];
 
-type SeriesKey = "precip_mm_day" | "precip_mm_total" | "temp_c" | "soil_wetness";
+type SeriesKey = "rain_in_day" | "rain_in_total" | "temp_f" | "soil_pct";
 const SERIES: {
   key: SeriesKey;
   label: string;
@@ -29,11 +29,18 @@ const SERIES: {
   source: string;
   derived?: boolean;
 }[] = [
-  { key: "precip_mm_day", label: "Lluvia", unit: "mm/día", kind: "line", color: "var(--moss)", source: "PRECTOTCORR · Precipitation Corrected (MERRA-2), mm/día" },
-  { key: "precip_mm_total", label: "Lluvia acumulada", unit: "mm", kind: "bar", color: "var(--moss)", source: "No existe en la fuente: es la suma de los valores diarios de PRECTOTCORR en el periodo (cálculo de Field Shift)", derived: true },
-  { key: "temp_c", label: "Temperatura", unit: "°C", kind: "line", color: "var(--clay)", source: "T2M · Temperature at 2 Meters (MERRA-2), °C" },
-  { key: "soil_wetness", label: "Humedad del suelo", unit: "0–1", kind: "line", color: "var(--field)", source: "GWETROOT · Root Zone Soil Wetness (MERRA-2), 0 seco a 1 saturado" },
+  { key: "rain_in_day", label: "Lluvia por día", unit: "pulgadas", kind: "line", color: "var(--moss)", source: "PRECTOTCORR · Precipitation Corrected (MERRA-2), en mm/día; aquí en pulgadas" },
+  { key: "rain_in_total", label: "Lluvia acumulada", unit: "pulgadas", kind: "bar", color: "var(--moss)", source: "No existe en la fuente: es la suma de los días de PRECTOTCORR en el periodo (cálculo de Field Shift)", derived: true },
+  { key: "temp_f", label: "Temperatura", unit: "°F", kind: "line", color: "var(--clay)", source: "T2M · Temperature at 2 Meters (MERRA-2), en °C; aquí en °F" },
+  { key: "soil_pct", label: "Humedad del suelo", unit: "%", kind: "line", color: "var(--field)", source: "GWETROOT · Root Zone Soil Wetness (MERRA-2), de 0 a 1; aquí en %" },
 ];
+
+const MONTHS_SHORT = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+// "2025-11" -> "nov 2025"; el resto de etiquetas se deja igual
+const prettyLabel = (l: string) => (/^\d{4}-\d{2}$/.test(l) ? `${MONTHS_SHORT[+l.slice(5) - 1]} ${l.slice(0, 4)}` : l);
+const toIn = (mm: number) => mm / 25.4;
+const toF = (c: number) => (c * 9) / 5 + 32;
+export const soilWord = (w: number) => (w < 0.35 ? "seco" : w < 0.55 ? "medio" : "húmedo");
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const compact = (s: string) => s.replaceAll("-", "");
@@ -50,7 +57,7 @@ export function ClimaExplorer({ lat, lon }: { lat: number; lon: number }) {
   const [out, setOut] = useState<Out | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [shown, setShown] = useState<SeriesKey[]>(["precip_mm_day", "temp_c"]);
+  const [shown, setShown] = useState<SeriesKey[]>(["rain_in_total", "temp_f"]);
 
   const spanDays = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86400000) + 1;
   const tooLong = res === "daily" && spanDays > 400;
@@ -82,8 +89,11 @@ export function ClimaExplorer({ lat, lon }: { lat: number; lon: number }) {
 
   const active = SERIES.filter((x) => shown.includes(x.key));
   const chart = out?.rows.map((r) => ({
-    name: r.label,
-    ...Object.fromEntries(SERIES.map((x) => [x.key, r[x.key]])),
+    name: prettyLabel(r.label),
+    rain_in_day: +toIn(r.precip_mm_day).toFixed(2),
+    rain_in_total: +toIn(r.precip_mm_total).toFixed(1),
+    temp_f: +toF(r.temp_c).toFixed(0),
+    soil_pct: r.soil_wetness === null ? null : Math.round(r.soil_wetness * 100),
   }));
   function toggle(k: SeriesKey) {
     setShown((cur) => (cur.includes(k) ? cur.filter((c) => c !== k) : [...cur, k]));
@@ -215,21 +225,23 @@ export function ClimaExplorer({ lat, lon }: { lat: number; lon: number }) {
                 <tr>
                   <th className="py-2 pr-2">Periodo</th>
                   <th className="pr-2">Días</th>
-                  <th className="pr-2" title={SERIES[1].source}>Lluvia acumulada (mm)*</th>
-                  <th className="pr-2" title={SERIES[0].source}>Lluvia mm/día</th>
-                  <th className="pr-2" title={SERIES[2].source}>Temp. °C</th>
-                  <th title={SERIES[3].source}>Humedad 0–1</th>
+                  <th className="pr-2">Lluvia acumulada*</th>
+                  <th className="pr-2">Temperatura media</th>
+                  <th>Suelo</th>
                 </tr>
               </thead>
               <tbody>
                 {out.rows.map((r) => (
                   <tr key={r.label} className="border-b border-rule/60">
-                    <td className="py-1.5 pr-2 font-semibold">{r.label}</td>
+                    <td className="py-1.5 pr-2 font-semibold">{prettyLabel(r.label)}</td>
                     <td className="pr-2 tabular-nums">{r.days}</td>
-                    <td className="pr-2 tabular-nums">{r.precip_mm_total}</td>
-                    <td className="pr-2 tabular-nums">{r.precip_mm_day}</td>
-                    <td className="pr-2 tabular-nums">{r.temp_c}</td>
-                    <td className="tabular-nums">{r.soil_wetness ?? "—"}</td>
+                    <td className="pr-2 tabular-nums">
+                      {toIn(r.precip_mm_total).toFixed(1)} in <span className="text-sm text-ink-soft">({r.precip_mm_total.toFixed(0)} mm)</span>
+                    </td>
+                    <td className="pr-2 tabular-nums">
+                      {toF(r.temp_c).toFixed(0)} °F <span className="text-sm text-ink-soft">({r.temp_c.toFixed(0)} °C)</span>
+                    </td>
+                    <td>{r.soil_wetness === null ? "—" : soilWord(r.soil_wetness)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -246,7 +258,7 @@ export function ClimaExplorer({ lat, lon }: { lat: number; lon: number }) {
               Ver estos datos en la página de la NASA <ExternalIcon />
             </a>
             <p className="max-w-prose text-sm text-ink-soft">
-              Se abre la página oficial con tu punto y tus fechas ya puestos; pulsa <strong>Submit</strong> allí para verlos.{" "}
+              Se abre la página oficial con tu punto y tus fechas ya puestos; allí pulsa el botón <strong>Submit</strong> (significa «enviar»; esa página está en inglés y usa mm y °C).{" "}
               {res === "daily" ? "Verás los mismos días." : "La NASA muestra cada mes de los años elegidos; la suma por " + resName + " la hacemos nosotros."}{" "}
               La NASA publica con 2 o 3 días de retraso
               {out.last_available ? ` (último dato: ${out.last_available.replace(/(\d{4})(\d{2})(\d{2})/, "$3/$2/$1")})` : ""}.

@@ -50,12 +50,14 @@ export function PreciosPanel({
   setEcon,
   point,
   history,
+  zoneCrops,
   go,
 }: {
   econ: Record<string, EconUS>;
   setEcon: (e: Record<string, EconUS>) => void;
   point: Point | null;
   history: HistoryRow[];
+  zoneCrops: string[];
   go: (t: TabId) => void;
 }) {
   const [key, setKey] = useState(() => {
@@ -76,7 +78,7 @@ export function PreciosPanel({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const mine = ECON_CROPS.filter((c) => history.some((h) => h.crop === c) || hasEcon(econ[c]));
+  const mine = ECON_CROPS.filter((c) => history.some((h) => h.crop === c) || zoneCrops.includes(c) || hasEcon(econ[c]));
   const shown = mine.length ? mine : ["corn", "soybean"];
   const others = ECON_CROPS.filter((c) => !shown.includes(c));
 
@@ -120,7 +122,7 @@ export function PreciosPanel({
       </div>
 
       <section>
-        <h3 className="font-serif text-xl font-semibold">{mine.length ? "Los cultivos que siembras" : "Cultivos más comunes"}</h3>
+        <h3 className="font-serif text-xl font-semibold">{mine.length ? "Tus cultivos y los de tu zona" : "Cultivos más comunes"}</h3>
         {!mine.length && (
           <p className="mt-1 text-base text-ink-soft">
             Cuando agregues tus cultivos en{" "}
@@ -130,9 +132,6 @@ export function PreciosPanel({
             , aparecerán aquí.
           </p>
         )}
-        <button onClick={() => go("terreno")} className="mt-6 rounded-md bg-moss px-6 py-3 text-base font-semibold text-paper hover:bg-moss-deep">
-          Listo, ver mis opciones con estos precios
-        </button>
         <div className="mt-2 border-t border-rule">
           {shown.map((c) => (
             <CropRow key={c} crop={c} value={econ[c]} onChange={(p) => setE(c, p)} />
@@ -151,6 +150,9 @@ export function PreciosPanel({
             </div>
           </details>
         )}
+        <button onClick={() => go("terreno")} className="mt-8 rounded-md bg-moss px-6 py-3 text-base font-semibold text-paper hover:bg-moss-deep">
+          Listo, ver mis opciones con estos precios
+        </button>
       </section>
 
       <details className="group border-t border-rule pt-6">

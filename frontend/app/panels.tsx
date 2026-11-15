@@ -145,10 +145,19 @@ export function EstrategiasPanel({ data }: { data: Analysis; go?: (t: TabId) => 
 /* --------------------------------- Clima --------------------------------- */
 
 const CLIMATE_VARS = [
-  { key: "precip_mm_day" as const, title: "Lluvia", unit: "mm por día", max: 5, tech: "PRECTOTCORR", what: "Cuánta agua cae en promedio cada día del mes. Si cae fuera de la siembra o del crecimiento, el cultivo no la aprovecha." },
-  { key: "temp_c" as const, title: "Temperatura", unit: "°C", max: 30, tech: "T2M", what: "Temperatura media del aire. Con más calor el suelo pierde agua más rápido y el cultivo se estresa." },
-  { key: "soil_wetness" as const, title: "Humedad del suelo", unit: "0 seco · 1 empapado", max: 1, tech: "GWETROOT", what: "Agua que hay donde están las raíces. Es la reserva que aguanta las semanas sin lluvia." },
+  { key: "precip_mm_day" as const, title: "Lluvia del mes", unit: "pulgadas", max: 5, tech: "PRECTOTCORR", what: "Cuánta agua cae en el mes. Si cae fuera de la siembra o del crecimiento, el cultivo no la aprovecha." },
+  { key: "temp_c" as const, title: "Temperatura media", unit: "°F", max: 30, tech: "T2M", what: "Temperatura media del aire. Con más calor el suelo pierde agua más rápido y el cultivo se estresa." },
+  { key: "soil_wetness" as const, title: "Suelo", unit: "seco, medio o húmedo", max: 1, tech: "GWETROOT", what: "Agua que hay donde están las raíces. Es la reserva que aguanta las semanas sin lluvia." },
 ];
+
+function climateCell(key: "precip_mm_day" | "temp_c" | "soil_wetness", v: number) {
+  if (key === "precip_mm_day") {
+    const mm = v * 30.4;
+    return { main: `${(mm / 25.4).toFixed(1)} in`, alt: `${mm.toFixed(0)} mm` };
+  }
+  if (key === "temp_c") return { main: `${((v * 9) / 5 + 32).toFixed(0)} °F`, alt: `${v.toFixed(0)} °C` };
+  return { main: v < 0.35 ? "seco" : v < 0.55 ? "medio" : "húmedo", alt: "" };
+}
 
 export function ClimaPanel({ data }: { data: Analysis }) {
   const crit = data.most_vulnerable_months;
@@ -190,7 +199,10 @@ export function ClimaPanel({ data }: { data: Analysis }) {
                 {CLIMATE_VARS.map((v) => (
                   <td key={v.key} className="py-2 pr-3">
                     <div className="flex items-center gap-2">
-                      <span className="w-11 tabular-nums">{m[v.key].toFixed(v.key === "temp_c" ? 1 : 2)}</span>
+                      <span className="w-[4.5rem] tabular-nums">
+                        {climateCell(v.key, m[v.key]).main}
+                        {climateCell(v.key, m[v.key]).alt && <span className="block text-sm text-ink-soft">{climateCell(v.key, m[v.key]).alt}</span>}
+                      </span>
                       <span className="h-1.5 w-14 rounded-full bg-paper-deep">
                         <span className="block h-full rounded-full bg-current opacity-70" style={{ width: `${Math.max(3, Math.min(100, (m[v.key] / v.max) * 100))}%` }} />
                       </span>
@@ -209,7 +221,7 @@ export function ClimaPanel({ data }: { data: Analysis }) {
             <div key={v.key}>
               <dt className="font-semibold text-ink">{v.title}</dt>
               <dd className="mt-0.5 max-w-prose text-ink-soft">
-                {v.what} <span className="text-sm text-ink-faint">En NASA POWER se llama {v.tech}.</span>
+                {v.what} <span className="text-sm text-ink-faint">En la página de la NASA se llama {v.tech} y viene en unidades métricas.</span>
               </dd>
             </div>
           ))}
