@@ -1,5 +1,7 @@
 # Orchid
 
+Hecho por **Orbital Farmers**, equipo participante en el NASA Space Apps Challenge 2026.
+
 Herramienta de apoyo a la decisión para agricultores, hecha para el reto [Field Shift: Adapting Farms with NASA Data](https://www.spaceappschallenge.org/2026/challenges/adapting-farms-with-nasa-data/?tab=details) del NASA Space Apps Challenge 2026.
 
 ## Objetivo

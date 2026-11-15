@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ParallaxHero } from "./hero-video";
+import { CREDIT, OrchidMark } from "./logo";
 import { endSession, startSession, useSession } from "./auth";
 
 const FARMER_STEPS = [
@@ -44,14 +45,18 @@ const SOURCES: { name: string; status: "Conectado" | "Pendiente"; use: string }[
   { name: "CoCoRaHS (voluntarios, NOAA)", status: "Conectado", use: "Lluvia medida por pluviómetros de tus vecinos." },
 ];
 
+// Contenedor de la página: ancho, con margen lateral que crece con la pantalla, y todo alineado a la izquierda.
+const WRAP = "mx-auto w-full max-w-[120rem] px-6 sm:px-10 lg:px-16";
+
 export default function Home() {
   const session = useSession();
   const router = useRouter();
 
   return (
     <div className="min-h-screen bg-paper text-ink">
-      <header className="relative z-20 mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <Link href="/" className="font-serif text-2xl font-semibold tracking-tight">
+      <header className={`relative z-20 flex items-center justify-between py-5 ${WRAP}`}>
+        <Link href="/" className="flex items-center gap-3 font-serif text-2xl font-semibold tracking-tight">
+          <OrchidMark size={40} />
           Orchid
         </Link>
         <nav className="flex items-center gap-2 text-sm sm:gap-4">
@@ -89,7 +94,7 @@ export default function Home() {
 
       {/* Portada */}
       <ParallaxHero>
-        <div className="mx-auto max-w-6xl px-6 pb-24 pt-6">
+        <div className={`pb-24 pt-6 ${WRAP}`}>
           <div className="max-w-3xl">
             <p className="fs-rise mb-5 inline-flex items-center gap-2 rounded-full border border-rule bg-paper/80 px-3 py-1 text-sm text-ink-soft backdrop-blur">
               <span className="size-2 rounded-full bg-moss" aria-hidden="true" />
@@ -144,7 +149,7 @@ export default function Home() {
       </ParallaxHero>
 
       {/* Agricultores */}
-      <section id="agricultores" className="mx-auto max-w-6xl px-6 py-20">
+      <section id="agricultores" className={`py-20 ${WRAP}`}>
         <div className="max-w-2xl">
           <h2 className="font-serif text-4xl font-semibold tracking-tight">Para agricultores</h2>
           <p className="mt-4 text-lg text-ink-soft">
@@ -166,11 +171,14 @@ export default function Home() {
 
       {/* Jurado */}
       <section id="jurado" className="bg-moss-deep text-paper">
-        <div className="mx-auto grid max-w-6xl gap-14 px-6 py-20 lg:grid-cols-2">
+        <div className={`grid gap-14 py-20 lg:grid-cols-2 ${WRAP}`}>
           <div>
             <h2 className="font-serif text-4xl font-semibold tracking-tight">Para el jurado</h2>
             <p className="mt-4 text-lg text-paper/80">
               Cómo responde Orchid al reto «Adapting Farms with NASA Data». Lo que no está conectado se marca como pendiente.
+            </p>
+            <p className="mt-3 text-base text-paper/80">
+              Equipo: <strong className="font-semibold text-paper">Orbital Farmers</strong>, participante en el NASA Space Apps Challenge 2026.
             </p>
             <ul className="mt-8 space-y-4">
               {REQUIREMENTS.map((r) => (
@@ -206,9 +214,9 @@ export default function Home() {
       </section>
 
       {/* Cierre */}
-      <section className="mx-auto max-w-6xl px-6 py-20 text-center">
+      <section className={`py-20 ${WRAP}`}>
         <h2 className="font-serif text-4xl font-semibold tracking-tight">Empieza con un solo campo.</h2>
-        <p className="mx-auto mt-4 max-w-prose text-lg text-ink-soft">
+        <p className="mt-4 max-w-prose text-lg text-ink-soft">
           Marca el lugar donde siembras y revisa qué te sugiere la herramienta. Tú decides qué cambia.
         </p>
         <Link
@@ -220,8 +228,13 @@ export default function Home() {
       </section>
 
       <footer className="border-t border-rule">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-8 text-sm text-ink-soft sm:flex-row sm:justify-between">
-          <span>Orchid · NASA Space Apps Challenge 2026</span>
+        <div className={`flex flex-col gap-3 py-8 text-sm text-ink-soft sm:flex-row sm:items-center sm:justify-between ${WRAP}`}>
+          <span className="flex items-center gap-2.5">
+            <OrchidMark size={24} />
+            <span>
+              <span className="font-semibold text-ink">Orchid</span> · {CREDIT}.
+            </span>
+          </span>
           <span>Apoya tu criterio; no lo reemplaza.</span>
         </div>
       </footer>

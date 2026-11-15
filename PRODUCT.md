@@ -12,7 +12,7 @@ Farmers and agronomists planning crop rotations for their own fields (demo zones
 
 ## Product Purpose
 
-Orchid is a decision-support tool for the NASA Space Apps 2026 challenge "Field Shift: Adapting Farms with NASA Data". It combines NASA Earth observations with local soil, crop characteristics and farmer priorities to compare rotation strategies for soil health and climate resilience. It supports the farmer's judgment; it never replaces it.
+Orchid is built by Orbital Farmers, a team taking part in the NASA Space Apps Challenge 2026. It is a decision-support tool for the NASA Space Apps 2026 challenge "Field Shift: Adapting Farms with NASA Data". It combines NASA Earth observations with local soil, crop characteristics and farmer priorities to compare rotation strategies for soil health and climate resilience. It supports the farmer's judgment; it never replaces it.
 
 ## Positioning
 
