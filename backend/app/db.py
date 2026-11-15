@@ -1,8 +1,8 @@
 """Modelo de datos y conexión (PostgreSQL en Azure, SQLite en local)."""
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Uuid, create_engine, event
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Uuid, create_engine, event
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 
@@ -72,6 +72,14 @@ class Plot(Base):
     econ: Mapped[dict] = mapped_column(JSONType, default=dict)  # {crop: {yield, price, cost}} en unidades de EE. UU.
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
     user: Mapped[User] = relationship(back_populates="plot")
+
+
+class AssistantUsage(Base):
+    """Preguntas a la Guía por usuario y día (límite diario)."""
+    __tablename__ = "assistant_usage"
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, default=0)
 
 
 def init_db() -> None:
