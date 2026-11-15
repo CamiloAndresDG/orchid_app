@@ -1,12 +1,10 @@
 """Serie climatica diaria de NASA POWER agregada por dia, mes, trimestre, semestre o anio."""
 import json
 from datetime import date, datetime
-from pathlib import Path
 
 import httpx
 
-CACHE_DIR = Path(__file__).resolve().parent.parent / "cache"
-CACHE_DIR.mkdir(exist_ok=True)
+from .config import CACHE_DIR
 DAILY_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
 PARAMS = "PRECTOTCORR,T2M,GWETROOT"
 RESOLUTIONS = ("daily", "monthly", "quarterly", "semester", "yearly")
