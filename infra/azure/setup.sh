@@ -33,6 +33,15 @@ PG_USER=${PG_USER:-fsadmin}
 PG_DB=${PG_DB:-orchid}
 # Solo letras y números (no hay que escaparla en la URL); "Fs1" asegura mayúscula, minúscula y dígito.
 PG_PASSWORD=${PG_PASSWORD:-Fs1$(openssl rand -hex 16)}
+# Guía de IA: Claude en Microsoft Foundry. Desplegar modelos de Anthropic pide datos de la organización
+# (se envían a Anthropic al aceptar sus términos en Azure Marketplace) y cuota de tokens por minuto.
+FOUNDRY=${FOUNDRY:-orchid-ai-$SUFFIX}
+ASSISTANT_MODEL=${ASSISTANT_MODEL:-claude-opus-5-5}
+ASSISTANT_FALLBACK_MODEL=${ASSISTANT_FALLBACK_MODEL:-claude-opus-4-8}
+ASSISTANT_DAILY_LIMIT=${ASSISTANT_DAILY_LIMIT:-30}
+ORG_NAME=${ORG_NAME:-Orchid}
+ORG_INDUSTRY=${ORG_INDUSTRY:-Agriculture}
+ORG_COUNTRY=${ORG_COUNTRY:-CO}
 API_APP=${API_APP:-orchid-api}
 WEB_APP=${WEB_APP:-orchid-web}
 TAG=${TAG:-$(git rev-parse --short HEAD)}
@@ -42,7 +51,7 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 
 echo "==> Grupo de recursos $RG ($LOCATION)"
 az extension add --name containerapp --upgrade --only-show-errors
-for ns in Microsoft.App Microsoft.OperationalInsights Microsoft.ContainerRegistry Microsoft.Storage Microsoft.DBforPostgreSQL; do
+for ns in Microsoft.App Microsoft.OperationalInsights Microsoft.ContainerRegistry Microsoft.Storage Microsoft.DBforPostgreSQL Microsoft.CognitiveServices; do
   az provider register -n "$ns" --wait
 done
 az group create -n "$RG" -l "$LOCATION" -o none
@@ -105,7 +114,7 @@ SUB=$(az account show --query id -o tsv)
 # Se usa en lugar de "az containerapp create --yaml", que con algunas versiones de la extensión falla con 400.
 put_app() {  # nombre plantilla
   local body="$HERE/.$1.rendered.json"
-  sed -e "s|__LOCATION__|$LOCATION|" -e "s|__ENV_ID__|$ENV_ID|" -e "s|__ACR__|$ACR|g"       -e "s|__ACR_PASSWORD__|$ACR_PASSWORD|" -e "s|__QUICKSTATS_KEY__|$QUICKSTATS_KEY|"       -e "s|__DATABASE_URL__|$DATABASE_URL|" -e "s|__ALLOWED_ORIGINS__|$WEB_URL,http://localhost:3000|"       -e "s|__TAG__|$TAG|" "$HERE/$2" > "$body"
+  sed -e "s|__LOCATION__|$LOCATION|" -e "s|__ENV_ID__|$ENV_ID|" -e "s|__ACR__|$ACR|g"       -e "s|__ACR_PASSWORD__|$ACR_PASSWORD|" -e "s|__QUICKSTATS_KEY__|$QUICKSTATS_KEY|"       -e "s|__DATABASE_URL__|$DATABASE_URL|" -e "s|__ALLOWED_ORIGINS__|$WEB_URL,http://localhost:3000|"       -e "s|__FOUNDRY_RESOURCE__|$FOUNDRY_RESOURCE|" -e "s|__ASSISTANT_MODEL__|$ASSISTANT_MODEL|"       -e "s|__ASSISTANT_FALLBACK_MODEL__|$ASSISTANT_FALLBACK_MODEL|" -e "s|__ASSISTANT_DAILY_LIMIT__|$ASSISTANT_DAILY_LIMIT|"       -e "s|__TAG__|$TAG|" "$HERE/$2" > "$body"
   command -v cygpath >/dev/null && body=$(cygpath -m "$body")
   az rest --method put -o none     --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.App/containerApps/$1?api-version=2024-03-01"     --body "@$body"
   rm -f "$HERE/.$1.rendered.json"
@@ -117,11 +126,37 @@ put_app() {  # nombre plantilla
   done
 }
 
+echo "==> Microsoft Foundry $FOUNDRY (Guía de IA)"
+exists cognitiveservices account show -g "$RG" -n "$FOUNDRY" ||
+  az cognitiveservices account create -g "$RG" -n "$FOUNDRY" -l "$LOCATION" --kind AIServices --sku S0 --custom-domain "$FOUNDRY" --yes -o none
+deploy_claude() {  # despliegue (= nombre del modelo) y versión; no detiene el script si falta cuota
+  local url="https://management.azure.com/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RG/providers/Microsoft.CognitiveServices/accounts/$FOUNDRY/deployments/$1?api-version=2025-10-01-preview"
+  exists rest --method get --url "$url" && return 0
+  local body="$HERE/.deploy-$1.json"
+  printf '{"sku":{"name":"GlobalStandard","capacity":1},"properties":{"model":{"format":"Anthropic","name":"%s","version":"%s"},"modelProviderData":{"industry":"%s","organizationName":"%s","countryCode":"%s"}}}'     "$1" "$2" "$ORG_INDUSTRY" "$ORG_NAME" "$ORG_COUNTRY" > "$body"
+  local b="$body"; command -v cygpath >/dev/null && b=$(cygpath -m "$body")
+  if az rest --method put --url "$url" --body "@$b" -o none; then echo "    $1 desplegado"; else echo "    AVISO: no se pudo desplegar $1 (¿cuota? ver infra/azure/README.md). La Guía queda desactivada."; fi
+  rm -f "$body"
+}
+deploy_claude "$ASSISTANT_MODEL" 2
+[[ -n "$ASSISTANT_FALLBACK_MODEL" ]] && deploy_claude "$ASSISTANT_FALLBACK_MODEL" 2
+# La Guía solo se activa si el modelo principal está desplegado (si no, el backend la muestra como no disponible).
+DEPLOY_URL="https://management.azure.com/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RG/providers/Microsoft.CognitiveServices/accounts/$FOUNDRY/deployments/$ASSISTANT_MODEL?api-version=2025-10-01-preview"
+if exists rest --method get --url "$DEPLOY_URL"; then FOUNDRY_RESOURCE="$FOUNDRY"; else FOUNDRY_RESOURCE=""; fi
+exists rest --method get --url "${DEPLOY_URL/$ASSISTANT_MODEL/$ASSISTANT_FALLBACK_MODEL}" || ASSISTANT_FALLBACK_MODEL=""
+
 echo "==> Imagen del backend"
 build_image orchid-api ./backend
 
 echo "==> Container App del backend ($API_URL)"
 put_app "$API_APP" api.json
+
+echo "==> Permiso del backend para usar Foundry (identidad administrada, sin claves)"
+API_PRINCIPAL=$(az containerapp show -g "$RG" -n "$API_APP" --query identity.principalId -o tsv)
+FOUNDRY_ID=$(az cognitiveservices account show -g "$RG" -n "$FOUNDRY" --query id -o tsv)
+if [[ -z "$(az role assignment list --assignee "$API_PRINCIPAL" --scope "$FOUNDRY_ID" --role "Cognitive Services User" --query "[0].id" -o tsv)" ]]; then
+  az role assignment create --assignee-object-id "$API_PRINCIPAL" --assignee-principal-type ServicePrincipal     --role "Cognitive Services User" --scope "$FOUNDRY_ID" -o none
+fi
 
 echo "==> Imagen del frontend (con la URL del API dentro)"
 build_image orchid-web ./frontend "NEXT_PUBLIC_API_URL=$API_URL"
@@ -141,6 +176,7 @@ Listo.
   Frontend: $WEB_URL
   Backend:  $API_URL  (prueba $API_URL/health)
   Base de datos: $PG.postgres.database.azure.com / $PG_DB (usuario $PG_USER)
+  Guía de IA: ${FOUNDRY_RESOURCE:+activa con $ASSISTANT_MODEL en $FOUNDRY}${FOUNDRY_RESOURCE:-desactivada (falta desplegar $ASSISTANT_MODEL en $FOUNDRY; ver README)}
   La contraseña de Postgres solo queda en el secreto "database-url" del backend.
 
 Para el despliegue automático con GitHub Actions, crea estas *variables* del repositorio:

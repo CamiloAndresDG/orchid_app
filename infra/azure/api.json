@@ -4,14 +4,31 @@
     "managedEnvironmentId": "__ENV_ID__",
     "configuration": {
       "activeRevisionsMode": "Single",
-      "ingress": { "external": true, "targetPort": 8000, "transport": "auto" },
+      "ingress": {
+        "external": true,
+        "targetPort": 8000,
+        "transport": "auto"
+      },
       "registries": [
-        { "server": "__ACR__.azurecr.io", "username": "__ACR__", "passwordSecretRef": "acr-password" }
+        {
+          "server": "__ACR__.azurecr.io",
+          "username": "__ACR__",
+          "passwordSecretRef": "acr-password"
+        }
       ],
       "secrets": [
-        { "name": "acr-password", "value": "__ACR_PASSWORD__" },
-        { "name": "quickstats-key", "value": "__QUICKSTATS_KEY__" },
-        { "name": "database-url", "value": "__DATABASE_URL__" }
+        {
+          "name": "acr-password",
+          "value": "__ACR_PASSWORD__"
+        },
+        {
+          "name": "quickstats-key",
+          "value": "__QUICKSTATS_KEY__"
+        },
+        {
+          "name": "database-url",
+          "value": "__DATABASE_URL__"
+        }
       ]
     },
     "template": {
@@ -19,21 +36,81 @@
         {
           "name": "api",
           "image": "__ACR__.azurecr.io/orchid-api:__TAG__",
-          "resources": { "cpu": 0.5, "memory": "1Gi" },
+          "resources": {
+            "cpu": 0.5,
+            "memory": "1Gi"
+          },
           "env": [
-            { "name": "CACHE_DIR", "value": "/app/cache" },
-            { "name": "ALLOWED_ORIGINS", "value": "__ALLOWED_ORIGINS__" },
-            { "name": "QUICKSTATS_KEY", "secretRef": "quickstats-key" },
-            { "name": "DATABASE_URL", "secretRef": "database-url" }
+            {
+              "name": "CACHE_DIR",
+              "value": "/app/cache"
+            },
+            {
+              "name": "ALLOWED_ORIGINS",
+              "value": "__ALLOWED_ORIGINS__"
+            },
+            {
+              "name": "QUICKSTATS_KEY",
+              "secretRef": "quickstats-key"
+            },
+            {
+              "name": "DATABASE_URL",
+              "secretRef": "database-url"
+            },
+            {
+              "name": "ASSISTANT_PROVIDER",
+              "value": "foundry"
+            },
+            {
+              "name": "FOUNDRY_RESOURCE",
+              "value": "__FOUNDRY_RESOURCE__"
+            },
+            {
+              "name": "ASSISTANT_MODEL",
+              "value": "__ASSISTANT_MODEL__"
+            },
+            {
+              "name": "ASSISTANT_FALLBACK_MODEL",
+              "value": "__ASSISTANT_FALLBACK_MODEL__"
+            },
+            {
+              "name": "ASSISTANT_DAILY_LIMIT",
+              "value": "__ASSISTANT_DAILY_LIMIT__"
+            }
           ],
           "probes": [
-            { "type": "Liveness", "httpGet": { "path": "/health", "port": 8000 }, "initialDelaySeconds": 10, "periodSeconds": 30 }
+            {
+              "type": "Liveness",
+              "httpGet": {
+                "path": "/health",
+                "port": 8000
+              },
+              "initialDelaySeconds": 10,
+              "periodSeconds": 30
+            }
           ],
-          "volumeMounts": [ { "volumeName": "cache", "mountPath": "/app/cache" } ]
+          "volumeMounts": [
+            {
+              "volumeName": "cache",
+              "mountPath": "/app/cache"
+            }
+          ]
         }
       ],
-      "scale": { "minReplicas": 0, "maxReplicas": 2 },
-      "volumes": [ { "name": "cache", "storageType": "AzureFile", "storageName": "cache" } ]
+      "scale": {
+        "minReplicas": 0,
+        "maxReplicas": 2
+      },
+      "volumes": [
+        {
+          "name": "cache",
+          "storageType": "AzureFile",
+          "storageName": "cache"
+        }
+      ]
     }
+  },
+  "identity": {
+    "type": "SystemAssigned"
   }
 }
