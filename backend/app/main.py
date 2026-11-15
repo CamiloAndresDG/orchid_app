@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -9,7 +10,11 @@ from .analysis import CROP_MONTHS, WEIGHTS, bare_soil_months, vulnerability_by_m
 from .climate import RESOLUTIONS, aggregate
 from .config import ALLOWED_ORIGINS, QUICKSTATS_KEY
 from .crops import local_crops
+from . import datasets
+from .datasets import DatasetError
 from .db import init_db
+from .etl.gaez import actual_at, growing_at, suitability_at
+from .etl.stations import stations_near
 from .nasa_power import monthly_climatology
 from .ndvi import ndvi_at
 from .prices import PriceError, reference_prices
@@ -203,6 +208,70 @@ def prices_reference(req: PriceRequest):
     try:
         return reference_prices(req.lat, req.lon, key)
     except PriceError as e:
+        raise HTTPException(e.status, e.msg)
+
+
+@app.post("/point/gaez/suitability")
+def point_gaez_suitability(p: Point, input_level: Literal["High", "Low"] = "High"):
+    """Idoneidad y rendimiento alcanzable por cultivo, en secano y con riego (GAEZ v4 Tema 4, 1981-2010). Global."""
+    return suitability_at(p.lat, p.lon, input_level)
+
+
+@app.post("/point/gaez/growing")
+def point_gaez_growing(p: Point):
+    """Periodo de crecimiento, dias de helada y calor, lluvia y P/PET (GAEZ v4 Tema 2, 1981-2010). Global."""
+    return growing_at(p.lat, p.lon)
+
+
+@app.post("/point/gaez/actual")
+def point_gaez_actual(p: Point):
+    """Cultivos realmente cosechados en el pixel: area, produccion y rendimiento (GAEZ v4 Tema 5, 2010). Global."""
+    return actual_at(p.lat, p.lon)
+
+
+class StationsRequest(Point):
+    year: int | None = Field(default=None, ge=1998, le=2100)
+    radius_km: float = Field(default=40, gt=0, le=150)
+
+
+@app.post("/point/stations")
+def point_stations(req: StationsRequest):
+    """Lluvia de estaciones CoCoRaHS cercanas (NOAA GHCN-Daily) frente a NASA POWER. Solo EE. UU."""
+    return stations_near(req.lat, req.lon, req.year, req.radius_km)
+
+
+# ---------- Base de datos del ETL (backend/data/db, ver app/etl) ----------
+
+
+@app.get("/datasets")
+def datasets_status():
+    """Tablas del ETL, si estan construidas y cuantas filas tienen, y las zonas piloto."""
+    return datasets.resumen_estado()
+
+
+@app.get("/datasets/cell")
+def datasets_cell(lat: float, lon: float):
+    """Todo lo que la base sabe de la celda de 0.25 grados que contiene el punto."""
+    return datasets.celda(lat, lon)
+
+
+@app.get("/datasets/zones/{zone}")
+def datasets_zone(zone: str):
+    """Resumen de una zona piloto: cultivos principales, sequia reciente, cobertura del suelo y validacion."""
+    try:
+        return datasets.zona_resumen(zone)
+    except DatasetError as e:
+        raise HTTPException(e.status, e.msg)
+
+
+@app.get("/datasets/{table}")
+def datasets_table(table: str, zona: str | None = None, cell_id: int | None = None, crop: str | None = None,
+                   fuente: str | None = None, limit: int = 500, offset: int = 0):
+    """Filas de una tabla con filtros simples (zona, celda, cultivo, fuente). Maximo 5000 por pagina."""
+    try:
+        return datasets.filas_tabla(table, zona, cell_id, {"crop": crop, "fuente": fuente},
+                                    max(1, min(limit, 5000)), max(0, offset))
+    except DatasetError as e:
         raise HTTPException(e.status, e.msg)
 
 

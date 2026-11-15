@@ -55,7 +55,7 @@ En GitHub → Settings → Secrets and variables → Actions:
 | `ALLOWED_ORIGINS` | Orígenes permitidos por CORS, separados por coma | `http://localhost:3000` |
 | `CACHE_DIR` | Carpeta de caché | `backend/cache` |
 | `QUICKSTATS_KEY` | Clave del USDA del servidor; si existe, el usuario no necesita la suya | vacía |
-| `DATABASE_URL` | `postgresql+psycopg://usuario:clave@servidor:5432/fieldshift?sslmode=require` | SQLite en `backend/data/` |
+| `DATABASE_URL` | `postgresql+psycopg://usuario:clave@servidor:5432/fieldshift?sslmode=require` | SQLite en `backend/instance/` |
 | `SESSION_DAYS` | Días que dura una sesión iniciada | `30` |
 
 El frontend solo usa `NEXT_PUBLIC_API_URL`, que se fija **al construir** la imagen (`--build-arg`).
@@ -82,7 +82,7 @@ Endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET 
 `PUT /me/notebook` y `DELETE /me` (borra la cuenta y sus datos). El modo visitante no usa la base: guarda todo en el
 navegador. Si después crea una cuenta, su terreno se sube a ella.
 
-Sin `DATABASE_URL`, el backend usa SQLite en `backend/data/fieldshift.db`, así que en local no hace falta instalar Postgres.
+Sin `DATABASE_URL`, el backend usa SQLite en `backend/instance/fieldshift.db`, así que en local no hace falta instalar Postgres.
 
 Flexible Server hace copias de seguridad automáticas (7 días por defecto). Para consultar la base desde tu equipo:
 
