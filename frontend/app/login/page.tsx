@@ -132,6 +132,17 @@ export default function LoginPage() {
             </button>
           </form>
 
+          <button
+            type="button"
+            onClick={() => {
+              startSession("demo@fieldshift.local", "Visitante");
+              router.push("/mapa");
+            }}
+            className="mt-5 w-full rounded-md border border-moss px-5 py-3 font-semibold text-moss hover:bg-moss hover:text-paper"
+          >
+            Entrar como visitante (demo)
+          </button>
+
           <p className="mt-6 border-t border-rule pt-5 text-sm leading-relaxed text-ink-soft">
             Cuenta local de demostración: tu nombre y correo se guardan solo en este navegador. Todavía no hay un servidor
             de cuentas, así que no uses tu contraseña real de otro servicio.
