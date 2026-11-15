@@ -34,26 +34,24 @@ Variables que puedes cambiar: `RG`, `LOCATION`, `ACR`, `STORAGE`, `ENV_NAME`, `A
 
 ## 2. Despliegue automático (GitHub Actions)
 
-`.github/workflows/deploy-azure.yml` vuelve a construir y desplegar en cada push a `main`. Configúralo una vez:
+`.github/workflows/deploy-azure.yml` construye las imágenes en el runner de GitHub (Docker) y actualiza las dos apps
+en cada push a `main`. Inicia sesión en Azure con una **identidad administrada** y OIDC: sin contraseñas guardadas
+y sin necesitar permisos para registrar aplicaciones en Entra ID. Configuración (una vez):
 
 ```bash
-SUB=$(az account show --query id -o tsv)
 RG=rg-orchid
-APP_ID=$(az ad app create --display-name orchid-github --query appId -o tsv)
-az ad sp create --id $APP_ID
-az role assignment create --assignee $APP_ID --role Contributor --scope /subscriptions/$SUB/resourceGroups/$RG
-az ad app federated-credential create --id $APP_ID --parameters '{
-  "name": "github-main",
-  "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:<usuario>/<repo>:ref:refs/heads/main",
-  "audiences": ["api://AzureADTokenExchange"]
-}'
+az identity create -g $RG -n id-orchid-github
+az identity federated-credential create -g $RG --identity-name id-orchid-github --name github-main   --issuer https://token.actions.githubusercontent.com   --subject repo:<usuario>/<repo>:ref:refs/heads/main --audiences api://AzureADTokenExchange
+az role assignment create --role Contributor --scope $(az group show -n $RG --query id -o tsv)   --assignee-object-id $(az identity show -g $RG -n id-orchid-github --query principalId -o tsv)   --assignee-principal-type ServicePrincipal
 ```
 
 En GitHub → Settings → Secrets and variables → Actions:
 
-- **Secrets:** `AZURE_CLIENT_ID` (= `$APP_ID`), `AZURE_TENANT_ID` (`az account show --query tenantId -o tsv`), `AZURE_SUBSCRIPTION_ID`.
+- **Secrets:** `AZURE_CLIENT_ID` (`az identity show -g $RG -n id-orchid-github --query clientId -o tsv`),
+  `AZURE_TENANT_ID` (`az account show --query tenantId -o tsv`), `AZURE_SUBSCRIPTION_ID`.
 - **Variables:** `AZURE_RG`, `ACR_NAME`, `API_APP`, `WEB_APP` (los valores que imprimió `setup.sh`).
+
+La credencial solo vale para la rama `main`: un fork o un PR no pueden desplegar.
 
 ## Variables de entorno del backend
 
@@ -71,8 +69,7 @@ Cambiar la clave de QuickStats después:
 
 ```bash
 az containerapp secret set -g rg-orchid -n orchid-api --secrets quickstats-key=<clave>
-az containerapp revision restart -g rg-orchid -n orchid-api \
-  --revision $(az containerapp revision list -g rg-orchid -n orchid-api --query "[0].name" -o tsv)
+az containerapp revision restart -g rg-orchid -n orchid-api \n  --revision $(az containerapp revision list -g rg-orchid -n orchid-api --query "[0].name" -o tsv)
 ```
 
 ## Base de datos

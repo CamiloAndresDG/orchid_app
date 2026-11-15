@@ -145,7 +145,7 @@ Listo.
 
 Para el despliegue automático con GitHub Actions, crea estas *variables* del repositorio:
   AZURE_RG=$RG  ACR_NAME=$ACR  API_APP=$API_APP  WEB_APP=$WEB_APP
-y los secretos AZURE_CLIENT_ID, AZURE_TENANT_ID y AZURE_SUBSCRIPTION_ID (ver infra/azure/README.md).
+y los secretos AZURE_CLIENT_ID, AZURE_TENANT_ID y AZURE_SUBSCRIPTION_ID de una identidad administrada (ver infra/azure/README.md).
 OUT
 
 exit 0
