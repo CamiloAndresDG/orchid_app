@@ -1,8 +1,11 @@
-"""Guía de Orchid: chat con Claude (Microsoft Foundry o API directo) anclado a las fuentes de la plataforma.
+"""Guía de Orchid: chat con IA anclado a las fuentes de la plataforma.
 
-Flujo por pregunta: Claude decide qué herramientas consultar, el servidor las ejecuta con el código de Orchid,
-Claude responde citando los resultados, y el servidor envía al navegador el texto (SSE) y la lista de fuentes que
-de verdad se consultaron.
+Proveedores (ASSISTANT_PROVIDER): un modelo de OpenAI en Microsoft Foundry (gpt-5-mini, predeterminado), Claude en
+Microsoft Foundry o el API directo de Claude.
+
+Flujo por pregunta: el modelo decide qué herramientas consultar, el servidor las ejecuta con el código de Orchid,
+el modelo responde citando los resultados, y el servidor envía al navegador el texto (SSE) y la lista de fuentes
+que de verdad se consultaron.
 """
 import json
 import logging
@@ -21,7 +24,7 @@ from .accounts import current_user
 from .assistant_prompt import SYSTEM_PROMPT
 from .assistant_tools import STATUS, TOOLS, ToolContext, run_tool
 from .config import (ASSISTANT_DAILY_LIMIT, ASSISTANT_FALLBACK_MODEL, ASSISTANT_MODEL, ASSISTANT_PROVIDER,
-                     FOUNDRY_RESOURCE, FOUNDRY_TOKEN_SCOPE, assistant_enabled)
+                     AZURE_OPENAI_API_VERSION, FOUNDRY_RESOURCE, FOUNDRY_TOKEN_SCOPE, assistant_enabled)
 from .db import AssistantUsage, User, get_db
 
 log = logging.getLogger("orchid.assistant")
@@ -31,17 +34,29 @@ MAX_TOOL_ROUNDS = 8      # tope de idas y vueltas con herramientas por pregunta
 MAX_TOKENS = 32000       # con streaming no hay riesgo de timeout; las respuestas pedidas son cortas
 
 
+def _azure_token_provider():
+    # Sin claves: identidad administrada en Azure Container Apps, `az login` en local.
+    from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+
+    return get_bearer_token_provider(DefaultAzureCredential(), FOUNDRY_TOKEN_SCOPE)
+
+
 @lru_cache(maxsize=1)
 def _client() -> anthropic.Anthropic:
     middleware = [BetaRefusalFallbackMiddleware([{"model": ASSISTANT_FALLBACK_MODEL}])] if ASSISTANT_FALLBACK_MODEL else None
     if ASSISTANT_PROVIDER == "foundry":
-        # Sin claves: identidad administrada en Azure Container Apps, `az login` en local.
-        from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-
-        token_provider = get_bearer_token_provider(DefaultAzureCredential(), FOUNDRY_TOKEN_SCOPE)
-        return anthropic.AnthropicFoundry(resource=FOUNDRY_RESOURCE, azure_ad_token_provider=token_provider,
+        return anthropic.AnthropicFoundry(resource=FOUNDRY_RESOURCE, azure_ad_token_provider=_azure_token_provider(),
                                           middleware=middleware, timeout=300)
     return anthropic.Anthropic(middleware=middleware, timeout=300)
+
+
+@lru_cache(maxsize=1)
+def _openai_client():
+    from openai import AzureOpenAI
+
+    return AzureOpenAI(azure_endpoint=f"https://{FOUNDRY_RESOURCE}.cognitiveservices.azure.com/",
+                       azure_ad_token_provider=_azure_token_provider(), api_version=AZURE_OPENAI_API_VERSION,
+                       timeout=300, max_retries=2)
 
 
 # ---------- Esquemas ----------
@@ -103,7 +118,8 @@ def chat(req: ChatRequest, user: User = Depends(current_user), db: Session = Dep
     remaining = _count_question(db, user)
     # Todo lo que el generador necesita se lee ahora: la sesión de base de datos no vive durante el streaming.
     ctx = ToolContext(plot=_plot_snapshot(user), map_point=req.map_point.model_dump() if req.map_point else None)
-    return StreamingResponse(_stream(req.messages, ctx, remaining), media_type="text/event-stream",
+    stream = _stream_openai if ASSISTANT_PROVIDER == "azure_openai" else _stream
+    return StreamingResponse(stream(req.messages, ctx, remaining), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
@@ -205,6 +221,94 @@ def _stream(turns: list[Turn], ctx: ToolContext, remaining: int):
         yield _sse({"type": "error", "text": "No pudimos conectar con el servicio de IA. Intenta de nuevo."})
     except anthropic.APIStatusError as e:
         log.warning("Error del servicio de IA: %s %s", e.status_code, getattr(e, "message", ""))
+        yield _sse({"type": "error", "text": "El servicio de IA respondió con un error. Intenta de nuevo más tarde."})
+    except Exception:  # noqa: BLE001 - el navegador siempre recibe un cierre limpio
+        log.exception("Fallo inesperado en la Guía")
+        yield _sse({"type": "error", "text": "Algo falló al preparar la respuesta. Intenta de nuevo."})
+    yield _sse({"type": "sources", "items": ctx.sources()})
+    yield _sse({"type": "done", "remaining": remaining})
+
+
+# ---------- Azure OpenAI (gpt-5-mini) ----------
+
+OPENAI_TOOLS = [{"type": "function", "function": {"name": t["name"], "description": t["description"],
+                                                  "parameters": t["input_schema"]}} for t in TOOLS]
+REFUSAL = ("No puedo ayudar con esa consulta. Puedo responder sobre tu terreno, el clima, el suelo y los cultivos.")
+
+
+def _stream_openai(turns: list[Turn], ctx: ToolContext, remaining: int):
+    import openai
+
+    msgs: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    msgs += [{"role": t.role, "content": t.content} for t in turns]
+    while len(msgs) > 1 and msgs[1]["role"] != "user":
+        msgs.pop(1)
+    msgs[-1] = {"role": "user", "content": _session_note(ctx) + "\n\n" + msgs[-1]["content"]}
+    client = _openai_client()
+    try:
+        for _ in range(MAX_TOOL_ROUNDS):
+            text, calls, finish = "", {}, None
+            stream = client.chat.completions.create(
+                model=ASSISTANT_MODEL, messages=msgs, tools=OPENAI_TOOLS, stream=True,
+                max_completion_tokens=16000,  # incluye el razonamiento interno del modelo
+                reasoning_effort="low",
+            )
+            for chunk in stream:
+                if not chunk.choices:
+                    continue
+                choice = chunk.choices[0]
+                d = choice.delta
+                if d is not None and d.content:
+                    text += d.content
+                    yield _sse({"type": "text", "text": d.content})
+                for tc in (d.tool_calls or []) if d is not None else []:
+                    c = calls.setdefault(tc.index, {"id": "", "name": "", "args": ""})
+                    if tc.id:
+                        c["id"] = tc.id
+                    if tc.function and tc.function.name:
+                        c["name"] += tc.function.name
+                    if tc.function and tc.function.arguments:
+                        c["args"] += tc.function.arguments
+                finish = choice.finish_reason or finish
+            if finish == "content_filter":
+                yield _sse({"type": "text", "text": "\n\n" + REFUSAL})
+                break
+            ordered = [calls[i] for i in sorted(calls)]
+            assistant_msg = {"role": "assistant", "content": text or None}
+            if ordered:
+                assistant_msg["tool_calls"] = [{"id": c["id"], "type": "function",
+                                                "function": {"name": c["name"], "arguments": c["args"] or "{}"}}
+                                               for c in ordered]
+            msgs.append(assistant_msg)
+            if not ordered:
+                if finish == "length":
+                    yield _sse({"type": "text", "text": "\n\n(La respuesta quedó cortada. Pídeme que la resuma.)"})
+                break
+            if finish == "length":
+                yield _sse({"type": "text", "text": "\n\n(No pude terminar la consulta. Intenta con una pregunta más corta.)"})
+                break
+            for c in ordered:
+                yield _sse({"type": "status", "text": STATUS.get(c["name"], "Consultando datos") + "…"})
+                try:
+                    args = json.loads(c["args"] or "{}")
+                except json.JSONDecodeError:
+                    args = c["args"]  # run_tool lo rechaza como entrada inválida y el modelo puede corregirla
+                r = run_tool(c["name"], args, ctx, c["id"])
+                msgs.append({"role": "tool", "tool_call_id": c["id"], "content": r["content"]})
+        else:
+            yield _sse({"type": "text", "text": "\n\n(La consulta necesitó demasiados pasos. Prueba a dividir la pregunta.)"})
+    except openai.RateLimitError:
+        yield _sse({"type": "error", "text": "La Guía está muy ocupada en este momento. Intenta de nuevo en un minuto."})
+    except openai.APIConnectionError:
+        yield _sse({"type": "error", "text": "No pudimos conectar con el servicio de IA. Intenta de nuevo."})
+    except openai.BadRequestError as e:
+        if "content_filter" in str(e) or "content management policy" in str(e):
+            yield _sse({"type": "text", "text": REFUSAL})
+        else:
+            log.warning("Petición rechazada por Azure OpenAI: %s", e)
+            yield _sse({"type": "error", "text": "El servicio de IA respondió con un error. Intenta de nuevo más tarde."})
+    except openai.APIStatusError as e:
+        log.warning("Error de Azure OpenAI: %s", e)
         yield _sse({"type": "error", "text": "El servicio de IA respondió con un error. Intenta de nuevo más tarde."})
     except Exception:  # noqa: BLE001 - el navegador siempre recibe un cierre limpio
         log.exception("Fallo inesperado en la Guía")
