@@ -66,6 +66,10 @@
               "value": "__FOUNDRY_RESOURCE__"
             },
             {
+              "name": "FOUNDRY_RESOURCE_ID",
+              "value": "__FOUNDRY_RESOURCE_ID__"
+            },
+            {
               "name": "ASSISTANT_MODEL",
               "value": "__ASSISTANT_MODEL__"
             },

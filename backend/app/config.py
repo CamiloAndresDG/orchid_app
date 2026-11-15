@@ -37,6 +37,10 @@ ASSISTANT_PROVIDER = os.environ.get("ASSISTANT_PROVIDER", "azure_openai").strip(
 FOUNDRY_RESOURCE = os.environ.get("FOUNDRY_RESOURCE", "").strip()  # p. ej. orchid-ai-f0dbd8
 FOUNDRY_TOKEN_SCOPE = os.environ.get("FOUNDRY_TOKEN_SCOPE", "https://cognitiveservices.azure.com/.default")
 AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2025-04-01-preview")
+# Id ARM del recurso de Foundry (/subscriptions/.../accounts/orchid-ai-...). Si está definido, el backend lee la clave
+# del recurso con su identidad (basta el rol Contributor) y la guarda solo en memoria; si no, usa tokens de Entra ID
+# (requiere el rol de datos Cognitive Services User).
+FOUNDRY_RESOURCE_ID = os.environ.get("FOUNDRY_RESOURCE_ID", "").strip()
 # Nombre del despliegue (Foundry) o del modelo (API directo).
 ASSISTANT_MODEL = os.environ.get("ASSISTANT_MODEL", "").strip() or (
     "gpt-5-mini" if ASSISTANT_PROVIDER == "azure_openai" else "claude-opus-5-5")

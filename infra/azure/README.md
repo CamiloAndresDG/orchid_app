@@ -111,8 +111,11 @@ recuperación de contraseña por correo y, si se quiere inicio de sesión con Mi
 
 La Guía responde preguntas del agricultor por texto o voz con un modelo desplegado en **Microsoft Foundry**
 (recurso `orchid-ai-…` en `rg-orchid`). Por defecto usa **gpt-5-mini** (Azure OpenAI): las suscripciones nuevas ya
-traen cuota para él, cuesta alrededor de medio centavo de dólar por pregunta y no hay que pedir nada. El backend se
-autentica con su **identidad administrada** (rol *Cognitive Services User* sobre el recurso): no hay claves. Solo la
+traen cuota para él, cuesta alrededor de medio centavo de dólar por pregunta y no hay que pedir nada. El backend usa su
+**identidad administrada** con el rol *Contributor* sobre el recurso para leer la clave del recurso al arrancar
+(`FOUNDRY_RESOURCE_ID`); la clave vive solo en memoria, nadie la copia ni se guarda en secretos. Se hace así porque
+la condición ABAC del Owner de esta suscripción solo permite asignar *Contributor*. Si algún día se puede asignar
+*Cognitive Services User*, basta con quitar `FOUNDRY_RESOURCE_ID` y el backend usa tokens de Entra ID. Solo la
 usan usuarios con cuenta, con un límite diario (`ASSISTANT_DAILY_LIMIT`, 30 por defecto).
 
 `setup.sh` crea el recurso, despliega el modelo y da el permiso. La Guía solo se activa si el despliegue existe.

@@ -122,7 +122,7 @@ SUB=$(az account show --query id -o tsv)
 # Se usa en lugar de "az containerapp create --yaml", que con algunas versiones de la extensión falla con 400.
 put_app() {  # nombre plantilla
   local body="$HERE/.$1.rendered.json"
-  sed -e "s|__LOCATION__|$LOCATION|" -e "s|__ENV_ID__|$ENV_ID|" -e "s|__ACR__|$ACR|g"       -e "s|__ACR_PASSWORD__|$ACR_PASSWORD|" -e "s|__QUICKSTATS_KEY__|$QUICKSTATS_KEY|"       -e "s|__DATABASE_URL__|$DATABASE_URL|" -e "s|__ALLOWED_ORIGINS__|$WEB_URL,http://localhost:3000|"       -e "s|__ASSISTANT_PROVIDER__|$ASSISTANT_PROVIDER|" -e "s|__FOUNDRY_RESOURCE__|$FOUNDRY_RESOURCE|" -e "s|__ASSISTANT_MODEL__|$ASSISTANT_MODEL|"       -e "s|__ASSISTANT_FALLBACK_MODEL__|$ASSISTANT_FALLBACK_MODEL|" -e "s|__ASSISTANT_DAILY_LIMIT__|$ASSISTANT_DAILY_LIMIT|"       -e "s|__TAG__|$TAG|" "$HERE/$2" > "$body"
+  sed -e "s|__LOCATION__|$LOCATION|" -e "s|__ENV_ID__|$ENV_ID|" -e "s|__ACR__|$ACR|g"       -e "s|__ACR_PASSWORD__|$ACR_PASSWORD|" -e "s|__QUICKSTATS_KEY__|$QUICKSTATS_KEY|"       -e "s|__DATABASE_URL__|$DATABASE_URL|" -e "s|__ALLOWED_ORIGINS__|$WEB_URL,http://localhost:3000|"       -e "s|__ASSISTANT_PROVIDER__|$ASSISTANT_PROVIDER|" -e "s|__FOUNDRY_RESOURCE__|$FOUNDRY_RESOURCE|" -e "s|__FOUNDRY_RESOURCE_ID__|${FOUNDRY_RESOURCE:+$FOUNDRY_ID}|" -e "s|__ASSISTANT_MODEL__|$ASSISTANT_MODEL|"       -e "s|__ASSISTANT_FALLBACK_MODEL__|$ASSISTANT_FALLBACK_MODEL|" -e "s|__ASSISTANT_DAILY_LIMIT__|$ASSISTANT_DAILY_LIMIT|"       -e "s|__TAG__|$TAG|" "$HERE/$2" > "$body"
   command -v cygpath >/dev/null && body=$(cygpath -m "$body")
   az rest --method put -o none     --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.App/containerApps/$1?api-version=2024-03-01"     --body "@$body"
   rm -f "$HERE/.$1.rendered.json"
@@ -159,6 +159,7 @@ fi
 # La Guía solo se activa si el modelo principal está desplegado (si no, el backend la muestra como no disponible).
 DEPLOY_URL="https://management.azure.com/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RG/providers/Microsoft.CognitiveServices/accounts/$FOUNDRY/deployments/$ASSISTANT_MODEL?api-version=2025-10-01-preview"
 if exists rest --method get --url "$DEPLOY_URL"; then FOUNDRY_RESOURCE="$FOUNDRY"; else FOUNDRY_RESOURCE=""; fi
+FOUNDRY_ID=$(az cognitiveservices account show -g "$RG" -n "$FOUNDRY" --query id -o tsv)
 [[ -n "$ASSISTANT_FALLBACK_MODEL" ]] && { exists rest --method get --url "${DEPLOY_URL/$ASSISTANT_MODEL/$ASSISTANT_FALLBACK_MODEL}" || ASSISTANT_FALLBACK_MODEL=""; }
 
 echo "==> Imagen del backend"
@@ -167,11 +168,12 @@ build_image orchid-api ./backend
 echo "==> Container App del backend ($API_URL)"
 put_app "$API_APP" api.json
 
-echo "==> Permiso del backend para usar Foundry (identidad administrada, sin claves)"
+echo "==> Permiso del backend sobre Foundry (identidad administrada)"
+# Contributor sobre el recurso: el backend lee la clave con su identidad y la guarda solo en memoria. Se usa este rol
+# porque algunas suscripciones (condición ABAC del Owner) solo permiten asignar Contributor.
 API_PRINCIPAL=$(az containerapp show -g "$RG" -n "$API_APP" --query identity.principalId -o tsv)
-FOUNDRY_ID=$(az cognitiveservices account show -g "$RG" -n "$FOUNDRY" --query id -o tsv)
-if [[ -z "$(az role assignment list --assignee "$API_PRINCIPAL" --scope "$FOUNDRY_ID" --role "Cognitive Services User" --query "[0].id" -o tsv)" ]]; then
-  az role assignment create --assignee-object-id "$API_PRINCIPAL" --assignee-principal-type ServicePrincipal     --role "Cognitive Services User" --scope "$FOUNDRY_ID" -o none
+if [[ -z "$(az role assignment list --assignee-object-id "$API_PRINCIPAL" --scope "$FOUNDRY_ID" --role Contributor --query "[0].id" -o tsv)" ]]; then
+  az role assignment create --assignee-object-id "$API_PRINCIPAL" --assignee-principal-type ServicePrincipal --role Contributor --scope "$FOUNDRY_ID" -o none
 fi
 
 echo "==> Imagen del frontend (con la URL del API dentro)"
