@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { NASS_KEY as KEY_STORAGE } from "./auth";
 import { ChevronIcon, ExternalIcon } from "./icons";
 import type { TabId } from "./panels";
 import { COVER_CROPS, CROPS, ECON_CROPS, EconUS, HistoryRow, US_UNITS, hasEcon } from "./shared";
 import type { Point } from "./terreno";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const KEY_STORAGE = "fieldshift.nassKey.v1";
 
 type Ref = { crop: string; unit: string; series: { year: number; price: number }[]; last_year: number; last_price: number };
 type RefOut = { state: string; state_name: string; prices: Ref[]; missing: string[] };

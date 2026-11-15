@@ -34,13 +34,19 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      # Se construye en el runner (no con ACR Tasks, que algunas suscripciones no permiten).
+      - name: Login en el registro
+        run: az acr login -n "$ACR"
+
       - name: Backend
         run: |
-          az acr build -r "$ACR" -t "fieldshift-api:$TAG" ./backend
-          az containerapp update -g "$RG" -n "$API_APP" --image "$ACR.azurecr.io/fieldshift-api:$TAG"
+          docker build -t "$ACR.azurecr.io/orchid-api:$TAG" ./backend
+          docker push "$ACR.azurecr.io/orchid-api:$TAG"
+          az containerapp update -g "$RG" -n "$API_APP" --image "$ACR.azurecr.io/orchid-api:$TAG"
 
       - name: Frontend
         run: |
           API_URL="https://$(az containerapp show -g "$RG" -n "$API_APP" --query properties.configuration.ingress.fqdn -o tsv)"
-          az acr build -r "$ACR" -t "fieldshift-web:$TAG" --build-arg "NEXT_PUBLIC_API_URL=$API_URL" ./frontend
-          az containerapp update -g "$RG" -n "$WEB_APP" --image "$ACR.azurecr.io/fieldshift-web:$TAG"
+          docker build -t "$ACR.azurecr.io/orchid-web:$TAG" --build-arg "NEXT_PUBLIC_API_URL=$API_URL" ./frontend
+          docker push "$ACR.azurecr.io/orchid-web:$TAG"
+          az containerapp update -g "$RG" -n "$WEB_APP" --image "$ACR.azurecr.io/orchid-web:$TAG"

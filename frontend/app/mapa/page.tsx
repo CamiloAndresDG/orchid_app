@@ -171,7 +171,7 @@ function MapaApp() {
     fetch(`${API}/zones`)
       .then((r) => r.json())
       .then(setZones)
-      .catch(() => setError("No pudimos conectar con el servidor de Field Shift. Revisa tu conexión y vuelve a cargar la página."));
+      .catch(() => setError("No pudimos conectar con el servidor de Orchid. Revisa tu conexión y vuelve a cargar la página."));
   }, []);
 
   useEffect(() => {
@@ -342,7 +342,7 @@ function MapaApp() {
         <header className="px-10 pt-8">
           <div className="flex items-start justify-between gap-6">
             <div>
-              <h1 className="font-serif text-4xl font-semibold leading-tight">Field Shift</h1>
+              <h1 className="font-serif text-4xl font-semibold leading-tight">Orchid</h1>
               <p className="mt-2 max-w-md text-base text-ink-soft">
                 Marca tu terreno, cuéntanos qué sembraste y te sugerimos qué sembrar después, con datos de satélite de la NASA.
               </p>

@@ -5,11 +5,25 @@ import { API } from "./shared";
 // El modo visitante no tiene token: todo queda solo en este navegador. La contraseña nunca se guarda aquí.
 export type Session = { name: string; email: string; createdAt: string; token?: string };
 
-export const SESSION_KEY = "fieldshift.session.v1";
-const EVENT = "fieldshift-session";
+export const SESSION_KEY = "orchid.session.v1";
+const EVENT = "orchid-session";
 // Claves del cuaderno local; se borran al cerrar una sesión con cuenta para no mezclar datos de dos personas.
-export const PLOT_KEY = "fieldshift.plot.v1";
-export const ECON_KEY = "fieldshift.econ.us.v1";
+export const PLOT_KEY = "orchid.plot.v1";
+export const ECON_KEY = "orchid.econ.us.v1";
+export const NASS_KEY = "orchid.nassKey.v1";
+
+// El proyecto se llamaba Field Shift: se pasan las claves viejas a las nuevas una sola vez.
+if (typeof window !== "undefined") {
+  try {
+    for (const k of ["session.v1", "plot.v1", "econ.us.v1", "nassKey.v1"]) {
+      const old = localStorage.getItem(`fieldshift.${k}`);
+      if (old !== null) {
+        if (localStorage.getItem(`orchid.${k}`) === null) localStorage.setItem(`orchid.${k}`, old);
+        localStorage.removeItem(`fieldshift.${k}`);
+      }
+    }
+  } catch {}
+}
 
 function read(): string | null {
   try {

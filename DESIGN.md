@@ -1,5 +1,5 @@
 ---
-name: Field Shift
+name: Orchid
 description: Cuaderno de campo con mapa satelital donde un agricultor marca su terreno y lee qué sembrar después, con datos de la NASA y el USDA.
 colors:
   paper: "#f3eddd"
@@ -152,7 +152,7 @@ components:
     padding: "16px"
 ---
 
-# Design System: Field Shift
+# Design System: Orchid
 
 ## Overview
 
@@ -188,7 +188,7 @@ Papel crema y tinta verde oscura, con un solo acento musgo y un barro rojizo res
 - **Papel Hondo** (paper-deep / paper-deep-night): fondo de avisos de error, bloques de código y pistas de las barras de porcentaje.
 - **Tinta** (ink / ink-night): títulos y texto principal.
 - **Tinta Suave** (ink-soft / ink-soft-night): párrafos de apoyo, ayudas, etiquetas de definición, pestañas inactivas, ejes de gráficos.
-- **Tinta Tenue** (ink-faint / ink-faint-night): anotaciones terciarias como «(cálculo de Field Shift)».
+- **Tinta Tenue** (ink-faint / ink-faint-night): anotaciones terciarias como «(cálculo de Orchid)».
 - **Renglón** (rule / rule-night): todas las líneas divisorias, bordes de pestañas, rejilla de gráficos y borde de las filas de historial.
 - **Lindero** (field / field-night): bordes de campos de formulario, botones de alternar sin elegir y cajas punteadas de estado vacío.
 
@@ -207,7 +207,7 @@ Papel crema y tinta verde oscura, con un solo acento musgo y un barro rojizo res
 **Character:** Una serif con tinta y calidez para lo que se titula a mano en el cuaderno, y una sans pública y sobria para leer instrucciones y números. Los números de los pasos van en Public Sans aunque estén dentro de un título serif.
 
 ### Hierarchy
-- **Display** (600, 2.25rem, 1.25): el nombre «Field Shift» en la cabecera del cuaderno.
+- **Display** (600, 2.25rem, 1.25): el nombre «Orchid» en la cabecera del cuaderno.
 - **Headline** (600, 1.875rem): título de cada pestaña principal («Mi terreno», «Mis precios y costos»), «Lo que te sugerimos» y la frase de «Tu mejor opción».
 - **Headline Small** (600, 1.5rem): títulos de los paneles de «Más datos».
 - **Title** (600, 1.25rem): títulos de pasos, secciones y resúmenes desplegables; la indicación sobre el mapa.
@@ -286,7 +286,7 @@ Barra pegajosa al pie con el botón principal grande. Mientras calcula, muestra 
 Tarjeta moss-wash de 12px con el titular serif de 30px: «Tu mejor opción:» en moss y la siembra sugerida en ink. Debajo, el veredicto en 18px, el dinero estimado, dos columnas «Por qué sí» (viñetas moss) y «Ten cuidado con» (viñetas clay), y la evidencia. Las otras opciones van debajo como lista desplegable entre líneas rule, con chevron moss que gira 90° al abrir.
 
 ### ¿De dónde sale esto?
-Desplegable con escudo y texto moss. Cada evidencia termina en «Ver dato oficial» (moss 600 subrayado, con icono externo) cuando viene de una fuente pública, o en «(cálculo de Field Shift)» en ink-faint cuando es nuestro. «Lo que aún no sabemos» lista las lagunas con viñetas field.
+Desplegable con escudo y texto moss. Cada evidencia termina en «Ver dato oficial» (moss 600 subrayado, con icono externo) cuando viene de una fuente pública, o en «(cálculo de Orchid)» en ink-faint cuando es nuestro. «Lo que aún no sabemos» lista las lagunas con viñetas field.
 
 ### Avisos de error
 Fondo paper-deep, borde clay al 40%, texto clay 16px, radio 8px, relleno 16px, con icono de alerta. `role="alert"`.
