@@ -22,7 +22,7 @@ properties:
   template:
     containers:
       - name: api
-        image: __ACR__.azurecr.io/fieldshift-api:__TAG__
+        image: __ACR__.azurecr.io/orchid-api:__TAG__
         resources:
           cpu: 0.5
           memory: 1Gi

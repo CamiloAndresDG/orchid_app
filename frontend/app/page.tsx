@@ -9,7 +9,7 @@ const FARMER_STEPS = [
   {
     n: "1",
     title: "Marca tu terreno",
-    text: "Busca tu pueblo o haz clic sobre tu campo en el mapa satelital. Field Shift toma el clima y el suelo de ese punto.",
+    text: "Busca tu pueblo o haz clic sobre tu campo en el mapa satelital. Orchid toma el clima y el suelo de ese punto.",
   },
   {
     n: "2",
@@ -48,7 +48,7 @@ export default function Home() {
     <div className="min-h-screen bg-paper text-ink">
       <header className="relative z-20 mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
         <Link href="/" className="font-serif text-2xl font-semibold tracking-tight">
-          Field Shift
+          Orchid
         </Link>
         <nav className="flex items-center gap-2 text-sm sm:gap-4">
           <a href="#agricultores" className="hidden px-2 text-ink-soft hover:text-ink sm:inline">
@@ -109,7 +109,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => {
-                    startSession("demo@fieldshift.local", "Visitante");
+                    startSession("demo@orchid.local", "Visitante");
                     router.push("/mapa");
                   }}
                   className="rounded-md border border-moss px-6 py-3.5 font-semibold text-moss hover:bg-moss hover:text-paper"
@@ -166,7 +166,7 @@ export default function Home() {
           <div>
             <h2 className="font-serif text-4xl font-semibold tracking-tight">Para el jurado</h2>
             <p className="mt-4 text-lg text-paper/80">
-              Cómo responde Field Shift al reto «Adapting Farms with NASA Data». Lo que no está conectado se marca como pendiente.
+              Cómo responde Orchid al reto «Adapting Farms with NASA Data». Lo que no está conectado se marca como pendiente.
             </p>
             <ul className="mt-8 space-y-4">
               {REQUIREMENTS.map((r) => (
@@ -217,7 +217,7 @@ export default function Home() {
 
       <footer className="border-t border-rule">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-8 text-sm text-ink-soft sm:flex-row sm:justify-between">
-          <span>Field Shift · NASA Space Apps Challenge 2026</span>
+          <span>Orchid · NASA Space Apps Challenge 2026</span>
           <span>Apoya tu criterio; no lo reemplaza.</span>
         </div>
       </footer>

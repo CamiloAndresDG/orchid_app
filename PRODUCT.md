@@ -12,7 +12,7 @@ Farmers and agronomists planning crop rotations for their own fields (demo zones
 
 ## Product Purpose
 
-Field Shift is a decision-support tool for the NASA Space Apps 2026 challenge "Field Shift: Adapting Farms with NASA Data". It combines NASA Earth observations with local soil, crop characteristics and farmer priorities to compare rotation strategies for soil health and climate resilience. It supports the farmer's judgment; it never replaces it.
+Orchid is a decision-support tool for the NASA Space Apps 2026 challenge "Field Shift: Adapting Farms with NASA Data". It combines NASA Earth observations with local soil, crop characteristics and farmer priorities to compare rotation strategies for soil health and climate resilience. It supports the farmer's judgment; it never replaces it.
 
 ## Positioning
 
