@@ -3,12 +3,10 @@ import json
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
-from pathlib import Path
 
 import httpx
 
-CACHE_DIR = Path(__file__).resolve().parent.parent / "cache"
-CACHE_DIR.mkdir(exist_ok=True)
+from .config import CACHE_DIR
 BASE = "https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset"
 BAND = "250m_16_days_NDVI"
 LOW_NDVI = 0.3  # criterio nuestro: por debajo se considera poca o ninguna cobertura

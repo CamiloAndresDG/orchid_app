@@ -8,12 +8,10 @@ import io
 import re
 import unicodedata
 import zipfile
-from pathlib import Path
 
 import httpx
 
-CACHE_DIR = Path(__file__).resolve().parent.parent / "cache"
-CACHE_DIR.mkdir(exist_ok=True)
+from .config import CACHE_DIR
 GAZ = "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/"
 FILES = {"place": "2024_Gaz_place_national", "county": "2024_Gaz_counties_national", "zcta": "2024_Gaz_zcta_national"}
 CENSUS_ADDRESS = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"

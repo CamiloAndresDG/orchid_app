@@ -5,6 +5,7 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import { CheckIcon, ChevronIcon, ExternalIcon, PlusIcon, ShieldIcon, Spinner, TrashIcon } from "./icons";
 import { Analysis, TabId } from "./panels";
 import { CROPS, ECON_CROPS, EconUS, HA_PER_ACRE, HistoryRow, MONTH_NAMES, hasEcon, toMetric } from "./shared";
+import { notebookChanged } from "./notebook";
 import { SOURCE_LABEL, SourceKey, cdlUrl, ndviUrl, powerUrl, sourceUrl, ssurgoMapUrl } from "./sources";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -165,6 +166,7 @@ export function TerrenoPanel({
       const prev = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ name, acres, irrigated, history, point: point ?? prev?.point ?? null }));
     } catch {}
+    notebookChanged();
   }, [hydrated, name, acres, irrigated, history, point]);
 
   function addRow() {

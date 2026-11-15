@@ -1,0 +1,46 @@
+name: Desplegar en Azure
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", "frontend/**", ".github/workflows/deploy-azure.yml"]
+  workflow_dispatch:
+
+permissions:
+  id-token: write # inicio de sesión en Azure con OIDC, sin contraseñas guardadas
+  contents: read
+
+concurrency:
+  group: deploy-azure
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # No corre hasta que configures las variables del repositorio (ver infra/azure/README.md).
+    if: ${{ vars.AZURE_RG != '' }}
+    runs-on: ubuntu-latest
+    env:
+      RG: ${{ vars.AZURE_RG }}
+      ACR: ${{ vars.ACR_NAME }}
+      API_APP: ${{ vars.API_APP }}
+      WEB_APP: ${{ vars.WEB_APP }}
+      TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Backend
+        run: |
+          az acr build -r "$ACR" -t "fieldshift-api:$TAG" ./backend
+          az containerapp update -g "$RG" -n "$API_APP" --image "$ACR.azurecr.io/fieldshift-api:$TAG"
+
+      - name: Frontend
+        run: |
+          API_URL="https://$(az containerapp show -g "$RG" -n "$API_APP" --query properties.configuration.ingress.fqdn -o tsv)"
+          az acr build -r "$ACR" -t "fieldshift-web:$TAG" --build-arg "NEXT_PUBLIC_API_URL=$API_URL" ./frontend
+          az containerapp update -g "$RG" -n "$WEB_APP" --image "$ACR.azurecr.io/fieldshift-web:$TAG"
