@@ -60,7 +60,7 @@ export default function LoginPage() {
       <InteractiveField />
       <div className="relative z-10 w-full max-w-md">
         <Link href="/" className="mb-8 block text-center font-serif text-3xl font-semibold tracking-tight text-ink">
-          Field Shift
+          Orchid
         </Link>
 
         <div className="fs-rise rounded-xl border border-rule bg-paper/90 p-7 shadow-[0_24px_60px_-30px_rgb(35_48_31/0.45)] backdrop-blur sm:p-9">
@@ -150,7 +150,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => {
-              startSession("demo@fieldshift.local", "Visitante");
+              startSession("demo@orchid.local", "Visitante");
               router.push("/mapa");
             }}
             className="mt-5 w-full rounded-md border border-moss px-5 py-3 font-semibold text-moss hover:bg-moss hover:text-paper"

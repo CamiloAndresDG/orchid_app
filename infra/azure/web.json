@@ -1,0 +1,24 @@
+{
+  "location": "__LOCATION__",
+  "properties": {
+    "managedEnvironmentId": "__ENV_ID__",
+    "configuration": {
+      "activeRevisionsMode": "Single",
+      "ingress": { "external": true, "targetPort": 3000, "transport": "auto" },
+      "registries": [
+        { "server": "__ACR__.azurecr.io", "username": "__ACR__", "passwordSecretRef": "acr-password" }
+      ],
+      "secrets": [ { "name": "acr-password", "value": "__ACR_PASSWORD__" } ]
+    },
+    "template": {
+      "containers": [
+        {
+          "name": "web",
+          "image": "__ACR__.azurecr.io/orchid-web:__TAG__",
+          "resources": { "cpu": 0.5, "memory": "1Gi" }
+        }
+      ],
+      "scale": { "minReplicas": 0, "maxReplicas": 2 }
+    }
+  }
+}

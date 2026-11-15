@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-11-14T00:00:00Z",
-  "title": "Design System: Field Shift",
+  "title": "Design System: Orchid",
   "extensions": {
     "colorMeta": {
       "moss": { "role": "primary", "displayName": "Musgo", "canonical": "#3f6b3a", "tonalRamp": ["#14230f", "#1f351b", "#2c4d29", "#3f6b3a", "#5a8a52", "#7aa96f", "#a8cc9c", "#dcebd4"] },
@@ -28,7 +28,7 @@
       "clay-night": { "role": "secondary", "displayName": "Barro de Noche", "canonical": "#e58d62" }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "El nombre «Field Shift» en la cabecera del cuaderno." },
+      "display": { "displayName": "Display", "purpose": "El nombre «Orchid» en la cabecera del cuaderno." },
       "headline": { "displayName": "Headline", "purpose": "Título de cada pestaña principal, «Lo que te sugerimos» y «Tu mejor opción»." },
       "headline-sm": { "displayName": "Headline Small", "purpose": "Títulos de los paneles de «Más datos»." },
       "title": { "displayName": "Title", "purpose": "Pasos, secciones y resúmenes desplegables." },

@@ -13,7 +13,7 @@ const publicSans = Public_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Field Shift",
+  title: "Orchid",
   description: "Rotaciones de cultivo con datos NASA para suelo y agua más resilientes",
 };
 

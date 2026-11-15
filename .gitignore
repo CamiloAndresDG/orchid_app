@@ -8,3 +8,4 @@ __pycache__/
 
 # ETL: descargas y archivos intermedios (las tablas de backend/data/db si se versionan)
 backend/data/raw/
+infra/azure/.*.rendered.json

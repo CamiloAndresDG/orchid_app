@@ -50,7 +50,7 @@ def _construir(tabla: str, args) -> None:
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="python -m app.etl", description="ETL de fuentes NASA/FAO/NOAA para Field Shift")
+    ap = argparse.ArgumentParser(prog="python -m app.etl", description="ETL de fuentes NASA/FAO/NOAA para Orchid")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status", help="estado de las tablas")
     b = sub.add_parser("build", help="construir tablas")
