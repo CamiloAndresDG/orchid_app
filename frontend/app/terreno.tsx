@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CheckIcon, ChevronIcon, ExternalIcon, PlusIcon, ShieldIcon, Spinner, TrashIcon } from "./icons";
+import { AboutFit, AboutHarvests, AboutRain, AboutSeason, useAgro } from "./agro";
 import { Analysis, TabId } from "./panels";
 import { CROPS, ECON_CROPS, EconUS, HA_PER_ACRE, HistoryRow, MONTH_NAMES, hasEcon, toMetric } from "./shared";
 import { SOURCE_LABEL, SourceKey, cdlUrl, ndviUrl, powerUrl, sourceUrl, ssurgoMapUrl } from "./sources";
@@ -121,6 +122,7 @@ export function TerrenoPanel({
   const [soil, setSoil] = useState<Soil | null>(null);
   const [ndvi, setNdvi] = useState<Ndvi | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const agro = useAgro(point);
   const resultsRef = useRef<HTMLDivElement>(null);
   const aboutRef = useRef<HTMLDetailsElement>(null);
 
@@ -381,7 +383,11 @@ export function TerrenoPanel({
           </summary>
           <div className="mt-5 space-y-8 pl-7 text-base">
             <AboutClimate point={point} data={data} loading={loadingPoint} />
+            <AboutSeason grow={agro.grow} />
+            <AboutRain rain={agro.rain} />
             <AboutCrops point={point} local={local} />
+            <AboutHarvests actual={agro.actual} />
+            <AboutFit suit={agro.suit} irrigated={irrigated} />
             <AboutSoil point={point} soil={soil} />
             <AboutGreen point={point} ndvi={ndvi} />
           </div>

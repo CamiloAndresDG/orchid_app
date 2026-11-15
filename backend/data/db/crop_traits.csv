@@ -1,0 +1,27 @@
+crop_code,crop,familia_botanica,fijador_nitrogeno,profundidad_raiz,ciclo_dias,necesidad_agua,plagas_comunes,fuente_dato,estado
+ban,Banana,Musaceae,no,,,,,,borrador
+brl,Barley,Poaceae,no,,,,,,borrador
+rt2,Cassava,Euphorbiaceae,no,,,,,,borrador
+cot,Cotton,Malvaceae,no,,,,,,borrador
+fdd,Fodder crops,,,,,,,,borrador
+frt,Fruits and nuts,,,,,,,,borrador
+grd,Groundnut,Fabaceae,si,,,,,,borrador
+mze,Maize,Poaceae,no,,,,,,borrador
+mlt,Millet,Poaceae,no,,,,,,borrador
+olv,Olive,Oleaceae,no,,,,,,borrador
+oce,Other cereals,,,,,,,,borrador
+rt1,Potato and sweet potato,,,,,,,,borrador
+pls,Pulses,Fabaceae,si,,,,,,borrador
+rsd,Rapeseed,Brassicaceae,no,,,,,,borrador
+nes,Rest of crops,,,,,,,,borrador
+srg,Sorghum,Poaceae,no,,,,,,borrador
+soy,Soybean,Fabaceae,si,,,,,,borrador
+cc2,Stimulants,,,,,,,,borrador
+sub,Sugarbeet,Amaranthaceae,no,,,,,,borrador
+suc,Sugarcane,Poaceae,no,,,,,,borrador
+sfl,Sunflower,Asteraceae,no,,,,,,borrador
+tob,Tobacco,Solanaceae,no,,,,,,borrador
+veg,Vegetables,,,,,,,,borrador
+rcw,Wetland rice,Poaceae,no,,,,,,borrador
+whe,Wheat,Poaceae,no,,,,,,borrador
+rt3,Yams and other roots,,,,,,,,borrador
