@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
-import { AnimatedBackground } from "../background";
+import { InteractiveField } from "../interactive-field";
 import { startSession, useSession } from "../auth";
 
 export default function LoginPage() {
@@ -42,8 +42,8 @@ export default function LoginPage() {
     "w-full rounded-md border border-field bg-paper px-4 py-3 text-base text-ink placeholder:text-ink-soft focus:border-moss";
 
   return (
-    <main className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-paper px-5 py-16">
-      <AnimatedBackground />
+    <main className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-paper px-5 pb-32 pt-12">
+      <InteractiveField />
       <div className="relative z-10 w-full max-w-md">
         <Link href="/" className="mb-8 block text-center font-serif text-3xl font-semibold tracking-tight text-ink">
           Field Shift
