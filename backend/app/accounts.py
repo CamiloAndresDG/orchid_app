@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .config import SESSION_DAYS
+from .i18n import t
 from .db import AuthSession, Plot, User, as_utc, get_db, utcnow
 
 router = APIRouter()
@@ -57,10 +58,10 @@ def _new_session(db: Session, user: User) -> str:
 
 def current_user(cred: HTTPAuthorizationCredentials | None = Depends(bearer), db: Session = Depends(get_db)) -> User:
     if cred is None:
-        raise HTTPException(401, "Inicia sesión para continuar.")
+        raise HTTPException(401, t("Inicia sesión para continuar.", "Sign in to continue."))
     s = db.get(AuthSession, _token_hash(cred.credentials))
     if s is None or as_utc(s.expires_at) < utcnow():
-        raise HTTPException(401, "Tu sesión venció. Vuelve a iniciar sesión.")
+        raise HTTPException(401, t("Tu sesión venció. Vuelve a iniciar sesión.", "Your session expired. Please sign in again."))
     return s.user
 
 
@@ -78,7 +79,7 @@ class Login(BaseModel):
     def _email(cls, v: str) -> str:
         v = v.strip().lower()
         if not EMAIL_RE.match(v):
-            raise ValueError("Escribe un correo válido.")
+            raise ValueError(t("Escribe un correo válido.", "Enter a valid email."))
         return v
 
 
@@ -142,14 +143,14 @@ def _user_out(u: User) -> UserOut:
 @router.post("/auth/register", response_model=AuthOut, status_code=201)
 def register(req: Register, db: Session = Depends(get_db)):
     if db.scalar(select(User).where(User.email == req.email)):
-        raise HTTPException(409, "Ya existe una cuenta con ese correo. Inicia sesión.")
+        raise HTTPException(409, t("Ya existe una cuenta con ese correo. Inicia sesión.", "An account with that email already exists. Sign in."))
     user = User(email=req.email, name=req.name.strip(), password_hash=hash_password(req.password))
     db.add(user)
     try:
         db.flush()
     except IntegrityError:  # dos registros simultáneos con el mismo correo
         db.rollback()
-        raise HTTPException(409, "Ya existe una cuenta con ese correo. Inicia sesión.")
+        raise HTTPException(409, t("Ya existe una cuenta con ese correo. Inicia sesión.", "An account with that email already exists. Sign in."))
     return AuthOut(token=_new_session(db, user), user=_user_out(user))
 
 
@@ -158,7 +159,7 @@ def login(req: Login, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == req.email))
     ok = verify_password(req.password, user.password_hash if user else _DUMMY_HASH)
     if not user or not ok:
-        raise HTTPException(401, "Correo o contraseña incorrectos.")
+        raise HTTPException(401, t("Correo o contraseña incorrectos.", "Wrong email or password."))
     return AuthOut(token=_new_session(db, user), user=_user_out(user))
 
 

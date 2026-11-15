@@ -18,13 +18,15 @@ from .db import init_db
 from . import earthdata
 from .etl.gaez import actual_at, growing_at, suitability_at
 from .etl.stations import stations_near
+from .i18n import LangMiddleware, in_ctx, t
+from .localize import localize
 from .nasa_power import monthly_climatology
 from .ndvi import ndvi_at
 from .prices import PriceError, reference_prices
 from .recommend import build_options
 from .soil import soil_at
 from .rotations import strategies_for
-from .zones import ZONES, get_zone
+from .zones import get_zone, zones_localized
 
 
 
@@ -34,13 +36,14 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Orchid API", lifespan=lifespan)
+app = FastAPI(title="ORCHID API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(LangMiddleware)
 app.include_router(accounts_router)
 app.include_router(assistant_router)
 
@@ -52,18 +55,18 @@ def health():
 
 @app.get("/zones")
 def zones():
-    return ZONES
+    return zones_localized()
 
 
 @app.get("/zones/{zone_id}/analysis")
 def analysis(zone_id: str):
     zone = get_zone(zone_id)
     if not zone:
-        raise HTTPException(404, "Zona no encontrada")
+        raise HTTPException(404, t("Zona no encontrada", "Area not found"))
     try:
         clim = monthly_climatology(zone["lat"], zone["lon"])
     except Exception as exc:  # NASA POWER caido o sin red
-        raise HTTPException(502, f"No se pudo consultar NASA POWER: {exc}")
+        raise HTTPException(502, t(f"No se pudo consultar NASA POWER: {exc}", f"We couldn't query NASA POWER: {exc}"))
 
     # Se ordena por vulnerabilidad para resaltar las temporadas criticas.
     months = vulnerability_by_month(clim)
@@ -81,8 +84,12 @@ def analysis(zone_id: str):
             "crop_months": {c: CROP_MONTHS.get(c, []) for c in zone["current_rotation"] if c in CROP_MONTHS},
         },
         "sources": ["NASA POWER (PRECTOTCORR, T2M, GWETROOT)"],
-        "disclaimer": "Herramienta de apoyo a la decision. Validar con expertos locales.",
+        "disclaimer": DISCLAIMER(),
     }
+
+
+def DISCLAIMER() -> str:
+    return t("Herramienta de apoyo a la decisión. Validar con expertos locales.", "Decision-support tool. Check with local experts.")
 
 
 class Point(BaseModel):
@@ -115,7 +122,7 @@ def _climate(p: Point):
     try:
         return vulnerability_by_month(monthly_climatology(round(p.lat, 2), round(p.lon, 2)))
     except Exception as exc:
-        raise HTTPException(502, f"No se pudo consultar NASA POWER: {exc}")
+        raise HTTPException(502, t(f"No se pudo consultar NASA POWER: {exc}", f"We couldn't query NASA POWER: {exc}"))
 
 
 @app.post("/point/analysis")
@@ -124,7 +131,7 @@ def point_analysis(p: Point):
     months = _climate(p)
     top = sorted(months, key=lambda x: x["vulnerability"], reverse=True)[:3]
     return {
-        "zone": {"id": "custom", "name": "Mi punto", "lat": p.lat, "lon": p.lon, "focus": "", "current_rotation": []},
+        "zone": {"id": "custom", "name": t("Mi punto", "My point"), "lat": p.lat, "lon": p.lon, "focus": "", "current_rotation": []},
         "months": months,
         "most_vulnerable_months": [t["month"] for t in top],
         "bare_soil_months": [],
@@ -135,8 +142,8 @@ def point_analysis(p: Point):
             "climate_parameters": ["PRECTOTCORR", "T2M", "GWETROOT"],
             "crop_months": {},
         },
-        "sources": ["NASA POWER (PRECTOTCORR, T2M, GWETROOT)", "CDL (USDA NASS), cultivos cercanos"],
-        "disclaimer": "Herramienta de apoyo a la decision. Validar con expertos locales.",
+        "sources": ["NASA POWER (PRECTOTCORR, T2M, GWETROOT)", t("CDL (USDA NASS), cultivos cercanos", "CDL (USDA NASS), nearby crops")],
+        "disclaimer": DISCLAIMER(),
     }
 
 
@@ -145,16 +152,17 @@ def recommend(req: RecommendRequest):
     months = _climate(req)
     la, lo = req.lat, req.lon
     # Todas las fuentes en paralelo: cada una tiene su caché y devuelve available=False si falla.
+    # in_ctx lleva el idioma de la petición a cada hilo.
     with ThreadPoolExecutor(max_workers=7) as ex:
         jobs = {
-            "local": ex.submit(local_crops, la, lo),
-            "soil": ex.submit(soil_at, la, lo),
-            "ndvi": ex.submit(ndvi_at, la, lo),
-            "terrain": ex.submit(earthdata.srtm_at, la, lo),
-            "water": ex.submit(earthdata.nldas_at, la, lo),
-            "moisture": ex.submit(earthdata.smap_at, la, lo),
+            "local": ex.submit(in_ctx(local_crops), la, lo),
+            "soil": ex.submit(in_ctx(soil_at), la, lo),
+            "ndvi": ex.submit(in_ctx(ndvi_at), la, lo),
+            "terrain": ex.submit(in_ctx(earthdata.srtm_at), la, lo),
+            "water": ex.submit(in_ctx(earthdata.nldas_at), la, lo),
+            "moisture": ex.submit(in_ctx(earthdata.smap_at), la, lo),
         }
-        got = {k: f.result() for k, f in jobs.items()}
+        got = {k: localize(f.result()) for k, f in jobs.items()}
     return build_options(
         months,
         [h.model_dump() for h in req.history],
@@ -174,19 +182,19 @@ def recommend(req: RecommendRequest):
 def climate(lat: float, lon: float, start: str, end: str, resolution: str = "monthly"):
     """Clima real de NASA POWER agregado. start/end en formato YYYYMMDD."""
     if resolution not in RESOLUTIONS:
-        raise HTTPException(400, f"resolution debe ser una de {RESOLUTIONS}")
+        raise HTTPException(400, t(f"resolution debe ser una de {RESOLUTIONS}", f"resolution must be one of {RESOLUTIONS}"))
     try:
         s, e = int(start), int(end)
         if len(start) != 8 or len(end) != 8 or s > e:
             raise ValueError
     except ValueError:
-        raise HTTPException(400, "start y end deben ser YYYYMMDD y start <= end")
+        raise HTTPException(400, t("start y end deben ser YYYYMMDD y start <= end", "start and end must be YYYYMMDD and start <= end"))
     if int(end[:4]) - int(start[:4]) > 10:
-        raise HTTPException(400, "El rango maximo es de 10 anios")
+        raise HTTPException(400, t("El rango máximo es de 10 años", "The maximum range is 10 years"))
     try:
         return aggregate(round(lat, 2), round(lon, 2), start, end, resolution)
     except Exception as exc:
-        raise HTTPException(502, f"No se pudo consultar NASA POWER: {exc}")
+        raise HTTPException(502, t(f"No se pudo consultar NASA POWER: {exc}", f"We couldn't query NASA POWER: {exc}"))
 
 
 @app.post("/point/local-crops")
@@ -198,13 +206,13 @@ def point_local_crops(p: Point):
 @app.post("/point/soil")
 def point_soil(p: Point):
     """Suelo real (SSURGO) en el punto. Solo EE. UU."""
-    return soil_at(p.lat, p.lon)
+    return localize(soil_at(p.lat, p.lon))
 
 
 @app.post("/point/ndvi")
 def point_ndvi(p: Point):
     """NDVI real (MODIS MOD13Q1) del punto, ultimos ~14 meses."""
-    return ndvi_at(p.lat, p.lon)
+    return localize(ndvi_at(p.lat, p.lon))
 
 
 # ---------- NASA Earthdata (requiere EARTHDATA_TOKEN) ----------
@@ -219,25 +227,25 @@ def earthdata_status():
 @app.post("/point/smap")
 def point_smap(p: Point):
     """Humedad de la superficie del suelo medida por SMAP (NASA), últimas ~2 semanas. Global."""
-    return earthdata.smap_at(p.lat, p.lon)
+    return localize(earthdata.smap_at(p.lat, p.lon))
 
 
 @app.post("/point/imerg")
 def point_imerg(p: Point):
     """Lluvia diaria por satélite (GPM IMERG Late, NASA), últimos 30 días. Global entre 60° N y 60° S."""
-    return earthdata.imerg_at(p.lat, p.lon)
+    return localize(earthdata.imerg_at(p.lat, p.lon))
 
 
 @app.post("/point/nldas")
 def point_nldas(p: Point):
     """Balance de agua mensual (NLDAS-2 Noah, NASA): humedad del suelo, evapotranspiración, escorrentía. EE. UU. contiguo."""
-    return earthdata.nldas_at(p.lat, p.lon)
+    return localize(earthdata.nldas_at(p.lat, p.lon))
 
 
 @app.post("/point/srtm")
 def point_srtm(p: Point):
     """Altura, pendiente y desnivel del terreno (SRTM, NASA, ~30 m). Global entre 60° N y 56° S."""
-    return earthdata.srtm_at(p.lat, p.lon)
+    return localize(earthdata.srtm_at(p.lat, p.lon))
 
 
 class PriceRequest(Point):
@@ -255,7 +263,7 @@ def prices_reference(req: PriceRequest):
     """Precios de referencia por estado (USDA QuickStats). Usa la clave del usuario o, si no trae, la del servidor. No se guarda."""
     key = (req.api_key or "").strip() or QUICKSTATS_KEY
     if len(key) < 8:
-        raise HTTPException(400, "Falta la clave del USDA QuickStats.")
+        raise HTTPException(400, t("Falta la clave del USDA QuickStats.", "The USDA QuickStats key is missing."))
     try:
         return reference_prices(req.lat, req.lon, key)
     except PriceError as e:
@@ -265,19 +273,19 @@ def prices_reference(req: PriceRequest):
 @app.post("/point/gaez/suitability")
 def point_gaez_suitability(p: Point, input_level: Literal["High", "Low"] = "High"):
     """Idoneidad y rendimiento alcanzable por cultivo, en secano y con riego (GAEZ v4 Tema 4, 1981-2010). Global."""
-    return suitability_at(p.lat, p.lon, input_level)
+    return localize(suitability_at(p.lat, p.lon, input_level))
 
 
 @app.post("/point/gaez/growing")
 def point_gaez_growing(p: Point):
     """Periodo de crecimiento, dias de helada y calor, lluvia y P/PET (GAEZ v4 Tema 2, 1981-2010). Global."""
-    return growing_at(p.lat, p.lon)
+    return localize(growing_at(p.lat, p.lon))
 
 
 @app.post("/point/gaez/actual")
 def point_gaez_actual(p: Point):
     """Cultivos realmente cosechados en el pixel: area, produccion y rendimiento (GAEZ v4 Tema 5, 2010). Global."""
-    return actual_at(p.lat, p.lon)
+    return localize(actual_at(p.lat, p.lon))
 
 
 class StationsRequest(Point):
@@ -288,7 +296,7 @@ class StationsRequest(Point):
 @app.post("/point/stations")
 def point_stations(req: StationsRequest):
     """Lluvia de estaciones CoCoRaHS cercanas (NOAA GHCN-Daily) frente a NASA POWER. Solo EE. UU."""
-    return stations_near(req.lat, req.lon, req.year, req.radius_km)
+    return localize(stations_near(req.lat, req.lon, req.year, req.radius_km))
 
 
 # ---------- Base de datos del ETL (backend/data/db, ver app/etl) ----------
@@ -332,8 +340,9 @@ def geocode(q: str):
     from .geocode import search
 
     if not q.strip() or len(q) > 120:
-        raise HTTPException(400, "Escribe un pueblo, condado, código postal o dirección.")
+        raise HTTPException(400, t("Escribe un pueblo, condado, código postal o dirección.", "Enter a town, county, ZIP code or address."))
     hit = search(q)
     if not hit:
-        raise HTTPException(404, "No encontramos ese lugar. Prueba con el pueblo y el estado, por ejemplo «Ames, Iowa», o con tu código postal.")
+        raise HTTPException(404, t("No encontramos ese lugar. Prueba con el pueblo y el estado, por ejemplo «Ames, Iowa», o con tu código postal.",
+                                   "We couldn't find that place. Try the town and state, for example “Ames, Iowa”, or your ZIP code."))
     return hit

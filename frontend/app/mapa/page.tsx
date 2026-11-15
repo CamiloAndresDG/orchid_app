@@ -13,7 +13,8 @@ import { PreciosPanel } from "../precios";
 import { EconUS, HistoryRow } from "../shared";
 import { LocalCrops, Point, TerrenoPanel } from "../terreno";
 import { UserMenu } from "../user-menu";
-import { CREDIT, OrchidMark } from "../logo";
+import { CREDIT, FULL_NAME, OrchidMark } from "../logo";
+import { Lang, currentLang, langHeaders, useLang } from "../i18n";
 
 // Next no empaqueta el worker de MapLibre: se sirve desde /public/maplibre.
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
@@ -29,31 +30,93 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
       tiles: ["https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}"],
       tileSize: 256,
       maxzoom: 16,
-      attribution: "Imagen: USGS The National Map",
+      attribution: "USGS The National Map",
     },
   },
   layers: [{ id: "usgs", type: "raster", source: "usgs" }],
 };
 
-const MORE: { id: TabId; label: string }[] = [
-  { id: "clima", label: "Clima" },
-  { id: "vulnerabilidad", label: "Meses difíciles" },
-  { id: "estrategias", label: "Ejemplos" },
-  { id: "fuentes", label: "De dónde salen los datos" },
-];
-const isMore = (t: TabId) => MORE.some((m) => m.id === t);
+const MORE_IDS: TabId[] = ["clima", "vulnerabilidad", "estrategias", "fuentes"];
+const isMore = (t: TabId) => MORE_IDS.includes(t);
 
-function pinElement(): HTMLElement {
+const COPY = {
+  es: {
+    more: { clima: "Clima", vulnerabilidad: "Meses difíciles", estrategias: "Ejemplos", fuentes: "De dónde salen los datos" } as Record<string, string>,
+    pin: "Mi terreno",
+    opening: "Abriendo tu cuaderno…",
+    offline: "No pudimos abrir tu cuaderno guardado. Lo que cambies ahora no se guardará en tu cuenta; recarga la página en un rato.",
+    noServer: "No pudimos conectar con el servidor de ORCHID. Revisa tu conexión y vuelve a cargar la página.",
+    found: (label: string) => `${label}. Ahora acércate y haz clic sobre tu campo para marcarlo.`,
+    notFound: "No encontramos ese lugar.",
+    searchFail: "No pudimos buscar ahora. Revisa tu conexión o acércate con el mapa.",
+    climateFail: "No pudimos consultar el clima de este punto. Vuelve a tocar el mapa para intentarlo de nuevo.",
+    cropsFail: "No pudimos consultar los cultivos cercanos.",
+    exampleFail: "No pudimos cargar el ejemplo. Inténtalo de nuevo en un momento.",
+    back: "← Volver a tu terreno",
+    zoneData: "Datos de la zona",
+    moreData: "Más datos",
+    moreDataZone: "Más datos de la zona:",
+    mapLabel: "Mapa para marcar tu terreno",
+    searchLabel: "Buscar tu dirección, pueblo o código postal",
+    searchPh: "Pueblo y estado, condado o código postal",
+    searching: "Buscando…",
+    search: "Buscar",
+    tapTitle: "Toca tu terreno en el mapa",
+    tapText: "Acerca con la rueda del ratón o los botones + y − hasta ver tu campo, y haz clic encima. Disponible en EE. UU.",
+    notYours: "¿No es tu campo? Haz clic en el lugar correcto para mover el pin.",
+    exTitle: "Ejemplos de dos zonas reales",
+    exText: "Mira cómo funciona con dos zonas de muestra. Abrir un ejemplo no cambia tu terreno.",
+    exLoading: "Cargando el ejemplo…",
+    emptyLoading: "Consultando el clima de tu terreno…",
+    emptyTitle: "Primero marca tu terreno",
+    emptyText: "Toca tu campo en el mapa para ver su clima, o abre uno de los ejemplos.",
+    emptyBtn: "Ver un ejemplo",
+  },
+  en: {
+    more: { clima: "Climate", vulnerabilidad: "Hard months", estrategias: "Examples", fuentes: "Where the data comes from" } as Record<string, string>,
+    pin: "My field",
+    opening: "Opening your notebook…",
+    offline: "We couldn't open your saved notebook. Changes you make now won't be saved to your account; reload the page in a while.",
+    noServer: "We couldn't reach the ORCHID server. Check your connection and reload the page.",
+    found: (label: string) => `${label}. Now zoom in and click on your field to mark it.`,
+    notFound: "We couldn't find that place.",
+    searchFail: "We couldn't search right now. Check your connection or zoom in on the map.",
+    climateFail: "We couldn't get the climate for this point. Tap the map again to retry.",
+    cropsFail: "We couldn't look up nearby crops.",
+    exampleFail: "We couldn't load the example. Try again in a moment.",
+    back: "← Back to your field",
+    zoneData: "Area data",
+    moreData: "More data",
+    moreDataZone: "More data about the area:",
+    mapLabel: "Map to mark your field",
+    searchLabel: "Search your address, town or ZIP code",
+    searchPh: "Town and state, county or ZIP code",
+    searching: "Searching…",
+    search: "Search",
+    tapTitle: "Tap your field on the map",
+    tapText: "Zoom in with the mouse wheel or the + and − buttons until you see your field, then click on it. Available in the U.S.",
+    notYours: "Not your field? Click the right spot to move the pin.",
+    exTitle: "Examples from two real areas",
+    exText: "See how it works with two sample areas. Opening an example doesn't change your field.",
+    exLoading: "Loading the example…",
+    emptyLoading: "Getting your field's climate…",
+    emptyTitle: "Mark your field first",
+    emptyText: "Tap your field on the map to see its climate, or open one of the examples.",
+    emptyBtn: "See an example",
+  },
+};
+
+function pinElement(lang: Lang): HTMLElement {
   const el = document.createElement("div");
   el.className = "fs-pin";
   el.innerHTML = `
-    <span style="display:block;padding:4px 10px;border-radius:999px;background:var(--moss);color:var(--paper);font:600 13px/1.2 var(--font-public),system-ui;white-space:nowrap;box-shadow:0 2px 6px rgb(0 0 0/.35)">Mi terreno</span>
+    <span style="display:block;padding:4px 10px;border-radius:999px;background:var(--moss);color:var(--paper);font:600 13px/1.2 var(--font-public),system-ui;white-space:nowrap;box-shadow:0 2px 6px rgb(0 0 0/.35)">${COPY[lang].pin}</span>
     <svg width="34" height="44" viewBox="0 0 34 44" style="display:block;margin:2px auto 0;filter:drop-shadow(0 3px 4px rgb(0 0 0/.4))">
       <path d="M17 43s14-12.4 14-25A14 14 0 0 0 3 18c0 12.6 14 25 14 25Z" fill="var(--moss)" stroke="var(--paper)" stroke-width="2.5"/>
       <circle cx="17" cy="18" r="5.5" fill="var(--paper)"/>
     </svg>`;
   el.style.textAlign = "center";
-  el.setAttribute("aria-label", "Mi terreno");
+  el.setAttribute("aria-label", COPY[lang].pin);
   return el;
 }
 
@@ -62,6 +125,7 @@ function pinElement(): HTMLElement {
 export default function MapaPage() {
   const router = useRouter();
   const session = useSession();
+  const c = COPY[useLang()];
   const token = session?.token;
   const [pulled, setPulled] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
@@ -82,7 +146,7 @@ export default function MapaPage() {
     };
   }, [token, pulled]);
   if (!session || (token && pulled !== token)) {
-    return <div className="grid h-screen place-items-center bg-paper text-ink-soft">Abriendo tu cuaderno…</div>;
+    return <div className="grid h-screen place-items-center bg-paper text-ink-soft">{c.opening}</div>;
   }
   return (
     <>
@@ -96,7 +160,7 @@ export default function MapaPage() {
       />
       {offline && (
         <p role="status" className="fixed bottom-4 left-4 z-50 max-w-xs rounded-lg border border-clay/40 bg-paper px-4 py-2 text-sm text-clay shadow-[0_4px_12px_rgb(0_0_0/0.25)]">
-          No pudimos abrir tu cuaderno guardado. Lo que cambies ahora no se guardará en tu cuenta; recarga la página en un rato.
+          {c.offline}
         </p>
       )}
     </>
@@ -120,24 +184,9 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
   const [tab, setTab] = useState<TabId>("terreno");
   const [econ, setEcon] = useState<Record<string, EconUS>>({});
   const [history, setHistory] = useState<HistoryRow[]>([]);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [hydrated, setHydrated] = useState(false);
-
-  // Tema: claro por defecto (el cuaderno de papel); oscuro solo si la persona lo eligio.
-  useEffect(() => {
-    const t = localStorage.getItem("theme") === "dark" ? "dark" : "light";
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTheme(t);
-    document.documentElement.dataset.theme = t;
-  }, []);
-  function toggleTheme() {
-    const t = theme === "dark" ? "light" : "dark";
-    setTheme(t);
-    document.documentElement.dataset.theme = t;
-    try {
-      localStorage.setItem("theme", t);
-    } catch {}
-  }
+  const lang = useLang();
+  const c = COPY[lang];
 
   useEffect(() => {
     try {
@@ -160,11 +209,11 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
   }, [econ, hydrated]);
 
   useEffect(() => {
-    fetch(`${API}/zones`)
+    fetch(`${API}/zones`, { headers: langHeaders() })
       .then((r) => r.json())
       .then(setZones)
-      .catch(() => setError("No pudimos conectar con el servidor de Orchid. Revisa tu conexión y vuelve a cargar la página."));
-  }, []);
+      .catch(() => setError(COPY[currentLang()].noServer));
+  }, [lang]);
 
   useEffect(() => {
     if (!mapEl.current || map.current) return;
@@ -201,17 +250,17 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
     setSearching(true);
     setSearchMsg(null);
     try {
-      const r = await fetch(`${API}/geocode?q=${encodeURIComponent(text)}`);
+      const r = await fetch(`${API}/geocode?q=${encodeURIComponent(text)}`, { headers: langHeaders() });
       const j = await r.json();
       if (r.ok) {
         const zoom = j.kind === "address" ? 15 : j.kind === "county" ? 10 : 12;
         map.current?.flyTo({ center: [j.lon, j.lat], zoom, speed: 1.4 });
-        setSearchMsg(`${j.label}. Ahora acércate y haz clic sobre tu campo para marcarlo.`);
+        setSearchMsg(c.found(j.label));
       } else {
-        setSearchMsg(j.detail ?? "No encontramos ese lugar.");
+        setSearchMsg(j.detail ?? c.notFound);
       }
     } catch {
-      setSearchMsg("No pudimos buscar ahora. Revisa tu conexión o acércate con el mapa.");
+      setSearchMsg(c.searchFail);
     } finally {
       setSearching(false);
     }
@@ -224,22 +273,41 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
     setLocal(null);
     setLoadingPoint(true);
     if (!pin.current && map.current) {
-      pin.current = new maplibregl.Marker({ element: pinElement(), anchor: "bottom" }).setLngLat([p.lon, p.lat]).addTo(map.current);
+      pin.current = new maplibregl.Marker({ element: pinElement(currentLang()), anchor: "bottom" }).setLngLat([p.lon, p.lat]).addTo(map.current);
     }
     pin.current?.setLngLat([p.lon, p.lat]);
     if (fly) map.current?.flyTo({ center: [p.lon, p.lat], zoom: Math.max(map.current.getZoom(), 14), speed: 1.4 });
+    const t = COPY[currentLang()];
     const post = (path: string) =>
-      fetch(`${API}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(p) }).then((r) =>
+      fetch(`${API}${path}`, { method: "POST", headers: langHeaders({ "content-type": "application/json" }), body: JSON.stringify(p) }).then((r) =>
         r.ok ? r.json() : Promise.reject(new Error(String(r.status))),
       );
     post("/point/analysis")
       .then(setPointData)
-      .catch(() => setError("No pudimos consultar el clima de este punto. Vuelve a tocar el mapa para intentarlo de nuevo."))
+      .catch(() => setError(t.climateFail))
       .finally(() => setLoadingPoint(false));
     post("/point/local-crops")
       .then(setLocal)
-      .catch(() => setLocal({ available: false, years: {}, radius_km: 1.1, note: "No pudimos consultar los cultivos cercanos." }));
+      .catch(() => setLocal({ available: false, years: {}, radius_km: 1.1, note: t.cropsFail }));
   }
+
+  // Al cambiar de idioma: las notas del servidor vienen en el idioma pedido, así que se vuelven a pedir.
+  const langRef = useRef(lang);
+  useEffect(() => {
+    if (langRef.current === lang) return;
+    langRef.current = lang;
+    const el = pin.current?.getElement();
+    if (el) {
+      el.innerHTML = pinElement(lang).innerHTML;
+      el.setAttribute("aria-label", COPY[lang].pin);
+    }
+    if (point) choosePoint(point, false);
+    if (exampleId) {
+      const z = zones.find((x) => x.id === exampleId);
+      if (z) openExample(z);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
 
   useEffect(() => {
     try {
@@ -255,10 +323,10 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
     setExampleId(z.id);
     setExample(null);
     setLoadingExample(true);
-    fetch(`${API}/zones/${z.id}/analysis`)
+    fetch(`${API}/zones/${z.id}/analysis`, { headers: langHeaders() })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then(setExample)
-      .catch(() => setError("No pudimos cargar el ejemplo. Inténtalo de nuevo en un momento."))
+      .catch(() => setError(COPY[currentLang()].exampleFail))
       .finally(() => setLoadingExample(false));
   }
 
@@ -286,26 +354,27 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
       <aside className="flex h-full w-[30rem] shrink-0 flex-col border-r border-rule bg-paper text-ink">
         <header className="px-8 pb-2 pt-7">
           <div className="flex items-center justify-between gap-4">
-            <h1 className="flex items-center gap-2.5 font-serif text-2xl font-semibold leading-none">
+            <h1 className="flex items-center gap-2.5" title={FULL_NAME}>
               <OrchidMark size={34} />
-              Orchid
+              <span className="font-serif text-2xl font-semibold leading-none tracking-wide">ORCHID</span>
+              <span className="sr-only">, {FULL_NAME}</span>
             </h1>
             {tab !== "terreno" && (
               <button onClick={() => goTab("terreno")} className="text-base font-semibold text-moss hover:underline">
-                ← Volver a tu terreno
+                {c.back}
               </button>
             )}
           </div>
           {isMore(tab) && (
-            <nav className="flex flex-wrap gap-2 pt-5" aria-label="Datos de la zona">
-              {MORE.map((m) => (
+            <nav className="flex flex-wrap gap-2 pt-5" aria-label={c.zoneData}>
+              {MORE_IDS.map((id) => (
                 <button
-                  key={m.id}
-                  onClick={() => goTab(m.id)}
-                  aria-current={tab === m.id ? "page" : undefined}
-                  className={`rounded-full border px-4 py-2 text-sm ${tab === m.id ? "border-moss bg-moss text-paper" : "border-rule text-ink-soft hover:border-moss hover:text-ink"}`}
+                  key={id}
+                  onClick={() => goTab(id)}
+                  aria-current={tab === id ? "page" : undefined}
+                  className={`rounded-full border px-4 py-2 text-sm ${tab === id ? "border-moss bg-moss text-paper" : "border-rule text-ink-soft hover:border-moss hover:text-ink"}`}
                 >
-                  {m.label}
+                  {c.more[id]}
                 </button>
               ))}
             </nav>
@@ -331,17 +400,19 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
               hydrated={hydrated}
               go={goTab}
             />
-            <nav aria-label="Más datos" className="mt-12 border-t border-rule pt-6 text-base text-ink-soft">
-              <p>Más datos de la zona:</p>
+            <nav aria-label={c.moreData} className="mt-12 border-t border-rule pt-6 text-base text-ink-soft">
+              <p>{c.moreDataZone}</p>
               <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                {MORE.map((m) => (
-                  <button key={m.id} onClick={() => goTab(m.id)} className="font-semibold text-moss hover:underline">
-                    {m.label}
+                {MORE_IDS.map((id) => (
+                  <button key={id} onClick={() => goTab(id)} className="font-semibold text-moss hover:underline">
+                    {c.more[id]}
                   </button>
                 ))}
               </p>
             </nav>
-            <p className="mt-8 text-sm text-ink-faint">{CREDIT}.</p>
+            <p className="mt-8 text-sm text-ink-faint">
+              ORCHID: {FULL_NAME}. {CREDIT[lang]}.
+            </p>
           </div>
           <div hidden={tab !== "precios"}>
             <PreciosPanel econ={econ} setEcon={setEcon} point={point} history={history} zoneCrops={zoneCrops} go={goTab} />
@@ -363,24 +434,24 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
         </div>
       </aside>
 
-      <section className="relative h-full min-w-0 flex-1" aria-label="Mapa para marcar tu terreno">
+      <section className="relative h-full min-w-0 flex-1" aria-label={c.mapLabel}>
         <div ref={mapEl} className="h-full w-full" />
         <div className="pointer-events-none absolute inset-0 shadow-[inset_12px_0_24px_-12px_rgb(0_0_0/0.35)]" />
         <form onSubmit={searchPlace} className="absolute left-4 top-4 flex w-[min(30rem,calc(100%-6.5rem))] gap-2" role="search">
-          <label className="sr-only" htmlFor="place">Buscar tu dirección, pueblo o código postal</label>
+          <label className="sr-only" htmlFor="place">{c.searchLabel}</label>
           <input
             id="place"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Pueblo y estado, condado o código postal"
+            placeholder={c.searchPh}
             className="min-w-0 flex-1 rounded-md border border-field bg-paper px-4 py-3 text-base text-ink shadow-[0_4px_12px_rgb(0_0_0/0.25)] placeholder:text-ink-soft"
           />
           <button disabled={searching} className="rounded-md bg-moss px-5 py-3 text-base font-semibold text-paper shadow-[0_4px_12px_rgb(0_0_0/0.25)] hover:bg-moss-deep disabled:opacity-60">
-            {searching ? "Buscando…" : "Buscar"}
+            {searching ? c.searching : c.search}
           </button>
         </form>
         <div className="absolute right-4 top-4 z-20">
-          <UserMenu session={session} theme={theme} onToggleTheme={toggleTheme} onPrices={() => goTab("precios")} onLogout={onLogout} />
+          <UserMenu session={session} onPrices={() => goTab("precios")} onLogout={onLogout} />
         </div>
         {searchMsg && (
           <p role="status" className="absolute left-4 top-[4.75rem] w-[min(30rem,calc(100%-6.5rem))] rounded-md bg-paper/95 px-4 py-2 text-base text-ink shadow-[0_4px_12px_rgb(0_0_0/0.25)]">
@@ -390,16 +461,16 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
         {!point && !searchMsg && (
           <div className="pointer-events-none absolute left-1/2 top-24 w-[min(28rem,calc(100%-3rem))] -translate-x-1/2 rounded-lg bg-paper/95 px-5 py-4 text-ink shadow-[0_6px_20px_rgb(0_0_0/0.3)]">
             <p className="flex items-center gap-2 font-serif text-xl font-semibold">
-              <PinIcon className="text-moss" /> Toca tu terreno en el mapa
+              <PinIcon className="text-moss" /> {c.tapTitle}
             </p>
             <p className="mt-1 text-sm text-ink-soft">
-              Acerca con la rueda del ratón o los botones + y − hasta ver tu campo, y haz clic encima. Disponible en EE. UU.
+              {c.tapText}
             </p>
           </div>
         )}
         {point && (
           <p className="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-paper/95 px-4 py-2 text-sm text-ink shadow-[0_4px_12px_rgb(0_0_0/0.3)]">
-            ¿No es tu campo? Haz clic en el lugar correcto para mover el pin.
+            {c.notYours}
           </p>
         )}
         <Guide point={point} />
@@ -409,11 +480,12 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
 }
 
 function ExamplesHeader({ zones, activeId, onOpen, loading }: { zones: Zone[]; activeId: string | null; onOpen: (z: Zone) => void; loading: boolean }) {
+  const c = COPY[useLang()];
   return (
     <div className="mb-8">
-      <h2 className="font-serif text-2xl font-semibold">Ejemplos de dos zonas reales</h2>
+      <h2 className="font-serif text-2xl font-semibold">{c.exTitle}</h2>
       <p className="mt-1 text-base text-ink-soft">
-        Mira cómo funciona con dos zonas de muestra. Abrir un ejemplo no cambia tu terreno.
+        {c.exText}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {zones.map((z) => (
@@ -427,20 +499,21 @@ function ExamplesHeader({ zones, activeId, onOpen, loading }: { zones: Zone[]; a
           </button>
         ))}
       </div>
-      {loading && <p className="mt-3 text-sm text-ink-soft">Cargando el ejemplo…</p>}
+      {loading && <p className="mt-3 text-sm text-ink-soft">{c.exLoading}</p>}
     </div>
   );
 }
 
 function EmptyMore({ loading, onExample }: { loading: boolean; onExample: () => void }) {
-  if (loading) return <p className="text-base text-ink-soft">Consultando el clima de tu terreno…</p>;
+  const c = COPY[useLang()];
+  if (loading) return <p className="text-base text-ink-soft">{c.emptyLoading}</p>;
   return (
     <div className="rounded-lg border border-dashed border-field p-8 text-center">
       <PinIcon className="mx-auto text-moss" />
-      <p className="mt-3 font-serif text-xl font-semibold">Primero marca tu terreno</p>
-      <p className="mx-auto mt-1 max-w-sm text-base text-ink-soft">Toca tu campo en el mapa para ver su clima, o abre uno de los ejemplos.</p>
+      <p className="mt-3 font-serif text-xl font-semibold">{c.emptyTitle}</p>
+      <p className="mx-auto mt-1 max-w-sm text-base text-ink-soft">{c.emptyText}</p>
       <button onClick={onExample} className="mt-4 rounded-full border border-moss px-5 py-2 text-base text-moss hover:bg-moss hover:text-paper">
-        Ver un ejemplo
+        {c.emptyBtn}
       </button>
     </div>
   );

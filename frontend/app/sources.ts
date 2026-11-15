@@ -99,15 +99,29 @@ export function stationUrl(id: string): string {
   return `https://www.ncei.noaa.gov/cdo-web/datasets/GHCND/stations/GHCND:${id}/detail`;
 }
 
-export const SOURCE_LABEL: Record<SourceKey | "gaez" | "cocorahs", string> = {
-  gaez: "FAO GAEZ v4: visor oficial de datos agroecológicos (temas 2, 4 y 5)",
-  cocorahs: "CoCoRaHS en GHCN-Daily (NOAA NCEI): ficha oficial de la estación con sus datos diarios",
-  power: "NASA POWER (página oficial): punto, fechas y parámetros ya cargados; pulsa Submit para ver o descargar",
-  cdl: "CDL (USDA NASS): imagen oficial de la capa 2025 en este punto",
-  ssurgo: "SSURGO (USDA NRCS): mapa oficial de unidades de suelo en este punto",
-  ndvi: "NDVI MODIS (ORNL DAAC, NASA): consulta oficial del punto con los últimos compuestos",
-  smap: "SMAP (NASA, NSIDC): ficha oficial del producto de humedad del suelo de 9 km",
-  imerg: "GPM IMERG Late (NASA, GES DISC): ficha oficial de la lluvia diaria por satélite",
-  nldas: "NLDAS-2 Noah (NASA, GES DISC): ficha oficial del balance de agua mensual",
-  srtm: "SRTM (NASA, LP DAAC): ficha oficial del modelo de elevación de 30 m",
+export const SOURCE_LABELS: Record<"es" | "en", Record<SourceKey | "gaez" | "cocorahs", string>> = {
+  es: {
+    gaez: "FAO GAEZ v4: visor oficial de datos agroecológicos (temas 2, 4 y 5)",
+    cocorahs: "CoCoRaHS en GHCN-Daily (NOAA NCEI): ficha oficial de la estación con sus datos diarios",
+    power: "NASA POWER (página oficial): punto, fechas y parámetros ya cargados; pulsa Submit para ver o descargar",
+    cdl: "CDL (USDA NASS): imagen oficial de la capa 2025 en este punto",
+    ssurgo: "SSURGO (USDA NRCS): mapa oficial de unidades de suelo en este punto",
+    ndvi: "NDVI MODIS (ORNL DAAC, NASA): consulta oficial del punto con los últimos compuestos",
+    smap: "SMAP (NASA, NSIDC): ficha oficial del producto de humedad del suelo de 9 km",
+    imerg: "GPM IMERG Late (NASA, GES DISC): ficha oficial de la lluvia diaria por satélite",
+    nldas: "NLDAS-2 Noah (NASA, GES DISC): ficha oficial del balance de agua mensual",
+    srtm: "SRTM (NASA, LP DAAC): ficha oficial del modelo de elevación de 30 m",
+  },
+  en: {
+    gaez: "FAO GAEZ v4: official agro-ecological data viewer (themes 2, 4 and 5)",
+    cocorahs: "CoCoRaHS in GHCN-Daily (NOAA NCEI): official station page with its daily data",
+    power: "NASA POWER (official page): point, dates and parameters preloaded; press Submit to view or download",
+    cdl: "CDL (USDA NASS): official image of the 2025 layer at this point",
+    ssurgo: "SSURGO (USDA NRCS): official soil map units at this point",
+    ndvi: "MODIS NDVI (ORNL DAAC, NASA): official point query with the latest composites",
+    smap: "SMAP (NASA, NSIDC): official page for the 9 km soil moisture product",
+    imerg: "GPM IMERG Late (NASA, GES DISC): official page for daily satellite rainfall",
+    nldas: "NLDAS-2 Noah (NASA, GES DISC): official page for the monthly water balance",
+    srtm: "SRTM (NASA, LP DAAC): official page for the 30 m elevation model",
+  },
 };

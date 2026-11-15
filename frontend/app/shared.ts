@@ -1,22 +1,45 @@
 export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export const CROPS: Record<string, string> = {
-  corn: "Maíz",
-  soybean: "Soja",
-  wheat: "Trigo de invierno",
-  sorghum: "Sorgo",
-  sunflower: "Girasol",
-  oats: "Avena",
-  cereal_rye: "Centeno de cobertura",
-  clover: "Trébol de cobertura",
-  fallow: "Barbecho (sin cultivo)",
-  other: "Otro cultivo",
+export const CROP_NAMES: Record<"es" | "en", Record<string, string>> = {
+  es: {
+    corn: "Maíz",
+    soybean: "Soja",
+    wheat: "Trigo de invierno",
+    sorghum: "Sorgo",
+    sunflower: "Girasol",
+    oats: "Avena",
+    cereal_rye: "Centeno de cobertura",
+    clover: "Trébol de cobertura",
+    fallow: "Barbecho (sin cultivo)",
+    other: "Otro cultivo",
+  },
+  en: {
+    corn: "Corn",
+    soybean: "Soybeans",
+    wheat: "Winter wheat",
+    sorghum: "Sorghum",
+    sunflower: "Sunflower",
+    oats: "Oats",
+    cereal_rye: "Cereal rye cover",
+    clover: "Clover cover",
+    fallow: "Fallow (no crop)",
+    other: "Other crop",
+  },
+};
+
+// Otras clases del mapa de cultivos (CDL) que se ven alrededor del terreno pero no son cultivos de ORCHID.
+export const LAND_NAMES: Record<"es" | "en", Record<string, string>> = {
+  es: { pastizal: "pastizal", "alfalfa/heno": "alfalfa/heno", barbecho: "barbecho", algodon: "algodón", arroz: "arroz" },
+  en: { pastizal: "grassland", "alfalfa/heno": "alfalfa/hay", barbecho: "fallow", algodon: "cotton", arroz: "rice" },
 };
 
 export const ECON_CROPS = ["corn", "soybean", "wheat", "sorghum", "sunflower", "oats", "cereal_rye", "clover"];
 export const COVER_CROPS = ["cereal_rye", "clover"];
 
-export const MONTH_NAMES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+export const MONTHS: Record<"es" | "en", string[]> = {
+  es: ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"],
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+};
 
 export type HistoryRow = { crop: string; plant_year: number; plant_month: number; harvest_year: number; harvest_month: number };
 

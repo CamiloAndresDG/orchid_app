@@ -31,6 +31,24 @@
   color-scheme: dark;
 }
 
+/* Sin JavaScript (o antes de que corra): el tema sigue al sistema. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --paper: #151a12;
+    --paper-deep: #1f271b;
+    --moss-wash: #213019;
+    --ink: #ece6d3;
+    --ink-soft: #c3cab6;
+    --ink-faint: #9aa38f;
+    --rule: #37422f;
+    --field: #6b7760;
+    --moss: #93c283;
+    --moss-deep: #b5d9a7;
+    --clay: #e58d62;
+    color-scheme: dark;
+  }
+}
+
 @theme inline {
   --color-paper: var(--paper);
   --color-paper-deep: var(--paper-deep);
@@ -248,6 +266,7 @@ summary::-webkit-details-marker {
   }
   /* El informe siempre se imprime en papel claro, aunque la persona use el modo oscuro. */
   :root,
+  :root:not([data-theme]),
   :root[data-theme="dark"] {
     --paper: #ffffff;
     --paper-deep: #f3eddd;

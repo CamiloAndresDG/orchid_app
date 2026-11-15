@@ -1,5 +1,5 @@
 ---
-name: Orchid
+name: ORCHID
 description: Cuaderno de campo con mapa satelital donde un agricultor marca su terreno y lee qué sembrar después, con datos de la NASA y el USDA.
 colors:
   paper: "#f3eddd"
@@ -152,7 +152,7 @@ components:
     padding: "16px"
 ---
 
-# Design System: Orchid
+# Design System: ORCHID
 
 ## Overview
 
@@ -190,7 +190,7 @@ Papel crema y tinta verde oscura, con un solo acento musgo y un barro rojizo res
 - **Papel Hondo** (paper-deep / paper-deep-night): fondo de avisos de error, bloques de código y pistas de las barras de porcentaje.
 - **Tinta** (ink / ink-night): títulos y texto principal.
 - **Tinta Suave** (ink-soft / ink-soft-night): párrafos de apoyo, ayudas, etiquetas de definición, pestañas inactivas, ejes de gráficos.
-- **Tinta Tenue** (ink-faint / ink-faint-night): anotaciones terciarias como «(cálculo de Orchid)».
+- **Tinta Tenue** (ink-faint / ink-faint-night): anotaciones terciarias como «(cálculo de ORCHID)».
 - **Renglón** (rule / rule-night): todas las líneas divisorias, bordes de pestañas, rejilla de gráficos y borde de las filas de historial.
 - **Lindero** (field / field-night): bordes de campos de formulario, botones de alternar sin elegir y cajas punteadas de estado vacío.
 
@@ -209,7 +209,7 @@ Papel crema y tinta verde oscura, con un solo acento musgo y un barro rojizo res
 **Character:** Una serif con tinta y calidez para lo que se titula a mano en el cuaderno, y una sans pública y sobria para leer instrucciones y números. Los números de los pasos van en Public Sans aunque estén dentro de un título serif.
 
 ### Hierarchy
-- **Display** (600, 2.25rem, 1.25): el nombre «Orchid» en la cabecera del cuaderno.
+- **Display** (600, 2.25rem, 1.25): el nombre «ORCHID» en la cabecera del cuaderno.
 - **Headline** (600, 1.875rem): título de cada pestaña principal («Mi terreno», «Mis precios y costos»), «Lo que te sugerimos» y la frase de «Tu mejor opción».
 - **Headline Small** (600, 1.5rem): títulos de los paneles de «Más datos».
 - **Title** (600, 1.25rem): títulos de pasos, secciones y resúmenes desplegables; la indicación sobre el mapa.
@@ -225,7 +225,7 @@ Papel crema y tinta verde oscura, con un solo acento musgo y un barro rojizo res
 
 ## Layout
 
-Pantalla completa con ancho mínimo de 1024px (pensado para computadora de escritorio): el cuaderno ocupa la izquierda con 30rem fijos y el mapa todo lo demás, separados por una línea rule; solo el cuaderno se desplaza. El cuaderno tiene un margen lateral de 32px y una cabecera mínima (la palabra «Orchid» y, en vistas secundarias, «← Volver a tu terreno»). Sobre el mapa flotan tres cosas en sus esquinas: el buscador arriba a la izquierda, el botón de cuenta arriba a la derecha y Brote abajo a la derecha; los controles de zoom van abajo a la izquierda.
+Pantalla completa con ancho mínimo de 1024px (pensado para computadora de escritorio): el cuaderno ocupa la izquierda con 30rem fijos y el mapa todo lo demás, separados por una línea rule; solo el cuaderno se desplaza. El cuaderno tiene un margen lateral de 32px y una cabecera mínima (la palabra «ORCHID» y, en vistas secundarias, «← Volver a tu terreno»). Sobre el mapa flotan tres cosas en sus esquinas: el buscador arriba a la izquierda, el botón de cuenta arriba a la derecha y Brote abajo a la derecha; los controles de zoom van abajo a la izquierda.
 
 El cuaderno muestra una vista a la vez. La principal tiene tres estados: sin campo (solo qué hacer), con campo (nombre, una línea «120 acres · solo lluvia · 2 cultivos anotados», dos datos clave y «Editar datos» que despliega el formulario) y con resultado (la recomendación y el informe). «Mis precios» y «Más datos de la zona» son vistas secundarias a un clic, no pestañas.
 
@@ -285,10 +285,10 @@ Pares de opciones como «No, solo lluvia / Sí, tengo riego»: rectángulos de 6
 Círculo moss de 44px con las iniciales en paper y borde paper de 2px, arriba a la derecha sobre el mapa (lleva la sombra de lo que flota sobre la imagen). Abre una hoja de papel de 288px, radio 8px: nombre en serif, correo en ink-soft, y debajo «Mis precios y costos», «Modo oscuro / claro» y «Cerrar sesión», separados por líneas rule. Escape lo cierra y las flechas recorren las opciones.
 
 ### Marca
-Monograma «O»: un anillo musgo grueso (la O de Orchid) sobre papel, con una Cattleya trianae (la orquídea flor
+Monograma «O»: un anillo musgo grueso (la O de ORCHID) sobre papel, con una Cattleya trianae (la orquídea flor
 nacional de Colombia) adentro: pétalos y sépalos lavanda, labio en trompeta magenta y garganta amarilla. El anillo es lo
 que se reconoce a 16px. Es la única pieza con colores fuera de la paleta del
-cuaderno, porque es el logo. Va junto a la palabra «Orchid» en la portada (40px), el cuaderno del mapa (34px), el
+cuaderno, porque es el logo. Va junto a la palabra «ORCHID» en la portada (40px), el cuaderno del mapa (34px), el
 inicio de sesión y el informe (44px), y es el favicon (`app/icon.svg`, `favicon.ico` de 16/32/48 y `apple-icon.png`).
 `app/logo.tsx` y `app/icon.svg` llevan el mismo dibujo. El crédito «Hecho por Orbital Farmers, equipo participante en
 el NASA Space Apps Challenge 2026» va al pie de la portada, del inicio de sesión, del cuaderno y del informe.
@@ -306,7 +306,7 @@ Tarjeta moss-wash de 12px con el titular serif de 30px «Te conviene» en ink y 
 Página aparte (`/informe`) en una columna de 48rem, pensada para papel carta: titular serif con el nombre del terreno, una línea con fecha, tamaño, riego y coordenadas, el historial en tabla, la recomendación con toda su evidencia y sus vacíos, las demás rotaciones y todo lo que se sabe del terreno. Al cargar ofrece guardar como PDF; al imprimir usa siempre el papel claro, abre los desplegables y oculta la barra de herramientas.
 
 ### ¿De dónde sale esto?
-Desplegable con escudo y texto moss. Cada evidencia termina en «Ver dato oficial» (moss 600 subrayado, con icono externo) cuando viene de una fuente pública, o en «(cálculo de Orchid)» en ink-faint cuando es nuestro. «Lo que aún no sabemos» lista las lagunas con viñetas field.
+Desplegable con escudo y texto moss. Cada evidencia termina en «Ver dato oficial» (moss 600 subrayado, con icono externo) cuando viene de una fuente pública, o en «(cálculo de ORCHID)» en ink-faint cuando es nuestro. «Lo que aún no sabemos» lista las lagunas con viñetas field.
 
 ### Avisos de error
 Fondo paper-deep, borde clay al 40%, texto clay 16px, radio 8px, relleno 16px, con icono de alerta. `role="alert"`.

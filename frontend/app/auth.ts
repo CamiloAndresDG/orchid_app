@@ -1,5 +1,6 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { API } from "./shared";
+import { currentLang, langHeaders } from "./i18n";
 
 // Sesión del navegador. Con cuenta real lleva el token del API (el terreno se guarda en el servidor).
 // El modo visitante no tiene token: todo queda solo en este navegador. La contraseña nunca se guarda aquí.
@@ -89,14 +90,20 @@ export function endSession() {
 async function authCall(path: string, body: object): Promise<void> {
   let r: Response;
   try {
-    r = await fetch(`${API}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    r = await fetch(`${API}${path}`, { method: "POST", headers: langHeaders({ "content-type": "application/json" }), body: JSON.stringify(body) });
   } catch {
-    throw new Error("No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.");
+    throw new Error(
+      currentLang() === "en"
+        ? "We couldn't reach the server. Check your connection and try again."
+        : "No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.",
+    );
   }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) {
     // 422 de FastAPI trae una lista de errores; los demás, un texto.
-    throw new Error(typeof j.detail === "string" ? j.detail : "Revisa los datos e intenta de nuevo.");
+    throw new Error(
+      typeof j.detail === "string" ? j.detail : currentLang() === "en" ? "Check your details and try again." : "Revisa los datos e intenta de nuevo.",
+    );
   }
   startSession(j.user.email, j.user.name, j.token);
 }

@@ -11,16 +11,24 @@ from concurrent.futures import ThreadPoolExecutor
 import httpx
 from PIL import Image
 
+from .i18n import t
+
 CATALOG = {
-    "corn": {"name": "Maíz", "family": "gramineas", "water": "high", "plant": [4, 5], "cycle": 5, "kind": "cash"},
-    "soybean": {"name": "Soja", "family": "leguminosas", "water": "med", "plant": [5, 6], "cycle": 5, "kind": "cash", "fixes_n": True},
-    "wheat": {"name": "Trigo de invierno", "family": "gramineas", "water": "med", "plant": [9, 10], "cycle": 8, "kind": "cash"},
-    "sorghum": {"name": "Sorgo", "family": "gramineas", "water": "low", "plant": [5, 6, 7], "cycle": 4, "kind": "cash"},
-    "sunflower": {"name": "Girasol", "family": "asteraceas", "water": "low", "plant": [5, 6], "cycle": 5, "kind": "cash"},
-    "oats": {"name": "Avena", "family": "gramineas", "water": "low", "plant": [3, 4], "cycle": 4, "kind": "cash"},
-    "cereal_rye": {"name": "Centeno de cobertura", "family": "gramineas", "water": "low", "plant": [9, 10], "cycle": 7, "kind": "cover"},
-    "clover": {"name": "Trébol de cobertura", "family": "leguminosas", "water": "low", "plant": [8, 9], "cycle": 7, "kind": "cover", "fixes_n": True},
+    "corn": {"name": "Maíz", "name_en": "Corn", "family": "gramineas", "water": "high", "plant": [4, 5], "cycle": 5, "kind": "cash"},
+    "soybean": {"name": "Soja", "name_en": "Soybeans", "family": "leguminosas", "water": "med", "plant": [5, 6], "cycle": 5, "kind": "cash", "fixes_n": True},
+    "wheat": {"name": "Trigo de invierno", "name_en": "Winter wheat", "family": "gramineas", "water": "med", "plant": [9, 10], "cycle": 8, "kind": "cash"},
+    "sorghum": {"name": "Sorgo", "name_en": "Sorghum", "family": "gramineas", "water": "low", "plant": [5, 6, 7], "cycle": 4, "kind": "cash"},
+    "sunflower": {"name": "Girasol", "name_en": "Sunflower", "family": "asteraceas", "water": "low", "plant": [5, 6], "cycle": 5, "kind": "cash"},
+    "oats": {"name": "Avena", "name_en": "Oats", "family": "gramineas", "water": "low", "plant": [3, 4], "cycle": 4, "kind": "cash"},
+    "cereal_rye": {"name": "Centeno de cobertura", "name_en": "Cereal rye cover", "family": "gramineas", "water": "low", "plant": [9, 10], "cycle": 7, "kind": "cover"},
+    "clover": {"name": "Trébol de cobertura", "name_en": "Clover cover", "family": "leguminosas", "water": "low", "plant": [8, 9], "cycle": 7, "kind": "cover", "fixes_n": True},
 }
+
+def crop_name(key: str) -> str:
+    """Nombre del cultivo en el idioma de la petición."""
+    c = CATALOG[key]
+    return t(c["name"], c["name_en"])
+
 
 # Color de la capa CDL (RGB) -> cultivo. Verificados contra consultas reales: maiz, soja, trigo de invierno
 # y pastizal. Los demas (sorgo, girasol, alfalfa, barbecho, algodon, arroz) vienen de la leyenda de CDL
@@ -86,17 +94,28 @@ def local_crops(lat: float, lon: float, years=(2021, 2022, 2023, 2024, 2025)) ->
     # Fuera de EE. UU. la capa viene vacia: sin ningun cultivo reconocible ni pastizal.
     known = {k for r in by_year.values() for k in r if k != "otros usos"}
     if not by_year:
-        return {"available": False, "radius_km": 1.1, "years": {}, "note": "No pudimos consultar el mapa de cultivos ahora."}
+        return {"available": False, "radius_km": 1.1, "years": {}, "note": t("No pudimos consultar el mapa de cultivos ahora.", "We couldn't query the crop map right now.")}
     if not known:
-        out = {"available": False, "radius_km": 1.1, "years": {}, "note": "No hay mapa de cultivos para este punto (solo cubre EE. UU.)."}
+        out = {"available": False, "radius_km": 1.1, "years": {}, "note": NOTE_NONE}
     else:
-        out = {"available": True, "radius_km": 1.1, "years": by_year, "note": "Clasificado por el color de la capa CDL (USDA NASS)."}
+        out = {"available": True, "radius_km": 1.1, "years": by_year, "note": NOTE_OK}
     key.write_text(json.dumps(out), encoding="utf8")
     return _mark_unverified(out)
+
+
+# Las notas se guardan en caché en español; al leerlas se pasan al idioma de la petición.
+NOTE_NONE = "No hay mapa de cultivos para este punto (solo cubre EE. UU.)."
+NOTE_OK = "Clasificado por el color de la capa CDL (USDA NASS)."
+NOTE_EN = {
+    NOTE_NONE: "There's no crop map for this point (it only covers the U.S.).",
+    NOTE_OK: "Classified by the color of the CDL layer (USDA NASS).",
+}
 
 
 def _mark_unverified(out: dict) -> dict:
     """Agrega qué clases presentes se reconocieron con un color de la leyenda que aún no verificamos."""
     seen = {k for y in out.get("years", {}).values() for k in y}
-    out["unverified"] = sorted(seen & UNVERIFIED)
+    out = {**out, "unverified": sorted(seen & UNVERIFIED)}
+    if out.get("note") in NOTE_EN:
+        out["note"] = t(out["note"], NOTE_EN[out["note"]])
     return out

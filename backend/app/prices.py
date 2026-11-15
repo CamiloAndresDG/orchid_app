@@ -5,6 +5,8 @@ Es un promedio estatal anual, no el precio local de una finca. Solo EE. UU.
 """
 import httpx
 
+from .i18n import t
+
 CENSUS = "https://geocoding.geo.census.gov/geocoder/geographies/coordinates"
 QS = "https://quickstats.nass.usda.gov/api/api_GET/"
 
@@ -45,7 +47,8 @@ def _num(v: str):
 def reference_prices(lat: float, lon: float, api_key: str, from_year: int = 2020) -> dict:
     st = state_from_point(lat, lon)
     if not st:
-        raise PriceError(404, "Este punto no está en un estado de EE. UU. QuickStats solo cubre EE. UU.")
+        raise PriceError(404, t("Este punto no está en un estado de EE. UU. QuickStats solo cubre EE. UU.",
+                                "This point isn't in a U.S. state. QuickStats only covers the U.S."))
     abbr, state_name = st
     found, missing = [], []
     for crop, (commodity, prefix, unit, per_tonne) in COMMODITIES.items():
@@ -56,11 +59,11 @@ def reference_prices(lat: float, lon: float, api_key: str, from_year: int = 2020
                 "freq_desc": "ANNUAL", "year__GE": from_year, "format": "JSON",
             }, timeout=45)
         except httpx.HTTPError:
-            raise PriceError(502, "No se pudo conectar con QuickStats.")
+            raise PriceError(502, t("No se pudo conectar con QuickStats.", "We couldn't connect to QuickStats."))
         if r.status_code in (400, 401, 403):
-            raise PriceError(401, "QuickStats no aceptó la clave. Revisa que esté bien copiada.")
+            raise PriceError(401, t("QuickStats no aceptó la clave. Revisa que esté bien copiada.", "QuickStats didn't accept the key. Check that it's copied correctly."))
         if r.status_code == 429:
-            raise PriceError(429, "QuickStats pidió esperar un poco. Intenta en un minuto.")
+            raise PriceError(429, t("QuickStats pidió esperar un poco. Intenta en un minuto.", "QuickStats asked us to wait. Try again in a minute."))
         if r.status_code != 200:
             missing.append(crop)
             continue

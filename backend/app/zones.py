@@ -1,4 +1,5 @@
 """Zonas de demo. Cada zona trae un campo representativo (punto) y su rotacion actual."""
+from .i18n import t
 
 ZONES = [
     {
@@ -9,6 +10,7 @@ ZONES = [
         "lon": -97.40,
         "current_rotation": ["wheat", "fallow"],
         "focus": "Poca agua y barbecho con el suelo sin cubrir (acuífero Ogallala, sequías)",
+        "focus_en": "Little water and fallow with bare soil (Ogallala aquifer, droughts)",
     },
     {
         "id": "ia-story",
@@ -18,9 +20,21 @@ ZONES = [
         "lon": -93.46,
         "current_rotation": ["corn", "soybean"],
         "focus": "Suelo y nutrientes: el invierno queda sin cobertura entre maíz y soja",
+        "focus_en": "Soil and nutrients: winter is left without cover between corn and soybeans",
     },
 ]
 
 
+def _local(z: dict) -> dict:
+    out = {k: v for k, v in z.items() if k != "focus_en"}
+    out["focus"] = t(z["focus"], z["focus_en"])
+    return out
+
+
+def zones_localized() -> list[dict]:
+    return [_local(z) for z in ZONES]
+
+
 def get_zone(zone_id: str):
-    return next((z for z in ZONES if z["id"] == zone_id), None)
+    z = next((z for z in ZONES if z["id"] == zone_id), None)
+    return _local(z) if z else None
