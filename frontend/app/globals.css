@@ -95,3 +95,18 @@ summary::-webkit-details-marker {
   }
 }
 /* tokens v2 */
+
+/* Portada y acceso: entrada suave de bloques al cargar. */
+@keyframes fs-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fs-rise {
+  animation: fs-fade-up 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
