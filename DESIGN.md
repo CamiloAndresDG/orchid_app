@@ -285,8 +285,9 @@ Pares de opciones como «No, solo lluvia / Sí, tengo riego»: rectángulos de 6
 Círculo moss de 44px con las iniciales en paper y borde paper de 2px, arriba a la derecha sobre el mapa (lleva la sombra de lo que flota sobre la imagen). Abre una hoja de papel de 288px, radio 8px: nombre en serif, correo en ink-soft, y debajo «Mis precios y costos», «Modo oscuro / claro» y «Cerrar sesión», separados por líneas rule. Escape lo cierra y las flechas recorren las opciones.
 
 ### Marca
-Una Cattleya trianae (la orquídea flor nacional de Colombia) sobre un disco musgo: pétalos y sépalos lavanda claro,
-labio en trompeta magenta con borde rizado y garganta amarilla. Es la única pieza con colores fuera de la paleta del
+Monograma «O»: un anillo musgo grueso (la O de Orchid) sobre papel, con una Cattleya trianae (la orquídea flor
+nacional de Colombia) adentro: pétalos y sépalos lavanda, labio en trompeta magenta y garganta amarilla. El anillo es lo
+que se reconoce a 16px. Es la única pieza con colores fuera de la paleta del
 cuaderno, porque es el logo. Va junto a la palabra «Orchid» en la portada (40px), el cuaderno del mapa (34px), el
 inicio de sesión y el informe (44px), y es el favicon (`app/icon.svg`, `favicon.ico` de 16/32/48 y `apple-icon.png`).
 `app/logo.tsx` y `app/icon.svg` llevan el mismo dibujo. El crédito «Hecho por Orbital Farmers, equipo participante en
