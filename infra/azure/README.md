@@ -60,6 +60,7 @@ La credencial solo vale para la rama `main`: un fork o un PR no pueden desplegar
 | `ALLOWED_ORIGINS` | Orígenes permitidos por CORS, separados por coma | `http://localhost:3000` |
 | `CACHE_DIR` | Carpeta de caché | `backend/cache` |
 | `QUICKSTATS_KEY` | Clave del USDA del servidor; si existe, el usuario no necesita la suya | vacía |
+| `EARTHDATA_TOKEN` | Token de NASA Earthdata para SMAP, GPM IMERG, NLDAS y SRTM (vence a los 60 días) | vacío: esas fuentes dicen que falta el token |
 | `DATABASE_URL` | `postgresql+psycopg://usuario:clave@servidor:5432/orchid?sslmode=require` | SQLite en `backend/instance/` |
 | `SESSION_DAYS` | Días que dura una sesión iniciada | `30` |
 
@@ -132,6 +133,28 @@ Variables del backend: `ASSISTANT_PROVIDER` (`azure_openai`, `foundry` o `anthro
 **En local:** con `az login`, una cuenta con el rol *Cognitive Services User* sobre el recurso (ser Owner no basta
 para llamar al modelo) y `FOUNDRY_RESOURCE=orchid-ai-…`. Si tu cuenta no puede asignarse roles a sí misma (condición
 ABAC), prueba directamente en Azure.
+
+## Fuentes de NASA Earthdata (SMAP, IMERG, NLDAS, SRTM)
+
+Cuatro fuentes de la NASA necesitan un **token de NASA Earthdata**: humedad del suelo (SMAP), lluvia por satélite
+(GPM IMERG Late), agua guardada en el suelo (NLDAS-2 Noah) y relieve (SRTM). El backend las lee por OPeNDAP en la nube
+de Earthdata pidiendo solo el pixel del terreno, y guarda lo consultado en la caché (Azure Files).
+
+1. Crea el token en https://urs.earthdata.nasa.gov → **Generate Token**.
+2. En **Applications → Authorized Apps** aprueba *NASA GESDISC DATA ARCHIVE*, *LP DAAC Data Pool* y
+   *NSIDC_DATAPOOL_OPS*; sin eso el token se rechaza aunque sea válido.
+3. Cárgalo en Azure (no queda en ningún archivo):
+
+   ```bash
+   az containerapp secret set -g rg-orchid -n orchid-api --secrets earthdata-token=<TOKEN>
+   az containerapp update -g rg-orchid -n orchid-api --set-env-vars EARTHDATA_TOKEN=secretref:earthdata-token
+   ```
+
+4. En local, crea `backend/.env` con `EARTHDATA_TOKEN=<TOKEN>` (Git lo ignora).
+
+**El token vence a los 60 días.** Cuando vence, las cuatro fuentes muestran «NASA Earthdata rechazó el token» en lugar
+de datos; genera uno nuevo y repite el paso 3 (después, reinicia la revisión del backend). `setup.sh` conserva las claves
+que ya estén en Azure si no se le pasan de nuevo.
 
 ## Borrar todo
 

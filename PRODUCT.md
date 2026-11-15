@@ -25,7 +25,7 @@ Backend FastAPI (zones, NASA POWER, vulnerability, strategies); frontend Next.js
 ## Capabilities and Constraints
 
 - UI is bilingual English/Spanish.
-- Only real NASA POWER data may be shown. Not yet wired (NDVI via HLS/MODIS, CDL rotation history, SSURGO soils, SMAP, Claude API agent) must not be displayed as if real; show gaps explicitly instead.
+- Only real data from connected sources may be shown: NASA POWER, MODIS NDVI, SMAP, GPM IMERG, NLDAS-2 and SRTM (NASA), SSURGO, CDL and QuickStats (USDA), FAO GAEZ and CoCoRaHS. Anything not connected must not be displayed as if real; show gaps explicitly instead.
 - 13 of the 24 catalogued data sources are US-only (see docs/).
 
 ## Evidence on Hand

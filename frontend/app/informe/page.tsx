@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AboutFit, AboutHarvests, AboutRain, AboutSeason, useAgro } from "../agro";
 import { DownloadIcon } from "../icons";
+import { AboutImerg, AboutNldas, AboutSmap, AboutSrtm, useNasa } from "../nasa";
 import type { Analysis } from "../panels";
 import { API, CROPS, HA_PER_ACRE, HistoryRow, MONTH_NAMES } from "../shared";
 import {
@@ -41,6 +42,7 @@ export default function InformePage() {
   const printed = useRef(false);
   const point = snap?.plot.point ?? null;
   const agro = useAgro(point);
+  const nasa = useNasa(point);
 
   useEffect(() => {
     try {
@@ -63,7 +65,8 @@ export default function InformePage() {
     post("/point/ndvi").then(setNdvi).catch(() => setNdvi({ available: false, series: [], threshold: 0.3, product: "", note: "No pudimos consultar la imagen de satélite ahora." }));
   }, [point]);
 
-  const ready = !!snap && !loadingClimate && local !== null && soil !== null && ndvi !== null;
+  const ready =
+    !!snap && !loadingClimate && local !== null && soil !== null && ndvi !== null && !!nasa.smap && !!nasa.imerg && !!nasa.nldas && !!nasa.srtm;
 
   // Cuando todo cargó: abre los desplegables (para que se impriman) y ofrece guardar en PDF una sola vez.
   useEffect(() => {
@@ -178,6 +181,10 @@ export default function InformePage() {
             <AboutHarvests actual={agro.actual} />
             <AboutFit suit={agro.suit} irrigated={plot.irrigated} />
             <AboutSoil point={point} soil={soil} />
+            <AboutSrtm point={point} srtm={nasa.srtm} />
+            <AboutSmap point={point} smap={nasa.smap} />
+            <AboutImerg point={point} imerg={nasa.imerg} />
+            <AboutNldas point={point} nldas={nasa.nldas} />
             <AboutGreen point={point} ndvi={ndvi} />
           </div>
         </section>

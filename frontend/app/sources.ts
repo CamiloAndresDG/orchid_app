@@ -74,9 +74,18 @@ export function ndviUrl(lat: number, lon: number): string {
   return `https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset?${q}`;
 }
 
-export type SourceKey = "power" | "cdl" | "ssurgo" | "ndvi";
+export type SourceKey = "power" | "cdl" | "ssurgo" | "ndvi" | "smap" | "imerg" | "nldas" | "srtm";
+
+// Fuentes de NASA Earthdata: piden cuenta para descargar, así que se enlaza la ficha oficial de cada producto.
+const EARTHDATA_PAGES = {
+  smap: "https://nsidc.org/data/spl3smp_e/versions/6",
+  imerg: "https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGDL_07/summary",
+  nldas: "https://disc.gsfc.nasa.gov/datasets/NLDAS_NOAH0125_M_2.0/summary",
+  srtm: "https://lpdaac.usgs.gov/products/srtmgl1v003/",
+} as const;
 
 export function sourceUrl(key: SourceKey, lat: number, lon: number): string {
+  if (key === "smap" || key === "imerg" || key === "nldas" || key === "srtm") return EARTHDATA_PAGES[key];
   return key === "cdl" ? cdlUrl(lat, lon) : key === "ssurgo" ? ssurgoMapUrl(lat, lon) : key === "ndvi" ? ndviUrl(lat, lon) : powerUrl(lat, lon);
 }
 
@@ -97,4 +106,8 @@ export const SOURCE_LABEL: Record<SourceKey | "gaez" | "cocorahs", string> = {
   cdl: "CDL (USDA NASS): imagen oficial de la capa 2025 en este punto",
   ssurgo: "SSURGO (USDA NRCS): mapa oficial de unidades de suelo en este punto",
   ndvi: "NDVI MODIS (ORNL DAAC, NASA): consulta oficial del punto con los últimos compuestos",
+  smap: "SMAP (NASA, NSIDC): ficha oficial del producto de humedad del suelo de 9 km",
+  imerg: "GPM IMERG Late (NASA, GES DISC): ficha oficial de la lluvia diaria por satélite",
+  nldas: "NLDAS-2 Noah (NASA, GES DISC): ficha oficial del balance de agua mensual",
+  srtm: "SRTM (NASA, LP DAAC): ficha oficial del modelo de elevación de 30 m",
 };

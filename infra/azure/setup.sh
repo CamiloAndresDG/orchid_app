@@ -53,8 +53,16 @@ ORG_COUNTRY=${ORG_COUNTRY:-CO}
 API_APP=${API_APP:-orchid-api}
 WEB_APP=${WEB_APP:-orchid-web}
 TAG=${TAG:-$(git rev-parse --short HEAD)}
-# Container Apps no acepta secretos vacíos: "-" significa "sin clave del servidor".
-QUICKSTATS_KEY=${QUICKSTATS_KEY:--}
+# Claves del servidor. Si no se pasan y ya están cargadas en Azure, se conservan (nunca se muestran).
+# Container Apps no acepta secretos vacíos: "-" significa "sin clave".
+_keep() {
+  local v
+  v=$(az containerapp secret show -g "$RG" -n "$API_APP" --secret-name "$1" --query value -o tsv 2>/dev/null) || true
+  if [[ -n "$v" ]]; then printf '%s' "$v"; else printf '%s' "-"; fi
+}
+QUICKSTATS_KEY=${QUICKSTATS_KEY:-$(_keep quickstats-key)}
+# Token de NASA Earthdata (SMAP, IMERG, NLDAS y SRTM); vence a los 60 días.
+EARTHDATA_TOKEN=${EARTHDATA_TOKEN:-$(_keep earthdata-token)}
 HERE=$(cd "$(dirname "$0")" && pwd)
 
 echo "==> Grupo de recursos $RG ($LOCATION)"
@@ -122,7 +130,7 @@ SUB=$(az account show --query id -o tsv)
 # Se usa en lugar de "az containerapp create --yaml", que con algunas versiones de la extensión falla con 400.
 put_app() {  # nombre plantilla
   local body="$HERE/.$1.rendered.json"
-  sed -e "s|__LOCATION__|$LOCATION|" -e "s|__ENV_ID__|$ENV_ID|" -e "s|__ACR__|$ACR|g"       -e "s|__ACR_PASSWORD__|$ACR_PASSWORD|" -e "s|__QUICKSTATS_KEY__|$QUICKSTATS_KEY|"       -e "s|__DATABASE_URL__|$DATABASE_URL|" -e "s|__ALLOWED_ORIGINS__|$WEB_URL,http://localhost:3000|"       -e "s|__ASSISTANT_PROVIDER__|$ASSISTANT_PROVIDER|" -e "s|__FOUNDRY_RESOURCE__|$FOUNDRY_RESOURCE|" -e "s|__FOUNDRY_RESOURCE_ID__|${FOUNDRY_RESOURCE:+$FOUNDRY_ID}|" -e "s|__ASSISTANT_MODEL__|$ASSISTANT_MODEL|"       -e "s|__ASSISTANT_FALLBACK_MODEL__|$ASSISTANT_FALLBACK_MODEL|" -e "s|__ASSISTANT_DAILY_LIMIT__|$ASSISTANT_DAILY_LIMIT|"       -e "s|__TAG__|$TAG|" "$HERE/$2" > "$body"
+  sed -e "s|__LOCATION__|$LOCATION|" -e "s|__ENV_ID__|$ENV_ID|" -e "s|__ACR__|$ACR|g"       -e "s|__ACR_PASSWORD__|$ACR_PASSWORD|" -e "s|__QUICKSTATS_KEY__|$QUICKSTATS_KEY|" -e "s|__EARTHDATA_TOKEN__|$EARTHDATA_TOKEN|"       -e "s|__DATABASE_URL__|$DATABASE_URL|" -e "s|__ALLOWED_ORIGINS__|$WEB_URL,http://localhost:3000|"       -e "s|__ASSISTANT_PROVIDER__|$ASSISTANT_PROVIDER|" -e "s|__FOUNDRY_RESOURCE__|$FOUNDRY_RESOURCE|" -e "s|__FOUNDRY_RESOURCE_ID__|${FOUNDRY_RESOURCE:+$FOUNDRY_ID}|" -e "s|__ASSISTANT_MODEL__|$ASSISTANT_MODEL|"       -e "s|__ASSISTANT_FALLBACK_MODEL__|$ASSISTANT_FALLBACK_MODEL|" -e "s|__ASSISTANT_DAILY_LIMIT__|$ASSISTANT_DAILY_LIMIT|"       -e "s|__TAG__|$TAG|" "$HERE/$2" > "$body"
   command -v cygpath >/dev/null && body=$(cygpath -m "$body")
   az rest --method put -o none     --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.App/containerApps/$1?api-version=2024-03-01"     --body "@$body"
   rm -f "$HERE/.$1.rendered.json"

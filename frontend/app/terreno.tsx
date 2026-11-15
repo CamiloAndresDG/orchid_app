@@ -6,6 +6,7 @@ import { CheckIcon, ChevronIcon, DownloadIcon, ExternalIcon, PlusIcon, ShieldIco
 import { Analysis, TabId } from "./panels";
 import { CROPS, ECON_CROPS, EconUS, HA_PER_ACRE, HistoryRow, MONTH_NAMES, hasEcon, toMetric } from "./shared";
 import { PLOT_KEY as STORAGE_KEY } from "./auth";
+import { factMoisture, factRain, factSlope, useNasa } from "./nasa";
 import { notebookChanged } from "./notebook";
 import { SOURCE_LABEL, SourceKey, cdlUrl, ndviUrl, powerUrl, sourceUrl, ssurgoMapUrl } from "./sources";
 
@@ -109,6 +110,7 @@ export function TerrenoPanel({
   const [loaded, setLoaded] = useState(false); // ya se leyó lo guardado: recién entonces se puede escribir
   const [calcKey, setCalcKey] = useState<string | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const nasa = useNasa(point);
 
   useEffect(() => {
     if (!point) return;
@@ -258,6 +260,18 @@ export function TerrenoPanel({
             <dd className="text-ink">
               {data?.zone.id === "custom" ? cap(monthList(data.most_vulnerable_months)) : loadingPoint ? "Consultando el clima…" : "Sin dato todavía"}
             </dd>
+          </div>
+          <div className="flex gap-3">
+            <dt className="w-32 shrink-0 text-ink-soft">Pendiente</dt>
+            <dd className="text-ink">{factSlope(nasa.srtm)}</dd>
+          </div>
+          <div className="flex gap-3">
+            <dt className="w-32 shrink-0 text-ink-soft">Humedad</dt>
+            <dd className="text-ink">{factMoisture(nasa.smap)}</dd>
+          </div>
+          <div className="flex gap-3">
+            <dt className="w-32 shrink-0 text-ink-soft">Lluvia reciente</dt>
+            <dd className="text-ink">{factRain(nasa.imerg)}</dd>
           </div>
         </dl>
 

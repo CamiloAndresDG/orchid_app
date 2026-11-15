@@ -2,12 +2,32 @@
 import os
 from pathlib import Path
 
+
+def _load_dotenv() -> None:
+    """En local lee backend/.env (CLAVE=valor). No pisa variables ya definidas; en Azure vienen de los secretos."""
+    path = Path(__file__).resolve().parent.parent / ".env"
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
+_load_dotenv()
+
 # Carpeta de caché. En Azure se monta un recurso compartido de Azure Files aquí.
 CACHE_DIR = Path(os.environ.get("CACHE_DIR") or Path(__file__).resolve().parent.parent / "cache")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Orígenes que pueden llamar al API, separados por coma.
 ALLOWED_ORIGINS = [o.strip().rstrip("/") for o in os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
+
+# Token de NASA Earthdata (https://urs.earthdata.nasa.gov, vence a los 60 días): SMAP, GPM IMERG, NLDAS y SRTM.
+EARTHDATA_TOKEN = os.environ.get("EARTHDATA_TOKEN", "").strip()
+if len(EARTHDATA_TOKEN) < 20:
+    EARTHDATA_TOKEN = ""  # vacío o marcador ("-") = sin token
 
 # Clave de USDA QuickStats del servidor (opcional). Si existe, el usuario no necesita la suya.
 QUICKSTATS_KEY = os.environ.get("QUICKSTATS_KEY", "").strip()

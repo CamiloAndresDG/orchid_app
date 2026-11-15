@@ -320,8 +320,10 @@ export const SOURCES: Src[] = [
   { topic: "Suelo", name: "SSURGO · USDA", live: true, what: "Tipo de suelo, drenaje y cuánta agua guarda, en EE. UU.", use: "Ajusta el riesgo de sequía o encharcamiento y cuándo conviene una cobertura.", site: "https://websoilsurvey.nrcs.usda.gov/" },
   { topic: "Cultivos de la zona", name: "CDL · USDA", live: true, what: "Qué se sembró en cada parcela de EE. UU. cada año.", use: "Favorece los cultivos que ya tienen mercado y maquinaria cerca de ti.", site: "https://croplandcros.scinet.usda.gov/" },
   { topic: "Precios", name: "QuickStats · USDA", live: true, what: "Precio promedio pagado a los agricultores de cada estado.", use: "En Mis precios, con tu propia clave gratuita. Sin ella, solo usamos los precios que escribas.", site: "https://quickstats.nass.usda.gov/" },
-  { topic: "Humedad medida por satélite", name: "SMAP · NASA", live: false, what: "Humedad de la superficie medida desde el espacio.", use: "Todavía no la usamos: pide una cuenta de NASA Earthdata.", site: "https://nsidc.org/data/smap" },
-  { topic: "Lluvia por satélite", name: "IMERG · NASA", live: false, what: "Lluvia estimada cada media hora.", use: "Todavía no la usamos: pide una cuenta de NASA Earthdata.", site: "https://gpm.nasa.gov/data/imerg" },
+  { topic: "Humedad medida por satélite", name: "SMAP · NASA", live: true, what: "Humedad de los primeros centímetros del suelo, medida desde el espacio cada 2 o 3 días.", use: "Cuánta agua tiene hoy la superficie de tu suelo.", site: "https://nsidc.org/data/spl3smp_e/versions/6" },
+  { topic: "Lluvia por satélite", name: "GPM IMERG · NASA", live: true, what: "Lluvia diaria estimada por una constelación de satélites.", use: "Cuánto llovió en tu terreno en los últimos 30 días.", site: "https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGDL_07/summary" },
+  { topic: "Agua en el suelo", name: "NLDAS-2 · NASA", live: true, what: "Modelo mensual del agua que guarda el suelo, la que se evapora y la que escurre, en EE. UU.", use: "Si tu suelo tiene más o menos agua que lo normal; avisa a los cultivos que piden mucha agua.", site: "https://disc.gsfc.nasa.gov/datasets/NLDAS_NOAH0125_M_2.0/summary" },
+  { topic: "Relieve", name: "SRTM · NASA", live: true, what: "Altura del terreno cada 30 m, medida por radar desde el transbordador espacial.", use: "La pendiente de tu terreno y su riesgo de erosión; favorece las coberturas en terrenos inclinados.", site: "https://lpdaac.usgs.gov/products/srtmgl1v003/" },
 ];
 
 export function FuentesPanel({ data }: { data: Analysis | null }) {
