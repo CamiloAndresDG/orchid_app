@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 
 from .accounts import router as accounts_router
+from .assistant import router as assistant_router
 from .analysis import CROP_MONTHS, WEIGHTS, bare_soil_months, vulnerability_by_month
 from .climate import RESOLUTIONS, aggregate
 from .config import ALLOWED_ORIGINS, QUICKSTATS_KEY
@@ -39,6 +40,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(accounts_router)
+app.include_router(assistant_router)
 
 
 @app.get("/health")

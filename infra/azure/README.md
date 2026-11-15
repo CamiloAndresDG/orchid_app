@@ -107,6 +107,33 @@ Luego reinicia la revisión del backend, igual que con la clave de QuickStats.
 Pendiente para producción: migraciones con Alembic en lugar de `create_all`, límite de intentos de inicio de sesión,
 recuperación de contraseña por correo y, si se quiere inicio de sesión con Microsoft o Google, Microsoft Entra External ID.
 
+## Guía de IA (Claude en Microsoft Foundry)
+
+La Guía responde preguntas del agricultor por texto o voz usando Claude desplegado en **Microsoft Foundry**
+(recurso `orchid-ai-…` en `rg-orchid`). El backend se autentica con su **identidad administrada** (rol
+*Cognitive Services User* sobre el recurso): no hay claves que guardar. Solo pueden usarla usuarios con cuenta,
+con un límite diario (`ASSISTANT_DAILY_LIMIT`, 30 por defecto).
+
+`setup.sh` crea el recurso, despliega `claude-opus-5-5` (principal) y `claude-opus-4-8` (respaldo si el principal
+rechaza una petición) y da el permiso. Desplegar modelos de Anthropic pide datos de la organización (`ORG_NAME`,
+`ORG_INDUSTRY`, `ORG_COUNTRY`), que se envían a Anthropic al aceptar sus términos en Azure Marketplace.
+
+**Cuota.** Las suscripciones nuevas tienen 0 tokens por minuto para los modelos de Claude. Hasta que Microsoft la
+apruebe, el despliegue falla y la Guía se muestra como "no activada" (el resto de Orchid funciona igual). Para pedirla:
+
+1. Entra a [ai.azure.com](https://ai.azure.com), abre el recurso `orchid-ai-…` y ve a **Management center → Quota**
+   (o en el portal de Azure: el recurso → **Quotas**).
+2. Busca *Claude Opus 5.5* (Global Standard, `eastus2`) y pide un aumento de *Tokens per minute*; haz lo mismo con
+   *Claude Opus 4.8* si quieres el respaldo. Unos 100 000 TPM bastan para empezar.
+3. Cuando la aprueben, vuelve a correr `bash infra/azure/setup.sh`: despliega los modelos y activa la Guía.
+
+Variables del backend: `ASSISTANT_PROVIDER` (`foundry` o `anthropic`), `FOUNDRY_RESOURCE`, `ASSISTANT_MODEL`
+(nombre del despliegue), `ASSISTANT_FALLBACK_MODEL` y `ASSISTANT_DAILY_LIMIT`.
+
+**En local:** con `az login` y el rol *Cognitive Services User* sobre el recurso (ser Owner no basta para llamar al
+modelo), exporta `FOUNDRY_RESOURCE=orchid-ai-…` y arranca el backend. Alternativa sin Azure: `ASSISTANT_PROVIDER=anthropic`
+con `ANTHROPIC_API_KEY` del API directo de Claude.
+
 ## Borrar todo
 
 ```bash
