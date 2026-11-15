@@ -24,7 +24,8 @@ from .accounts import current_user
 from .assistant_prompt import SYSTEM_PROMPT
 from .assistant_tools import STATUS, TOOLS, ToolContext, run_tool
 from .config import (ASSISTANT_DAILY_LIMIT, ASSISTANT_FALLBACK_MODEL, ASSISTANT_MODEL, ASSISTANT_PROVIDER,
-                     AZURE_OPENAI_API_VERSION, FOUNDRY_RESOURCE, FOUNDRY_TOKEN_SCOPE, assistant_enabled)
+                     AZURE_OPENAI_API_VERSION, FOUNDRY_RESOURCE, FOUNDRY_RESOURCE_ID, FOUNDRY_TOKEN_SCOPE,
+                     assistant_enabled)
 from .db import AssistantUsage, User, get_db
 
 log = logging.getLogger("orchid.assistant")
@@ -42,11 +43,29 @@ def _azure_token_provider():
 
 
 @lru_cache(maxsize=1)
+def _foundry_key() -> str:
+    """Clave del recurso de Foundry leída con la identidad del backend (rol Contributor) vía la API de Azure.
+    Se usa cuando la suscripción no permite asignar el rol de datos. Vive solo en memoria: no se guarda ni se registra."""
+    import httpx
+    from azure.identity import DefaultAzureCredential
+
+    token = DefaultAzureCredential().get_token("https://management.azure.com/.default").token
+    r = httpx.post(f"https://management.azure.com{FOUNDRY_RESOURCE_ID}/listKeys?api-version=2023-05-01",
+                   headers={"Authorization": f"Bearer {token}"}, timeout=30)
+    r.raise_for_status()
+    return r.json()["key1"]
+
+
+def _foundry_auth() -> dict:
+    return {"api_key": _foundry_key()} if FOUNDRY_RESOURCE_ID else {"azure_ad_token_provider": _azure_token_provider()}
+
+
+@lru_cache(maxsize=1)
 def _client() -> anthropic.Anthropic:
     middleware = [BetaRefusalFallbackMiddleware([{"model": ASSISTANT_FALLBACK_MODEL}])] if ASSISTANT_FALLBACK_MODEL else None
     if ASSISTANT_PROVIDER == "foundry":
-        return anthropic.AnthropicFoundry(resource=FOUNDRY_RESOURCE, azure_ad_token_provider=_azure_token_provider(),
-                                          middleware=middleware, timeout=300)
+        return anthropic.AnthropicFoundry(resource=FOUNDRY_RESOURCE, middleware=middleware, timeout=300,
+                                          **_foundry_auth())
     return anthropic.Anthropic(middleware=middleware, timeout=300)
 
 
@@ -55,8 +74,7 @@ def _openai_client():
     from openai import AzureOpenAI
 
     return AzureOpenAI(azure_endpoint=f"https://{FOUNDRY_RESOURCE}.cognitiveservices.azure.com/",
-                       azure_ad_token_provider=_azure_token_provider(), api_version=AZURE_OPENAI_API_VERSION,
-                       timeout=300, max_retries=2)
+                       api_version=AZURE_OPENAI_API_VERSION, timeout=300, max_retries=2, **_foundry_auth())
 
 
 # ---------- Esquemas ----------
@@ -307,6 +325,11 @@ def _stream_openai(turns: list[Turn], ctx: ToolContext, remaining: int):
         else:
             log.warning("Petición rechazada por Azure OpenAI: %s", e)
             yield _sse({"type": "error", "text": "El servicio de IA respondió con un error. Intenta de nuevo más tarde."})
+    except openai.AuthenticationError:
+        # Clave rotada o permiso retirado: la próxima pregunta vuelve a leer la clave.
+        _foundry_key.cache_clear()
+        _openai_client.cache_clear()
+        yield _sse({"type": "error", "text": "El servicio de IA no aceptó la conexión. Intenta de nuevo en un momento."})
     except openai.APIStatusError as e:
         log.warning("Error de Azure OpenAI: %s", e)
         yield _sse({"type": "error", "text": "El servicio de IA respondió con un error. Intenta de nuevo más tarde."})
