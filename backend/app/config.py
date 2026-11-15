@@ -28,21 +28,25 @@ elif DATABASE_URL.startswith(("postgres://", "postgresql://")):
 # Días que dura una sesión iniciada.
 SESSION_DAYS = int(os.environ.get("SESSION_DAYS", "30"))
 
-# ---------- Guía de IA (Claude) ----------
-# "foundry": Claude desplegado en Microsoft Foundry (Azure), autenticado con identidad administrada / az login.
+# ---------- Guía de IA ----------
+# "azure_openai": modelo de OpenAI desplegado en Microsoft Foundry (Azure), p. ej. gpt-5-mini. Predeterminado.
+# "foundry": Claude desplegado en Microsoft Foundry (requiere cuota de Claude en la suscripción).
 # "anthropic": API directo de Claude (lee ANTHROPIC_API_KEY o un perfil de `ant auth login`).
-ASSISTANT_PROVIDER = os.environ.get("ASSISTANT_PROVIDER", "foundry").strip().lower()
+# En Azure todos se autentican con la identidad administrada del backend; en local, con `az login`.
+ASSISTANT_PROVIDER = os.environ.get("ASSISTANT_PROVIDER", "azure_openai").strip().lower()
 FOUNDRY_RESOURCE = os.environ.get("FOUNDRY_RESOURCE", "").strip()  # p. ej. orchid-ai-f0dbd8
 FOUNDRY_TOKEN_SCOPE = os.environ.get("FOUNDRY_TOKEN_SCOPE", "https://cognitiveservices.azure.com/.default")
-# En Foundry el modelo es el nombre del despliegue.
-ASSISTANT_MODEL = os.environ.get("ASSISTANT_MODEL", "claude-opus-5-5").strip()
-# Modelo de respaldo si el principal rechaza una petición (middleware del SDK). Vacío = sin respaldo.
+AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2025-04-01-preview")
+# Nombre del despliegue (Foundry) o del modelo (API directo).
+ASSISTANT_MODEL = os.environ.get("ASSISTANT_MODEL", "").strip() or (
+    "gpt-5-mini" if ASSISTANT_PROVIDER == "azure_openai" else "claude-opus-5-5")
+# Solo Claude: modelo de respaldo si el principal rechaza una petición (middleware del SDK). Vacío = sin respaldo.
 ASSISTANT_FALLBACK_MODEL = os.environ.get("ASSISTANT_FALLBACK_MODEL", "claude-opus-4-8").strip()
 ASSISTANT_DAILY_LIMIT = int(os.environ.get("ASSISTANT_DAILY_LIMIT", "30"))
 
 
 def assistant_enabled() -> bool:
-    if ASSISTANT_PROVIDER == "foundry":
+    if ASSISTANT_PROVIDER in ("azure_openai", "foundry"):
         return bool(FOUNDRY_RESOURCE)
     if ASSISTANT_PROVIDER == "anthropic":
         return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get("ANTHROPIC_PROFILE"))
