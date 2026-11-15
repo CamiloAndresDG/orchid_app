@@ -11,6 +11,7 @@ from datetime import date
 from pydantic import BaseModel, Field, ValidationError
 
 from .analysis import vulnerability_by_month
+from . import earthdata
 from .crops import CATALOG, local_crops
 from .etl.gaez import growing_at, suitability_at
 from .etl.stations import stations_near
@@ -49,9 +50,21 @@ SOURCES: dict[str, dict] = {
                      "1981-2010.", "coverage": "Global, unos 9 km"},
     "cocorahs": {"name": "CoCoRaHS (vía NOAA GHCN-Daily)", "url": "https://www.cocorahs.org/",
                  "what": "Lluvia medida por voluntarios en pluviómetros cerca del terreno.", "coverage": "EE. UU."},
+    "smap": {"name": "NASA SMAP (humedad del suelo, NSIDC)", "url": earthdata.LINKS["smap"],
+             "what": "Humedad de los primeros ~5 cm del suelo medida por satélite, cada 2 o 3 días.", "coverage": "Global, celdas de 9 km"},
+    "imerg": {"name": "NASA GPM IMERG (lluvia por satélite)", "url": earthdata.LINKS["imerg"],
+              "what": "Lluvia diaria estimada por la constelación de satélites GPM; la versión «Late» sale con 1 o 2 días de retraso.",
+              "coverage": "Global entre 60° N y 60° S, celdas de ~10 km"},
+    "nldas": {"name": "NASA NLDAS-2 (balance de agua)", "url": earthdata.LINKS["nldas"],
+              "what": "Modelo mensual de cuánta agua guarda el suelo hasta 2 m, cuánta se evapora y cuánta escurre.",
+              "coverage": "48 estados contiguos de EE. UU., celdas de ~12 km"},
+    "srtm": {"name": "NASA SRTM (relieve)", "url": earthdata.LINKS["srtm"],
+             "what": "Altura del terreno medida por radar desde el transbordador espacial en el año 2000; de ahí sale la pendiente.",
+             "coverage": "Global entre 60° N y 56° S, píxeles de ~30 m"},
     "orchid": {"name": "Motor de rotaciones de Orchid", "url": None,
                "what": "Compara opciones de cultivo con el clima (NASA POWER), el suelo (SSURGO), la vegetación "
-                       "(MODIS), los cultivos de la zona (CDL) y tu historial.", "coverage": "EE. UU."},
+                       "(MODIS), el relieve (SRTM), el agua del suelo (NLDAS y SMAP), los cultivos de la zona (CDL) y tu "
+                       "historial.", "coverage": "EE. UU."},
 }
 
 
@@ -149,6 +162,21 @@ TOOLS = [
           "Lluvia medida por pluviómetros CoCoRaHS cercanos (hasta 40 km) en el último año completo, comparada "
           "con NASA POWER. Úsala cuando pregunte cuánto llovió de verdad o si el dato satelital es confiable.",
           POINT_SCHEMA),
+    _tool("humedad_suelo_satelite",
+          "Humedad de la superficie del suelo medida por el satélite SMAP de la NASA en las últimas ~2 semanas (fecha y "
+          "porcentaje de agua). Úsala cuando pregunte qué tan húmedo o seco está su suelo ahora, o si puede entrar con la "
+          "maquinaria.", GlobalPointArgs.model_json_schema() | {"additionalProperties": False}),
+    _tool("lluvia_reciente_satelite",
+          "Lluvia diaria de los últimos 30 días estimada por satélite (NASA GPM IMERG): total, últimos 7 días y días con "
+          "lluvia. Úsala cuando pregunte cuánto ha llovido últimamente.", GlobalPointArgs.model_json_schema() | {"additionalProperties": False}),
+    _tool("balance_agua_suelo",
+          "Balance de agua mensual del modelo NLDAS de la NASA: agua guardada en el suelo hasta 1 m frente a lo normal, "
+          "evapotranspiración, escorrentía y lluvia de los últimos 12 meses. Solo EE. UU. contiguo. Úsala para preguntas de "
+          "sequía, reserva de agua del suelo o si el año viene más seco o más húmedo que lo normal.", POINT_SCHEMA),
+    _tool("relieve_terreno",
+          "Altura, pendiente y desnivel del terreno con el modelo SRTM de la NASA (~30 m). Úsala para preguntas sobre "
+          "pendiente, erosión, curvas de nivel, encharcamiento por zonas bajas o altura del campo.",
+          GlobalPointArgs.model_json_schema() | {"additionalProperties": False}),
     _tool("opciones_de_rotacion",
           "Compara opciones para el próximo cultivo con el motor de Orchid (clima, suelo, vegetación, cultivos de "
           "la zona, historial y precios). Úsala para \"¿qué siembro después?\" o para comparar rotaciones. Con "
@@ -175,6 +203,10 @@ STATUS = {
     "idoneidad_cultivos": "Consultando la idoneidad de cultivos (FAO GAEZ)",
     "periodo_crecimiento": "Consultando la temporada de cultivo (FAO GAEZ)",
     "lluvia_estaciones": "Consultando pluviómetros cercanos (CoCoRaHS)",
+    "humedad_suelo_satelite": "Consultando la humedad del suelo (NASA SMAP)",
+    "lluvia_reciente_satelite": "Consultando la lluvia por satélite (NASA IMERG)",
+    "balance_agua_suelo": "Consultando el agua del suelo (NASA NLDAS)",
+    "relieve_terreno": "Consultando el relieve (NASA SRTM)",
     "opciones_de_rotacion": "Comparando opciones de rotación",
     "que_es_la_fuente": "Buscando la descripción de la fuente",
 }
@@ -296,6 +328,34 @@ def _lluvia(a: PointArgs, _ctx) -> tuple[dict, str]:
     return {k: v for k, v in s.items() if k not in ("lat", "lon")}, "cocorahs"
 
 
+def _sin_ruido(d: dict, *drop: str) -> dict:
+    return {k: v for k, v in d.items() if k not in ("official_url", "source", *drop)}
+
+
+def _smap(a: GlobalPointArgs, _ctx) -> tuple[dict, str]:
+    r = earthdata.smap_at(a.lat, a.lon)
+    r["series"] = [x for x in r.get("series", []) if x["value"] is not None]
+    return _sin_ruido(r), "smap"
+
+
+def _imerg(a: GlobalPointArgs, _ctx) -> tuple[dict, str]:
+    r = earthdata.imerg_at(a.lat, a.lon)
+    if r.get("series"):
+        r["series"] = [x for x in r["series"] if x["mm"]]  # solo los días con lluvia
+        r["unidades"] = "mm por día; total_in en pulgadas"
+    return _sin_ruido(r), "imerg"
+
+
+def _nldas(a: PointArgs, _ctx) -> tuple[dict, str]:
+    r = earthdata.nldas_at(a.lat, a.lon)
+    r["unidades"] = "milímetros de agua (kg/m²) por mes; soil_0_100_mm es el agua guardada al final del mes"
+    return _sin_ruido(r), "nldas"
+
+
+def _srtm(a: GlobalPointArgs, _ctx) -> tuple[dict, str]:
+    return _sin_ruido(earthdata.srtm_at(a.lat, a.lon), "tile"), "srtm"
+
+
 def _rotacion(a: RotationArgs, ctx: ToolContext) -> tuple[dict, str]:
     plot = ctx.plot if a.usar_mi_historial else None
     history = (plot or {}).get("history", [])
@@ -305,7 +365,9 @@ def _rotacion(a: RotationArgs, ctx: ToolContext) -> tuple[dict, str]:
     prices = {k: _to_metric(k, v) for k, v in ((plot or {}).get("econ") or {}).items()}
     months = vulnerability_by_month(monthly_climatology(round(a.lat, 2), round(a.lon, 2)))
     out = build_options(months, history, irrigated, prices, local_crops(a.lat, a.lon), area_ha,
-                        soil=soil_at(a.lat, a.lon), ndvi=ndvi_at(a.lat, a.lon), today=date.today())
+                        soil=soil_at(a.lat, a.lon), ndvi=ndvi_at(a.lat, a.lon), today=date.today(),
+                        terrain=earthdata.srtm_at(a.lat, a.lon), water=earthdata.nldas_at(a.lat, a.lon),
+                        moisture=earthdata.smap_at(a.lat, a.lon))
     out["supuestos"] = {"usa_historial_guardado": bool(plot), "area_acres": round(area_ha / HA_PER_ACRE, 1),
                         "riega": irrigated, "nota_area": None if acres else "Sin área guardada: se usaron 25 acres para los totales."}
     return out, "orchid"
@@ -328,6 +390,10 @@ EXECUTORS = {
     "idoneidad_cultivos": (GlobalPointArgs, _idoneidad),
     "periodo_crecimiento": (GlobalPointArgs, _crecimiento),
     "lluvia_estaciones": (PointArgs, _lluvia),
+    "humedad_suelo_satelite": (GlobalPointArgs, _smap),
+    "lluvia_reciente_satelite": (GlobalPointArgs, _imerg),
+    "balance_agua_suelo": (PointArgs, _nldas),
+    "relieve_terreno": (GlobalPointArgs, _srtm),
     "opciones_de_rotacion": (RotationArgs, _rotacion),
     "que_es_la_fuente": (SourceArgs, _fuente),
 }

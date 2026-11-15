@@ -28,6 +28,10 @@
         {
           "name": "database-url",
           "value": "__DATABASE_URL__"
+        },
+        {
+          "name": "earthdata-token",
+          "value": "__EARTHDATA_TOKEN__"
         }
       ]
     },
@@ -80,6 +84,10 @@
             {
               "name": "ASSISTANT_DAILY_LIMIT",
               "value": "__ASSISTANT_DAILY_LIMIT__"
+            },
+            {
+              "name": "EARTHDATA_TOKEN",
+              "secretRef": "earthdata-token"
             }
           ],
           "probes": [

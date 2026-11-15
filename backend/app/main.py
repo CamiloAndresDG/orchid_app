@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from typing import Literal
 
@@ -14,6 +15,7 @@ from .crops import local_crops
 from . import datasets
 from .datasets import DatasetError
 from .db import init_db
+from . import earthdata
 from .etl.gaez import actual_at, growing_at, suitability_at
 from .etl.stations import stations_near
 from .nasa_power import monthly_climatology
@@ -141,16 +143,30 @@ def point_analysis(p: Point):
 @app.post("/recommend")
 def recommend(req: RecommendRequest):
     months = _climate(req)
-    local = local_crops(req.lat, req.lon)
+    la, lo = req.lat, req.lon
+    # Todas las fuentes en paralelo: cada una tiene su caché y devuelve available=False si falla.
+    with ThreadPoolExecutor(max_workers=7) as ex:
+        jobs = {
+            "local": ex.submit(local_crops, la, lo),
+            "soil": ex.submit(soil_at, la, lo),
+            "ndvi": ex.submit(ndvi_at, la, lo),
+            "terrain": ex.submit(earthdata.srtm_at, la, lo),
+            "water": ex.submit(earthdata.nldas_at, la, lo),
+            "moisture": ex.submit(earthdata.smap_at, la, lo),
+        }
+        got = {k: f.result() for k, f in jobs.items()}
     return build_options(
         months,
         [h.model_dump() for h in req.history],
         req.irrigated,
         {k: v.model_dump() for k, v in req.prices.items()},
-        local,
+        got["local"],
         req.area_ha,
-        soil=soil_at(req.lat, req.lon),
-        ndvi=ndvi_at(req.lat, req.lon),
+        soil=got["soil"],
+        ndvi=got["ndvi"],
+        terrain=got["terrain"],
+        water=got["water"],
+        moisture=got["moisture"],
     )
 
 
@@ -189,6 +205,39 @@ def point_soil(p: Point):
 def point_ndvi(p: Point):
     """NDVI real (MODIS MOD13Q1) del punto, ultimos ~14 meses."""
     return ndvi_at(p.lat, p.lon)
+
+
+# ---------- NASA Earthdata (requiere EARTHDATA_TOKEN) ----------
+
+
+@app.get("/earthdata/status")
+def earthdata_status():
+    """Indica si el servidor tiene token de NASA Earthdata (no lo valida: cada fuente avisa si lo rechazan)."""
+    return earthdata.status()
+
+
+@app.post("/point/smap")
+def point_smap(p: Point):
+    """Humedad de la superficie del suelo medida por SMAP (NASA), últimas ~2 semanas. Global."""
+    return earthdata.smap_at(p.lat, p.lon)
+
+
+@app.post("/point/imerg")
+def point_imerg(p: Point):
+    """Lluvia diaria por satélite (GPM IMERG Late, NASA), últimos 30 días. Global entre 60° N y 60° S."""
+    return earthdata.imerg_at(p.lat, p.lon)
+
+
+@app.post("/point/nldas")
+def point_nldas(p: Point):
+    """Balance de agua mensual (NLDAS-2 Noah, NASA): humedad del suelo, evapotranspiración, escorrentía. EE. UU. contiguo."""
+    return earthdata.nldas_at(p.lat, p.lon)
+
+
+@app.post("/point/srtm")
+def point_srtm(p: Point):
+    """Altura, pendiente y desnivel del terreno (SRTM, NASA, ~30 m). Global entre 60° N y 56° S."""
+    return earthdata.srtm_at(p.lat, p.lon)
 
 
 class PriceRequest(Point):

@@ -50,7 +50,8 @@ def _best_start(crop: dict, months_by_num: dict, today: date) -> int:
 
 
 def build_options(analysis_months: list[dict], history: list[dict], irrigated: bool, prices: dict,
-                  local: dict, area_ha: float, today: date | None = None, soil: dict | None = None, ndvi: dict | None = None) -> dict:
+                  local: dict, area_ha: float, today: date | None = None, soil: dict | None = None, ndvi: dict | None = None,
+                  terrain: dict | None = None, water: dict | None = None, moisture: dict | None = None) -> dict:
     today = today or date.today()
     months = {m["month"]: m for m in analysis_months}
     history = sorted(history, key=lambda h: (h["harvest_year"], h["harvest_month"]))
@@ -77,6 +78,9 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
 
     # Suelo real (SSURGO): componente dominante.
     sc = soil["components"][0] if soil and soil.get("available") and soil.get("components") else None
+    # Fuentes de NASA Earthdata: pendiente (SRTM) y agua guardada en el suelo frente a lo normal (NLDAS).
+    slope = terrain["slope_pct"] if terrain and terrain.get("available") else None
+    soil_anom = water.get("soil_anomaly_pct") if water and water.get("available") else None
     awc = sc["awc"] if sc else None
     drainage = (sc["drainage"] or "") if sc else ""
     sandy = bool(sc and sc["sand"] is not None and sc["sand"] >= 70)
@@ -154,6 +158,22 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
                 score -= 10
                 risks.append("Tu suelo ya tiene cultivo casi todo el año; la cobertura aporta menos.")
 
+        # Pendiente real (SRTM): en terrenos inclinados el suelo desnudo se lava con la lluvia.
+        if slope is not None:
+            slope_ev = {"text": f"Pendiente promedio de {slope:.1f}% alrededor de tu punto (relieve SRTM de la NASA)", "kind": "real", "source": "srtm"}
+            if crop["kind"] == "cover" and slope >= 5:
+                score += 8
+                why.append(f"Tu terreno tiene pendiente ({slope:.1f}%): la cobertura frena la erosión cuando llueve fuerte.")
+                evidence.append(slope_ev)
+            elif crop["kind"] == "cash" and slope >= 10:
+                risks.append(f"Con {slope:.1f}% de pendiente, el suelo desnudo entre cosecha y siembra se erosiona: deja rastrojo o una cobertura.")
+                evidence.append(slope_ev)
+
+        # Agua guardada en el suelo hoy (NLDAS): si está muy por debajo de lo normal, los cultivos sedientos arrancan en desventaja.
+        if soil_anom is not None and soil_anom <= -20 and crop["kind"] == "cash" and crop["water"] == "high" and not irrigated:
+            risks.append(f"Hoy tu suelo guarda {abs(soil_anom)}% menos agua que lo normal para esta época: arrancaría con poca reserva.")
+            evidence.append({"text": f"Humedad del suelo hasta 1 m en {water['latest_month']}: {abs(soil_anom)}% por debajo de su promedio de 10 años (modelo NLDAS de la NASA)", "kind": "real", "source": "nldas"})
+
         # Cultivos de la zona (CDL): proxy de mercado y maquinaria.
         if local.get("available"):
             share = local_share.get(key, 0.0)
@@ -223,7 +243,7 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
         "bare_soil_months": bare,
         "bare_source": bare_source,
         "critical_months": crit,
-        "field_notes": _field_notes(sc, drainage, awc, bare, bare_source),
+        "field_notes": _field_notes(sc, drainage, awc, bare, bare_source, terrain, water, moisture),
         "baseline": base,
         "rotations": rotations,
         "options": [r["sell"] for r in rotations],
@@ -274,7 +294,7 @@ def _behind(o: dict, best: dict) -> str | None:
     return f"Queda un poco detrás de {_the(best)}."
 
 
-def _field_notes(sc, drainage, awc, bare, bare_source) -> list[dict]:
+def _field_notes(sc, drainage, awc, bare, bare_source, terrain=None, water_bal=None, moisture=None) -> list[dict]:
     """Hechos de tu terreno que valen para todas las opciones: se dicen una sola vez."""
     notes = []
     if sc:
@@ -285,8 +305,36 @@ def _field_notes(sc, drainage, awc, bare, bare_source) -> list[dict]:
         if "poorly" in drainage.lower():
             notes.append({"text": "Como se encharca, siembra cuando el suelo esté firme y evita meter maquinaria con el campo mojado", "kind": "calc"})
     if bare and bare_source == "ndvi":
-        notes.append({"text": f"El satélite vio tu campo con poca vegetación en {len(bare)} meses del último año", "kind": "real", "source": "ndvi"})
+        notes.append({"text": f"El satélite vio tu campo con poca vegetación en {len(bare)} {'mes' if len(bare) == 1 else 'meses'} del último año", "kind": "real", "source": "ndvi"})
+    if terrain and terrain.get("available"):
+        notes.append({"text": f"Tu terreno es {terrain['slope_word']} ({terrain['slope_pct']:.1f}% de pendiente) y está a {terrain['elevation_ft']} pies "
+                              f"({terrain['elevation_m']} m) sobre el nivel del mar", "kind": "real", "source": "srtm"})
+        if terrain["slope_pct"] >= 5:
+            notes.append({"text": "Con esa pendiente, siembra siguiendo las curvas de nivel y no dejes el suelo desnudo en invierno", "kind": "calc"})
+    if moisture and moisture.get("available") and moisture.get("latest"):
+        m = moisture["latest"]
+        notes.append({"text": f"El satélite midió la superficie de tu suelo {m['word']} ({m['percent']}% de agua) el {_date_es(m['date'])}",
+                      "kind": "real", "source": "smap"})
+    if water_bal and water_bal.get("available") and water_bal.get("soil_anomaly_pct") is not None:
+        a = water_bal["soil_anomaly_pct"]
+        how = "más" if a > 0 else "menos"
+        if abs(a) >= 10:
+            notes.append({"text": f"En {_month_es(water_bal['latest_month'])} tu suelo guardaba {abs(a)}% {how} agua que lo normal hasta 1 metro de profundidad",
+                          "kind": "real", "source": "nldas"})
+        else:
+            notes.append({"text": f"En {_month_es(water_bal['latest_month'])} tu suelo guardaba una cantidad de agua normal hasta 1 metro de profundidad",
+                          "kind": "real", "source": "nldas"})
     return notes
+
+
+def _date_es(iso: str) -> str:
+    y, m, d = (int(x) for x in iso.split("-"))
+    return f"{d} de {MONTHS_ES[m - 1]}"
+
+
+def _month_es(ym: str) -> str:
+    y, m = ym.split("-")
+    return f"{MONTHS_ES[int(m) - 1]} de {y}"
 
 
 DRAIN_ES = {
