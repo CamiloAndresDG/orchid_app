@@ -21,8 +21,7 @@ import httpx
 from .config import RAW, DB, guardar
 
 GAEZ = "https://gaez-services.fao.org/server/rest/services"
-CACHE_DIR = Path(__file__).resolve().parents[2] / "cache"
-CACHE_DIR.mkdir(exist_ok=True)
+from ..config import CACHE_DIR  # noqa: E402  (caché compartida; en Azure es Azure Files)
 
 SERV_T2 = "res01"
 WHERE_T2 = (

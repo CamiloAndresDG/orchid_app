@@ -1,11 +1,9 @@
 """Suelo real por punto desde SSURGO via Soil Data Access (USDA NRCS). Solo EE. UU., sin cuenta."""
 import json
-from pathlib import Path
 
 import httpx
 
-CACHE_DIR = Path(__file__).resolve().parent.parent / "cache"
-CACHE_DIR.mkdir(exist_ok=True)
+from .config import CACHE_DIR
 SDA_URL = "https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest"
 SDA_QUERY_PAGE = "https://sdmdataaccess.sc.egov.usda.gov/Query.aspx"
 

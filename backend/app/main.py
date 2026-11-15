@@ -1,14 +1,18 @@
+from contextlib import asynccontextmanager
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 
+from .accounts import router as accounts_router
 from .analysis import CROP_MONTHS, WEIGHTS, bare_soil_months, vulnerability_by_month
 from .climate import RESOLUTIONS, aggregate
+from .config import ALLOWED_ORIGINS, QUICKSTATS_KEY
 from .crops import local_crops
 from . import datasets
 from .datasets import DatasetError
+from .db import init_db
 from .etl.gaez import actual_at, growing_at, suitability_at
 from .etl.stations import stations_near
 from .nasa_power import monthly_climatology
@@ -19,13 +23,22 @@ from .soil import soil_at
 from .rotations import strategies_for
 from .zones import ZONES, get_zone
 
-app = FastAPI(title="Field Shift API")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="Field Shift API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(accounts_router)
 
 
 @app.get("/health")
@@ -177,14 +190,23 @@ def point_ndvi(p: Point):
 
 
 class PriceRequest(Point):
-    api_key: str = Field(min_length=8, max_length=80)
+    api_key: str | None = Field(default=None, max_length=80)
+
+
+@app.get("/prices/status")
+def prices_status():
+    """Indica si el servidor tiene su propia clave de QuickStats (entonces el usuario no necesita la suya)."""
+    return {"server_key": bool(QUICKSTATS_KEY)}
 
 
 @app.post("/prices/reference")
 def prices_reference(req: PriceRequest):
-    """Precios de referencia por estado (USDA QuickStats) con la clave gratuita del usuario. La clave no se guarda."""
+    """Precios de referencia por estado (USDA QuickStats). Usa la clave del usuario o, si no trae, la del servidor. No se guarda."""
+    key = (req.api_key or "").strip() or QUICKSTATS_KEY
+    if len(key) < 8:
+        raise HTTPException(400, "Falta la clave del USDA QuickStats.")
     try:
-        return reference_prices(req.lat, req.lon, req.api_key)
+        return reference_prices(req.lat, req.lon, key)
     except PriceError as e:
         raise HTTPException(e.status, e.msg)
 

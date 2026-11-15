@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import * as maplibregl from "maplibre-gl";
-import { endSession, useSession } from "../auth";
+import { ECON_KEY, PLOT_KEY, endSession, useSession } from "../auth";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { AlertIcon, MoonIcon, PinIcon, SunIcon } from "../icons";
 import { Analysis, ClimaPanel, EstrategiasPanel, FuentesPanel, TabId, VulnerabilidadPanel, Zone } from "../panels";
+import { flushNotebook, notebookChanged, pullNotebook } from "../notebook";
 import { PreciosPanel } from "../precios";
 import { EconUS, HistoryRow } from "../shared";
 import { LocalCrops, Point, TerrenoPanel } from "../terreno";
@@ -15,8 +16,6 @@ import { LocalCrops, Point, TerrenoPanel } from "../terreno";
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const PLOT_KEY = "fieldshift.plot.v1";
-const ECON_KEY = "fieldshift.econ.us.v1";
 
 // Imagen satelital con caminos y nombres del USGS (dominio publico, EE. UU.).
 const MAP_STYLE: maplibregl.StyleSpecification = {
@@ -61,21 +60,44 @@ function pinElement(): HTMLElement {
 }
 
 // Solo entran personas con sesión; si no, van al inicio de sesión.
+// Con cuenta, primero se trae el cuaderno del servidor; el modo visitante usa solo este navegador.
 export default function MapaPage() {
   const router = useRouter();
   const session = useSession();
+  const token = session?.token;
+  const [pulled, setPulled] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
   useEffect(() => {
     if (session === null) router.replace("/login");
   }, [session, router]);
-  if (!session) {
+  useEffect(() => {
+    if (!token || pulled === token) return;
+    let live = true;
+    pullNotebook(token).then((r) => {
+      if (!live) return;
+      if (r === "unauthorized") return endSession(); // sesión vencida: vuelve al inicio de sesión
+      setOffline(r === "offline");
+      setPulled(token);
+    });
+    return () => {
+      live = false;
+    };
+  }, [token, pulled]);
+  if (!session || (token && pulled !== token)) {
     return <div className="grid h-screen place-items-center bg-paper text-ink-soft">Abriendo tu cuaderno…</div>;
   }
   return (
     <>
       <MapaApp />
+      {offline && (
+        <p role="status" className="fixed bottom-16 left-4 z-50 max-w-xs rounded-lg border border-clay/40 bg-paper px-4 py-2 text-sm text-clay shadow-[0_4px_12px_rgb(0_0_0/0.25)]">
+          No pudimos abrir tu cuaderno guardado. Lo que cambies ahora no se guardará en tu cuenta; recarga la página en un rato.
+        </p>
+      )}
       <button
         type="button"
         onClick={() => {
+          flushNotebook();
           endSession();
           router.replace("/");
         }}
@@ -136,11 +158,14 @@ function MapaApp() {
     } catch {}
     setHydrated(true);
   }, []);
+  // No escribir hasta haber leído lo guardado: si no, el estado inicial vacío borra los precios.
   useEffect(() => {
+    if (!hydrated) return;
     try {
       localStorage.setItem(ECON_KEY, JSON.stringify(econ));
     } catch {}
-  }, [econ]);
+    notebookChanged();
+  }, [econ, hydrated]);
 
   useEffect(() => {
     fetch(`${API}/zones`)

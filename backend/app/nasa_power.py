@@ -1,11 +1,9 @@
 """Cliente de NASA POWER (sin API key). Climatologia mensual por punto."""
 import json
-from pathlib import Path
 
 import httpx
 
-CACHE_DIR = Path(__file__).resolve().parent.parent / "cache"
-CACHE_DIR.mkdir(exist_ok=True)
+from .config import CACHE_DIR
 
 URL = "https://power.larc.nasa.gov/api/temporal/monthly/point"
 PARAMS = "PRECTOTCORR,T2M,GWETROOT"  # lluvia mm/dia, temp C, humedad zona radicular 0-1

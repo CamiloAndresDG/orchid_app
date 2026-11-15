@@ -14,7 +14,7 @@ import httpx
 import numpy as np
 import pandas as pd
 
-from .config import BACKEND, RAW, cargar, guardar, hecho
+from .config import RAW, cargar, guardar, hecho
 from .grid import AOIS, PILOTOS, cell_id, distancia_km, registrar_cobertura
 
 COCO = RAW / "cocorahs"
@@ -245,7 +245,7 @@ def _r(v, nd):
 
 
 # ---------------------------------------------------------------- consulta en vivo por punto
-CACHE_DIR = BACKEND / "cache"
+from ..config import CACHE_DIR  # noqa: E402  (caché compartida; en Azure es Azure Files)
 
 
 def stations_near(lat: float, lon: float, year: int | None = None, radio_km: float = 40, max_est: int = 5) -> dict:
