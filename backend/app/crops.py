@@ -6,7 +6,6 @@ CDL (USDA NASS) solo cubre EE. UU.; fuera devuelve sin datos y no se inventa nad
 import collections
 import io
 import json
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
@@ -40,8 +39,7 @@ CDL_OTHER = {
     (255, 38, 38): "algodon",
     (0, 168, 226): "arroz",
 }
-CACHE_DIR = Path(__file__).resolve().parent.parent / "cache"
-CACHE_DIR.mkdir(exist_ok=True)
+from .config import CACHE_DIR
 CDL_URL = "https://nassgeodata.gmu.edu/CropScapeService/wms_cdlall.cgi"
 
 

@@ -1,0 +1,54 @@
+# Plantilla del backend en Azure Container Apps. setup.sh reemplaza los __VALORES__.
+location: __LOCATION__
+properties:
+  managedEnvironmentId: __ENV_ID__
+  configuration:
+    activeRevisionsMode: Single
+    ingress:
+      external: true
+      targetPort: 8000
+      transport: auto
+    registries:
+      - server: __ACR__.azurecr.io
+        username: __ACR__
+        passwordSecretRef: acr-password
+    secrets:
+      - name: acr-password
+        value: __ACR_PASSWORD__
+      - name: quickstats-key
+        value: "__QUICKSTATS_KEY__"
+      - name: database-url
+        value: "__DATABASE_URL__"
+  template:
+    containers:
+      - name: api
+        image: __ACR__.azurecr.io/fieldshift-api:__TAG__
+        resources:
+          cpu: 0.5
+          memory: 1Gi
+        env:
+          - name: CACHE_DIR
+            value: /app/cache
+          - name: ALLOWED_ORIGINS
+            value: http://localhost:3000
+          - name: QUICKSTATS_KEY
+            secretRef: quickstats-key
+          - name: DATABASE_URL
+            secretRef: database-url
+        probes:
+          - type: Liveness
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+        volumeMounts:
+          - volumeName: cache
+            mountPath: /app/cache
+    scale:
+      minReplicas: 0
+      maxReplicas: 2
+    volumes:
+      - name: cache
+        storageType: AzureFile
+        storageName: cache

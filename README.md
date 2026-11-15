@@ -46,6 +46,7 @@ Verificación de las 24 fuentes de la pestaña Resources, hecha el 2026-11-14 co
 │   │   └── etl/        GAEZ, GLDAS/NLDAS, NLCD, CoCoRaHS (python -m app.etl)
 │   └── data/db/        tablas parquet del ETL
 ├── frontend/           Next.js + MapLibre + Recharts
+├── infra/azure/        Script y plantilla para desplegar en Azure Container Apps
 └── docs/
     ├── informe_fuentes_1-12.md
     ├── informe_fuentes_13-24.md
@@ -105,6 +106,12 @@ cd frontend
 npm install
 npm run dev
 ```
+
+## Despliegue en Azure
+
+Frontend y backend corren en Azure Container Apps, las cuentas y los terrenos en Azure Database for PostgreSQL y la
+caché del backend en Azure Files. El primer despliegue
+se hace con `bash infra/azure/setup.sh` y los siguientes con GitHub Actions. Paso a paso en [infra/azure/README.md](infra/azure/README.md).
 
 ## Estado del MVP
 

@@ -1,0 +1,2 @@
+# Los scripts de shell deben tener finales LF o bash falla.
+*.sh text eol=lf

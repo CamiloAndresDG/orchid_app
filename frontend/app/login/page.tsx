@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { InteractiveField } from "../interactive-field";
-import { startSession, useSession } from "../auth";
+import { login, register, startSession, useSession } from "../auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,13 +14,15 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (session) router.replace("/mapa");
   }, [session, router]);
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
     const mail = email.trim();
     if (!/^\S+@\S+\.\S+$/.test(mail)) {
       setError("Escribe un correo válido.");
@@ -30,12 +32,24 @@ export default function LoginPage() {
       setError("Escribe tu nombre para crear la cuenta.");
       return;
     }
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.");
+    if (mode === "up" && password.length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres.");
       return;
     }
-    startSession(mail, mode === "up" ? name.trim() : mail.split("@")[0]);
-    router.push("/mapa");
+    if (!password) {
+      setError("Escribe tu contraseña.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      if (mode === "up") await register(name.trim(), mail, password);
+      else await login(mail, password);
+      router.push("/mapa");
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
   }
 
   const field =
@@ -114,7 +128,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete={mode === "in" ? "current-password" : "new-password"}
-                placeholder="Mínimo 6 caracteres"
+                placeholder={mode === "up" ? "Mínimo 8 caracteres" : "Tu contraseña"}
               />
             </label>
 
@@ -126,9 +140,10 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-full rounded-md bg-moss px-5 py-3.5 text-lg font-semibold text-paper transition hover:bg-moss-deep"
+              disabled={busy}
+              className="w-full rounded-md bg-moss px-5 py-3.5 text-lg font-semibold text-paper transition hover:bg-moss-deep disabled:cursor-wait disabled:opacity-60"
             >
-              {mode === "in" ? "Entrar" : "Crear cuenta y entrar"}
+              {busy ? (mode === "in" ? "Entrando…" : "Creando tu cuenta…") : mode === "in" ? "Entrar" : "Crear cuenta y entrar"}
             </button>
           </form>
 
@@ -144,8 +159,8 @@ export default function LoginPage() {
           </button>
 
           <p className="mt-6 border-t border-rule pt-5 text-sm leading-relaxed text-ink-soft">
-            Cuenta local de demostración: tu nombre y correo se guardan solo en este navegador. Todavía no hay un servidor
-            de cuentas, así que no uses tu contraseña real de otro servicio.
+            Con cuenta, tu terreno y tus precios se guardan en el servidor y los ves desde cualquier computadora. El modo
+            visitante guarda todo solo en este navegador; si después creas una cuenta, lo que hayas cargado se pasa a ella.
           </p>
         </div>
 

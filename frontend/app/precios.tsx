@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronIcon, ExternalIcon } from "./icons";
 import type { TabId } from "./panels";
 import { COVER_CROPS, CROPS, ECON_CROPS, EconUS, HistoryRow, US_UNITS, hasEcon } from "./shared";
@@ -74,6 +74,14 @@ export function PreciosPanel({
       return false;
     }
   });
+  // Si el servidor tiene su propia clave de QuickStats, la del usuario es opcional.
+  const [serverKey, setServerKey] = useState(false);
+  useEffect(() => {
+    fetch(`${API}/prices/status`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setServerKey(!!j?.server_key))
+      .catch(() => {});
+  }, []);
   const [ref, setRef] = useState<RefOut | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -95,13 +103,13 @@ export function PreciosPanel({
       const r = await fetch(`${API}/prices/reference`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...point, api_key: key.trim() }),
+        body: JSON.stringify({ ...point, api_key: key.trim() || null }),
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.detail ?? "No pudimos consultar los precios.");
       setRef(j);
       try {
-        if (remember) localStorage.setItem(KEY_STORAGE, key.trim());
+        if (remember && key.trim()) localStorage.setItem(KEY_STORAGE, key.trim());
         else localStorage.removeItem(KEY_STORAGE);
       } catch {}
     } catch (e) {
@@ -117,7 +125,7 @@ export function PreciosPanel({
         <h2 className="font-serif text-3xl font-semibold">Mis precios y costos</h2>
         <p className="mt-2 max-w-prose text-base text-ink-soft">
           Es opcional. Con tus números calculamos cuánto ganarías con cada opción y te avisamos si alguna daría pérdida. Si no sabes un dato, déjalo
-          vacío: no inventamos precios. Se guarda solo en esta computadora.
+          vacío: no inventamos precios. Se guarda en tu cuenta (en modo visitante, solo en esta computadora).
         </p>
       </div>
 
@@ -163,7 +171,8 @@ export function PreciosPanel({
         <div className="mt-4 space-y-4 pl-7">
           <p className="max-w-prose text-base text-ink-soft">
             El Departamento de Agricultura de EE. UU. (USDA) publica el precio promedio que recibieron los agricultores de cada estado. No es el precio de
-            tu comprador, pero sirve de punto de partida. Para consultarlo hace falta una clave gratuita:
+            tu comprador, pero sirve de punto de partida.
+            {serverKey ? " Puedes consultarlo directamente; si tienes tu propia clave gratuita, también puedes usarla:" : " Para consultarlo hace falta una clave gratuita:"}
           </p>
           <ol className="list-decimal space-y-1 pl-5 text-base text-ink-soft">
             <li>
@@ -177,12 +186,12 @@ export function PreciosPanel({
           </ol>
           <div className="flex max-w-xl flex-wrap items-end gap-3">
             <label className="min-w-[14rem] flex-1 text-base text-ink">
-              Tu clave del USDA
+              Tu clave del USDA{serverKey && " (opcional)"}
               <input className={`${field} mt-1`} type="password" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} placeholder="Pega tu clave" />
             </label>
             <button
               onClick={load}
-              disabled={busy || !point || key.trim().length < 8}
+              disabled={busy || !point || (!serverKey && key.trim().length < 8)}
               className="rounded-md bg-moss px-5 py-2.5 text-base font-semibold text-paper hover:bg-moss-deep disabled:cursor-not-allowed disabled:opacity-45"
             >
               {busy ? "Consultando…" : "Ver precios de mi estado"}
