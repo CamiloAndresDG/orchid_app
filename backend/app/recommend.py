@@ -94,19 +94,23 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
 
         score, why, risks, evidence, gaps = 60.0, [], [], [], []
 
-        # Rotación: evitar repetir cultivo o familia (plagas y enfermedades).
-        if key == last_crop:
-            score -= 35
-            risks.append("Repetir el mismo cultivo aumenta plagas y enfermedades.")
-        elif crop["family"] == last_family:
-            score -= 18
-            risks.append("Misma familia que el último cultivo: mayor presión de plagas y enfermedades.")
-        elif last_crop:
-            score += 8
-            why.append(f"Cambia de familia respecto a {CATALOG[last_crop]['name'].lower()}: ayuda a cortar ciclos de plagas.")
-        if crop.get("fixes_n") and last_family == "gramineas":
-            score += 8
-            why.append("Fija nitrógeno después de un cereal.")
+        # Rotacion: evitar repetir cultivo o familia (plagas y enfermedades).
+        # Las coberturas se evaluan mas abajo contra el cultivo de venta al que acompanan.
+        rot_adj = 0.0
+        if crop["kind"] == "cash":
+            if key == last_crop:
+                rot_adj -= 35
+                risks.append("Repetir el mismo cultivo aumenta plagas y enfermedades.")
+            elif crop["family"] == last_family:
+                rot_adj -= 18
+                risks.append(f"Es de la misma familia que tu último cultivo ({CATALOG[last_crop]['name'].lower()}): más plagas y enfermedades.")
+            elif last_crop in CATALOG:
+                rot_adj += 8
+                why.append(f"Es de otra familia que tu último cultivo ({CATALOG[last_crop]['name'].lower()}): ayuda a cortar plagas.")
+            if crop.get("fixes_n") and last_family == "gramineas":
+                rot_adj += 8
+                why.append(f"Devuelve nitrógeno al suelo después {'del' if ART.get(last_crop, 'el') == 'el' else 'de la'} {CATALOG[last_crop]['name'].lower()}.")
+        score += rot_adj
 
         # Agua: vulnerabilidad real de NASA POWER en los meses del cultivo.
         score -= max(0.0, stress - 0.30) * 90
@@ -127,16 +131,9 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
 
         # Suelo real (SSURGO)
         if sc:
-            if awc is not None and awc < 0.12:
-                evidence.append({"text": f"Suelo {sc['name']}: guarda poca agua (SSURGO), sube el riesgo de sequía", "kind": "real", "source": "ssurgo"})
-                if crop["water"] != "low":
-                    risks.append("Tu suelo retiene poca agua: este cultivo sufre más en sequía.")
-            elif awc is not None and awc >= 0.18:
-                evidence.append({"text": f"Suelo {sc['name']}: guarda bien el agua (SSURGO)", "kind": "real", "source": "ssurgo"})
-            if "poorly" in drainage.lower():
-                score -= 5
-                risks.append("Tu suelo drena mal: riesgo de encharcamiento al sembrar.")
-                evidence.append({"text": f"Drenaje: {DRAIN_ES.get(drainage, drainage.lower())} (SSURGO)", "kind": "real", "source": "ssurgo"})
+            if awc is not None and awc < 0.12 and crop["water"] != "low":
+                risks.append("Tu suelo guarda poca agua y este cultivo necesita bastante: sufre más en sequía.")
+                evidence.append({"text": "Tu suelo guarda poca agua (mapa de suelos USDA)", "kind": "real", "source": "ssurgo"})
             if crop["kind"] == "cover" and (sandy or heavy):
                 score += 6
                 why.append("Tu suelo " + ("es arenoso: la cobertura aporta materia orgánica y retiene humedad." if sandy else "es arcilloso: la cobertura mejora la infiltración."))
@@ -165,9 +162,13 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
                 evidence.append({"text": f"Ocupa ~{share*100:.0f}% de la zona cercana (mapa de cultivos USDA, 2021–2025)", "kind": "real", "source": "cdl"})
                 why.append("Ya se cultiva en la zona: hay mercado y maquinaria cercanos.")
             elif crop["kind"] == "cash":
-                score -= 8
-                risks.append("Casi no se cultiva en la zona: confirma mercado, contratos y maquinaria antes de sembrar.")
-                evidence.append({"text": "Casi no aparece en la zona cercana (mapa de cultivos USDA)", "kind": "real", "source": "cdl"})
+                score -= 22 if share < 0.01 else 12
+                risks.append(
+                    "No se siembra en tu zona: confirma que haya comprador, contrato y maquinaria antes de sembrar."
+                    if share < 0.01
+                    else "Se siembra poco en tu zona: confirma comprador y maquinaria."
+                )
+                evidence.append({"text": f"Ocupa {share*100:.0f}% de la zona cercana (mapa de cultivos USDA, 2021–2025)", "kind": "real", "source": "cdl"})
         else:
             gaps.append("Sin datos de cultivos de la zona (CDL solo cubre EE. UU.)")
 
@@ -190,6 +191,8 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
             "crop": key,
             "name": crop["name"],
             "kind": crop["kind"],
+            "family": crop["family"],
+            "fixes_n": bool(crop.get("fixes_n")),
             "is_current": key == last_crop,
             "plant_month": start,
             "score": max(0, min(100, round(score))),
@@ -204,30 +207,86 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
         return not (o["economics"] and o["economics"].get("loss"))
 
     cash = sorted([o for o in options if o["kind"] == "cash" and not o["is_current"]], key=lambda o: (not ok(o), -o["score"]))
-    covers = sorted([o for o in options if o["kind"] == "cover"], key=lambda o: (not ok(o), -o["score"]))
+    covers = [o for o in options if o["kind"] == "cover" and ok(o)]
     base = next((o for o in options if o["is_current"]), None)
 
-    # Rotacion = cultivo de venta + cobertura entre cosechas (la cobertura acompana, no reemplaza).
     rotations = []
+    top = cash[0]["score"] if cash else 0
     for i, c in enumerate(cash[:4]):
-        cover = next((v for v in covers if ok(v)), None)
-        rotations.append({
-            "sell": c,
-            "cover": cover,
-            "why_first": _why_first(c, cash[i + 1] if i + 1 < len(cash) else None),
-        })
+        cover = max((_cover_for(v, c) for v in covers), key=lambda v: v["score"], default=None)
+        rotations.append({"sell": c, "cover": cover, "label": _label(i, c, top), "note": None if i == 0 else _behind(c, cash[0])})
+    if base:
+        base = {**base, "label": _label(1, base, top), "note": _behind(base, cash[0]) if cash else None}
+
     return {
         "last_crop": last_crop,
         "bare_soil_months": bare,
         "bare_source": bare_source,
         "critical_months": crit,
+        "field_notes": _field_notes(sc, drainage, awc, bare, bare_source),
         "baseline": base,
         "rotations": rotations,
         "options": [r["sell"] for r in rotations],
-        "covers": [v for v in covers if ok(v)][:3],
+        "covers": [],
         "today": today.isoformat(),
         "disclaimer": "Herramienta de apoyo a la decisión. Los números económicos salen solo de lo que tú declares. Valida con un experto local.",
     }
+
+
+ART = {"corn": "el", "soybean": "la", "wheat": "el", "sorghum": "el", "sunflower": "el", "oats": "la", "cereal_rye": "el", "clover": "el"}
+
+
+def _the(o: dict) -> str:
+    return f"{ART.get(o['crop'], 'el')} {o['name'].lower()}"
+
+
+def _cover_for(cover: dict, sell: dict) -> dict:
+    """La cobertura se siembra despues de cosechar el cultivo de venta: se juzga contra ese cultivo."""
+    c = {**cover, "why": list(cover["why"]), "risks": list(cover["risks"])}
+    sell_name = _the(sell)
+    if cover["family"] == sell["family"]:
+        c["score"] = max(0, c["score"] - 18)
+        c["risks"].insert(0, f"Es de la misma familia que {sell_name}: no corta sus plagas. Mejor otra cobertura.")
+    else:
+        c["score"] = min(100, c["score"] + 8)
+        c["why"].insert(0, f"Es de otra familia que {sell_name}: corta sus plagas y enfermedades.")
+    if cover["fixes_n"] and sell["family"] == "gramineas":
+        c["score"] = min(100, c["score"] + 8)
+        c["why"].insert(1, f"Devuelve al suelo nitrógeno que se llevó {sell_name}.")
+    return c
+
+
+def _label(rank: int, o: dict, top: int) -> str:
+    if o["economics"] and o["economics"].get("loss"):
+        return "Te daría pérdida con tus números"
+    if rank == 0:
+        return "Mejor opción"
+    gap = top - o["score"]
+    if gap <= 8:
+        return "Casi tan buena"
+    return "Más arriesgada"
+
+
+def _behind(o: dict, best: dict) -> str | None:
+    """Por que queda detras de la mejor, en una frase: su primer riesgo, si tiene."""
+    if o["risks"]:
+        return f"Queda detrás de {_the(best)} porque: {o['risks'][0][0].lower() + o['risks'][0][1:].rstrip('.')}."
+    return f"Queda un poco detrás de {_the(best)}."
+
+
+def _field_notes(sc, drainage, awc, bare, bare_source) -> list[dict]:
+    """Hechos de tu terreno que valen para todas las opciones: se dicen una sola vez."""
+    notes = []
+    if sc:
+        texture = "arenoso" if (sc["sand"] or 0) >= 70 else "arcilloso" if (sc["clay"] or 0) >= 40 else "limoso" if (sc["silt"] or 0) >= 50 else "franco"
+        water = "guarda poca agua" if awc is not None and awc < 0.12 else "guarda bien el agua" if awc is not None and awc >= 0.18 else "guarda una cantidad media de agua"
+        drain = DRAIN_ES.get(drainage, "sin dato de drenaje")
+        notes.append({"text": f"Tu suelo es {texture}, {water} y {drain}", "kind": "real", "source": "ssurgo"})
+        if "poorly" in drainage.lower():
+            notes.append({"text": "Como se encharca, siembra cuando el suelo esté firme y evita meter maquinaria con el campo mojado", "kind": "calc"})
+    if bare and bare_source == "ndvi":
+        notes.append({"text": f"El satélite vio tu campo con poca vegetación en {len(bare)} meses del último año", "kind": "real", "source": "ndvi"})
+    return notes
 
 
 DRAIN_ES = {
@@ -239,14 +298,3 @@ DRAIN_ES = {
     "Poorly drained": "drena mal (se encharca)",
     "Very poorly drained": "drena muy mal (se encharca)",
 }
-
-
-def _why_first(best: dict, second: dict | None) -> str | None:
-    """Explica en una frase por que la primera opcion le gana a la segunda."""
-    if second is None:
-        return None
-    gap = best["score"] - second["score"]
-    if gap <= 0:
-        return None
-    reason = (best["why"][0] if best["why"] else "encaja mejor con tu clima y tu historial").rstrip(".")
-    return f"Le gana a {second['name'].lower()}: {reason[0].lower() + reason[1:]}."

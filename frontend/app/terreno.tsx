@@ -11,7 +11,8 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const STORAGE_KEY = "fieldshift.plot.v1";
 
 export type Point = { lat: number; lon: number };
-type Rotation = { sell: Option; cover: Option | null; why_first: string | null };
+type Rotation = { sell: Option; cover: Option | null; label: string; note: string | null };
+type Note = { text: string; kind: "real" | "calc"; source?: SourceKey };
 type Option = {
   crop: string;
   name: string;
@@ -30,7 +31,8 @@ type Result = {
   bare_soil_months: number[];
   bare_source: "ndvi" | "history" | null;
   critical_months: number[];
-  baseline: Option | null;
+  baseline: (Option & { label: string; note: string | null }) | null;
+  field_notes: Note[];
   options: Option[];
   rotations: Rotation[];
   covers: Option[];
@@ -414,14 +416,6 @@ function Progress({ data, local, soil, ndvi, comparing }: { data: boolean; local
 
 /* ------------------------------ Resultados ------------------------------ */
 
-function verdict(o: Option) {
-  if (o.economics?.loss) return { text: "Te daría pérdida con tus números", tone: "bad" as const };
-  if (o.score >= 70) return { text: "Encaja muy bien con tu terreno", tone: "good" as const };
-  if (o.score >= 50) return { text: "Puede funcionar, con cuidado", tone: "ok" as const };
-  return { text: "No es buena idea ahora", tone: "bad" as const };
-}
-const sowLine = (o: Option) => `Siembra ${o.name.toLowerCase()} en ${MONTH_NAMES[o.plant_month - 1]}`;
-
 function Money({ o }: { o: Option }) {
   if (!o.economics) return null;
   const perAcre = Math.round(o.economics.margin_per_ha * HA_PER_ACRE);
@@ -516,7 +510,6 @@ function RotationBody({ rot, point }: { rot: Rotation; point: Point }) {
           </>
         )}
       </p>
-      {rot.why_first && <p className="mt-2 text-base text-ink-soft">{rot.why_first}</p>}
       <Money o={sell} />
       <Reasons o={sell} limit={3} />
       <Evidence o={sell} point={point} />
@@ -536,37 +529,58 @@ function CoverNote({ o, point }: { o: Option; point: Point }) {
   );
 }
 
+const labelTone = (label: string) => (label === "Mejor opción" ? "text-moss" : label === "Casi tan buena" ? "text-ink" : "text-clay");
+
+function FieldNotes({ notes, point }: { notes: Note[]; point: Point }) {
+  if (!notes.length) return null;
+  return (
+    <div>
+      <h3 className="font-serif text-xl font-semibold">Tu terreno, en pocas palabras</h3>
+      <ul className="mt-2 space-y-1.5 text-base text-ink-soft">
+        {notes.map((n) => (
+          <li key={n.text}>
+            {n.text}.{" "}
+            {n.kind === "real" && n.source ? (
+              <a href={sourceUrl(n.source, point.lat, point.lon)} target="_blank" rel="noopener noreferrer" title={SOURCE_LABEL[n.source]} className="inline-flex items-center gap-1 whitespace-nowrap text-sm font-semibold text-moss underline">
+                Ver dato oficial <ExternalIcon />
+              </a>
+            ) : (
+              <span className="text-sm text-ink-faint">(consejo de Field Shift)</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function Results({ r, name, point }: { r: Result; name: string; point: Point }) {
   const [best, ...rest] = r.rotations;
-  const context =
-    r.bare_soil_months.length > 0
-      ? r.bare_source === "ndvi"
-        ? `El satélite vio tu campo con poca vegetación en ${r.bare_soil_months.length} meses del último año.`
-        : `Tu suelo estuvo sin cultivo ${r.bare_soil_months.length} meses del último año.`
-      : "";
   return (
-    <section className="space-y-6 border-t border-rule pt-8">
+    <section className="space-y-8 border-t border-rule pt-8">
       <div>
         <h2 className="font-serif text-3xl font-semibold">Lo que te sugerimos{name ? ` para ${name}` : ""}</h2>
         <p className="mt-2 max-w-prose text-base text-ink-soft">
           {r.last_crop ? `Tu último cultivo fue ${(CROPS[r.last_crop] ?? r.last_crop).toLowerCase()}. ` : ""}
-          {context} Los meses más difíciles del clima aquí son {monthList(r.critical_months)}.
+          Los meses más difíciles del clima aquí son {monthList(r.critical_months)}.
         </p>
       </div>
 
       {best && (
         <article className="rounded-xl bg-moss-wash p-6">
           <h3 className="font-serif text-3xl font-semibold leading-tight">
-            <span className="text-moss">Tu mejor rotación:</span> {best.sell.name.toLowerCase()} en {MONTH_NAMES[best.sell.plant_month - 1]}
+            <span className="text-moss">{best.label}:</span> {best.sell.name.toLowerCase()} en {MONTH_NAMES[best.sell.plant_month - 1]}
+            {best.cover ? <span className="text-ink-soft">, y {best.cover.name.toLowerCase()} después de cosechar</span> : null}
           </h3>
-          <p className={`mt-2 text-lg ${verdict(best.sell).tone === "bad" ? "text-clay" : "text-ink"}`}>{verdict(best.sell).text}.</p>
-          <div className="mt-3">
+          <div className="mt-4">
             <RotationBody rot={best} point={point} />
           </div>
         </article>
       )}
 
-      {rest.length > 0 && (
+      <FieldNotes notes={r.field_notes} point={point} />
+
+      {(rest.length > 0 || r.baseline) && (
         <div>
           <h3 className="font-serif text-xl font-semibold">Otras rotaciones</h3>
           <div className="mt-2 border-t border-rule">
@@ -579,7 +593,8 @@ function Results({ r, name, point }: { r: Result; name: string; point: Point }) 
                       {rot.sell.name} en {MONTH_NAMES[rot.sell.plant_month - 1]}
                       {rot.cover ? ` + ${rot.cover.name.toLowerCase()}` : ""}
                     </span>
-                    <span className={`text-base ${verdict(rot.sell).tone === "bad" ? "text-clay" : "text-ink-soft"}`}>{verdict(rot.sell).text}</span>
+                    <span className={`text-base font-semibold ${labelTone(rot.label)}`}>{rot.label}</span>
+                    {rot.note && <span className="block text-base text-ink-soft">{rot.note}</span>}
                   </span>
                 </summary>
                 <div className="pl-8 pt-3">
@@ -593,7 +608,8 @@ function Results({ r, name, point }: { r: Result; name: string; point: Point }) 
                   <ChevronIcon className="size-5 shrink-0 text-moss transition-transform group-open:rotate-90" />
                   <span className="flex-1">
                     <span className="block font-serif text-lg font-semibold">Seguir igual: {r.baseline.name.toLowerCase()} otra vez</span>
-                    <span className="text-base text-ink-soft">Tu rotación de hoy, para comparar</span>
+                    <span className={`text-base font-semibold ${labelTone(r.baseline.label)}`}>{r.baseline.label}</span>
+                    {r.baseline.note && <span className="block text-base text-ink-soft">{r.baseline.note}</span>}
                   </span>
                 </summary>
                 <div className="pl-8 pt-3">
@@ -605,12 +621,6 @@ function Results({ r, name, point }: { r: Result; name: string; point: Point }) 
             )}
           </div>
         </div>
-      )}
-
-      {r.covers.length > 0 && (
-        <p className="text-base text-ink-soft">
-          Coberturas que también podrías considerar entre cosechas: {r.covers.map((c) => c.name.toLowerCase()).join(", ")}.
-        </p>
       )}
 
       <p className="text-sm text-ink-soft">{r.disclaimer}</p>
@@ -659,7 +669,7 @@ function AboutCrops({ point, local }: { point: Point; local: LocalCrops | null }
   return (
     <section>
       <h4 className="font-serif text-lg font-semibold">Qué se siembra a tu alrededor</h4>
-      <p className="mt-1 text-ink-soft">En un radio de 1 km, promedio de 2021 a 2025.</p>
+      <p className="mt-1 text-ink-soft">En unas 0.7 millas a tu alrededor, promedio de 2021 a 2025.</p>
       {!local && <p className="text-ink-soft">Consultando…</p>}
       {local && !local.available && <p className="mt-1 text-ink-soft">{local.note}</p>}
       {local?.available && (
@@ -694,7 +704,8 @@ function AboutSoil({ point, soil }: { point: Point; soil: Soil | null }) {
         <dl className="mt-2 grid max-w-xl grid-cols-[11rem_1fr] gap-x-4 gap-y-3">
           <dt className="text-ink-soft">Tipo</dt>
           <dd>
-            Suelo {textureWord(c)} «{c.name}»
+            Suelo {textureWord(c)}{" "}
+            <span className="text-sm text-ink-soft">(en el mapa de suelos del USDA se llama «{c.name}»)</span>
             <span className="block text-sm text-ink-soft">
               {fmt(c.sand)}% arena, {fmt(c.silt)}% limo, {fmt(c.clay)}% arcilla. Más arena se seca rápido; más arcilla guarda agua pero la absorbe lento.
             </span>
@@ -704,7 +715,7 @@ function AboutSoil({ point, soil }: { point: Point; soil: Soil | null }) {
           <dt className="text-ink-soft">Agua que guarda</dt>
           <dd>
             {c.awc === null ? "sin dato" : c.awc < 0.12 ? "Poca" : c.awc >= 0.18 ? "Buena" : "Media"}
-            <span className="block text-sm text-ink-soft">Agua disponible para las raíces: {fmt(c.awc, 2)} cm por cm de suelo.</span>
+            <span className="block text-sm text-ink-soft">Cuánta agua queda disponible para las raíces después de llover.</span>
           </dd>
           <dt className="text-ink-soft">Materia orgánica</dt>
           <dd>{fmt(c.om, 1, " %")}</dd>
@@ -761,8 +772,8 @@ function AboutGreen({ point, ndvi }: { point: Point; ndvi: Ndvi | null }) {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={ndvi.series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 4" stroke="var(--rule)" vertical={false} />
-                <XAxis dataKey="date" stroke="var(--ink-soft)" fontSize={12} minTickGap={36} tickFormatter={(d: string) => `${MONTH_NAMES[+d.slice(5, 7) - 1].slice(0, 3)} ${d.slice(2, 4)}`} />
-                <YAxis domain={[0, 1]} stroke="var(--ink-soft)" fontSize={12} width={32} />
+                <XAxis dataKey="date" stroke="var(--ink-soft)" fontSize={12} minTickGap={36} tickFormatter={(d: string) => `${MONTH_NAMES[+d.slice(5, 7) - 1].slice(0, 3)} ${d.slice(0, 4)}`} />
+                <YAxis domain={[0, 1]} ticks={[0, 0.5, 1]} stroke="var(--ink-soft)" fontSize={12} width={32} />
                 <Tooltip
                   contentStyle={{ background: "var(--paper)", border: "1px solid var(--rule)", color: "var(--ink)" }}
                   labelFormatter={(d) => String(d)}

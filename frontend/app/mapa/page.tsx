@@ -184,19 +184,17 @@ function MapaApp() {
     setSearching(true);
     setSearchMsg(null);
     try {
-      const r = await fetch(
-        `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(text)}&benchmark=Public_AR_Current&format=json`,
-      );
+      const r = await fetch(`${API}/geocode?q=${encodeURIComponent(text)}`);
       const j = await r.json();
-      const m = j?.result?.addressMatches?.[0]?.coordinates;
-      if (m) {
-        map.current?.flyTo({ center: [m.x, m.y], zoom: 13, speed: 1.4 });
-        setSearchMsg("Ahí estamos. Haz clic sobre tu campo para marcarlo.");
+      if (r.ok) {
+        const zoom = j.kind === "address" ? 15 : j.kind === "county" ? 10 : 12;
+        map.current?.flyTo({ center: [j.lon, j.lat], zoom, speed: 1.4 });
+        setSearchMsg(`${j.label}. Ahora acércate y haz clic sobre tu campo para marcarlo.`);
       } else {
-        setSearchMsg("No encontramos ese lugar. Prueba con el pueblo y el estado, por ejemplo «Ames, Iowa».");
+        setSearchMsg(j.detail ?? "No encontramos ese lugar.");
       }
     } catch {
-      setSearchMsg("No pudimos buscar la dirección ahora. Puedes acercarte con el mapa.");
+      setSearchMsg("No pudimos buscar ahora. Revisa tu conexión o acércate con el mapa.");
     } finally {
       setSearching(false);
     }
@@ -263,6 +261,15 @@ function MapaApp() {
     tabRefs.current[next]?.focus();
   }
 
+  // Cultivos que ocupan al menos el 5% de la zona (mapa de cultivos USDA): se ofrecen en Mis precios.
+  const zoneCrops: string[] = [];
+  if (local?.available) {
+    const ys = Object.values(local.years);
+    const avg: Record<string, number> = {};
+    ys.forEach((y) => Object.entries(y).forEach(([k, v]) => (avg[k] = (avg[k] ?? 0) + v / ys.length)));
+    Object.entries(avg).forEach(([k, v]) => v >= 0.05 && zoneCrops.push(k));
+  }
+
   // Clima y meses dificiles: tu terreno primero; si no hay, el ejemplo abierto.
   const climateData = pointData ?? example;
 
@@ -276,7 +283,7 @@ function MapaApp() {
             id="place"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Busca tu pueblo, dirección o código postal"
+            placeholder="Pueblo y estado, condado o código postal"
             className="min-w-0 flex-1 rounded-md border border-field bg-paper px-4 py-3 text-base text-ink shadow-[0_4px_12px_rgb(0_0_0/0.25)] placeholder:text-ink-soft"
           />
           <button disabled={searching} className="rounded-md bg-moss px-5 py-3 text-base font-semibold text-paper shadow-[0_4px_12px_rgb(0_0_0/0.25)] hover:bg-moss-deep disabled:opacity-60">
@@ -284,13 +291,13 @@ function MapaApp() {
           </button>
         </form>
         {searchMsg && (
-          <p role="status" className="absolute left-4 top-20 rounded-md bg-paper/95 px-4 py-2 text-base text-ink shadow-[0_4px_12px_rgb(0_0_0/0.25)]">
+          <p role="status" className="absolute left-4 right-16 top-[4.75rem] rounded-md bg-paper/95 px-4 py-2 text-base text-ink shadow-[0_4px_12px_rgb(0_0_0/0.25)]">
             {searchMsg}
           </p>
         )}
         <div className="pointer-events-none absolute inset-0 shadow-[inset_-12px_0_24px_-12px_rgb(0_0_0/0.35)]" />
-        {!point && (
-          <div className="pointer-events-none absolute left-1/2 top-6 w-[min(28rem,calc(100%-3rem))] -translate-x-1/2 rounded-lg bg-paper/95 px-5 py-4 text-ink shadow-[0_6px_20px_rgb(0_0_0/0.3)]">
+        {!point && !searchMsg && (
+          <div className="pointer-events-none absolute left-1/2 top-24 w-[min(28rem,calc(100%-3rem))] -translate-x-1/2 rounded-lg bg-paper/95 px-5 py-4 text-ink shadow-[0_6px_20px_rgb(0_0_0/0.3)]">
             <p className="flex items-center gap-2 font-serif text-xl font-semibold">
               <PinIcon className="text-moss" /> Toca tu terreno en el mapa
             </p>
@@ -300,7 +307,7 @@ function MapaApp() {
           </div>
         )}
         {point && (
-          <p className="pointer-events-none absolute left-4 top-4 rounded-full bg-paper/95 px-4 py-2 text-sm text-ink shadow-[0_4px_12px_rgb(0_0_0/0.3)]">
+          <p className="pointer-events-none absolute bottom-16 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-paper/95 px-4 py-2 text-sm text-ink shadow-[0_4px_12px_rgb(0_0_0/0.3)]">
             ¿No es tu campo? Haz clic en el lugar correcto para mover el pin.
           </p>
         )}
@@ -382,7 +389,7 @@ function MapaApp() {
             />
           </div>
           <div role="tabpanel" id="panel-precios" aria-labelledby="tab-precios" hidden={tab !== "precios"}>
-            <PreciosPanel econ={econ} setEcon={setEcon} point={point} history={history} go={goTab} />
+            <PreciosPanel econ={econ} setEcon={setEcon} point={point} history={history} zoneCrops={zoneCrops} go={goTab} />
           </div>
           {isMore(tab) && (
             <div role="tabpanel" id="panel-mas" aria-labelledby="tab-mas">

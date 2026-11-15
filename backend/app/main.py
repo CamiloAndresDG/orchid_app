@@ -181,3 +181,16 @@ def prices_reference(req: PriceRequest):
         return reference_prices(req.lat, req.lon, req.api_key)
     except PriceError as e:
         raise HTTPException(e.status, e.msg)
+
+
+@app.get("/geocode")
+def geocode(q: str):
+    """Busca pueblo y estado, condado, codigo postal o direccion de EE. UU. (Gazetteer y geocodificador del Censo)."""
+    from .geocode import search
+
+    if not q.strip() or len(q) > 120:
+        raise HTTPException(400, "Escribe un pueblo, condado, código postal o dirección.")
+    hit = search(q)
+    if not hit:
+        raise HTTPException(404, "No encontramos ese lugar. Prueba con el pueblo y el estado, por ejemplo «Ames, Iowa», o con tu código postal.")
+    return hit
