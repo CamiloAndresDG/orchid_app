@@ -59,7 +59,7 @@
             },
             {
               "name": "ASSISTANT_PROVIDER",
-              "value": "foundry"
+              "value": "__ASSISTANT_PROVIDER__"
             },
             {
               "name": "FOUNDRY_RESOURCE",
