@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ParallaxHero } from "./hero-video";
-import { endSession, useSession } from "./auth";
+import { endSession, startSession, useSession } from "./auth";
 
 const FARMER_STEPS = [
   {
@@ -41,6 +42,7 @@ const SOURCES: { name: string; status: "Conectado" | "Pendiente"; use: string }[
 
 export default function Home() {
   const session = useSession();
+  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -89,7 +91,7 @@ export default function Home() {
               <span className="size-2 rounded-full bg-moss" aria-hidden="true" />
               NASA Space Apps 2026 · Reto Field Shift
             </p>
-            <h1 className="fs-rise font-serif text-5xl font-semibold leading-[1.05] tracking-tight [animation-delay:80ms] sm:text-6xl">
+            <h1 className="fs-rise font-serif text-4xl font-semibold leading-[1.05] tracking-tight [animation-delay:80ms] sm:text-5xl lg:text-6xl">
               Decide qué sembrar después, con datos de la NASA y tu criterio.
             </h1>
             <p className="fs-rise mt-6 max-w-prose text-lg leading-relaxed text-ink-soft [animation-delay:160ms]">
@@ -103,11 +105,23 @@ export default function Home() {
               >
                 {session ? "Abrir mi mapa" : "Entrar y marcar mi terreno"}
               </Link>
+              {!session && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    startSession("demo@fieldshift.local", "Visitante");
+                    router.push("/mapa");
+                  }}
+                  className="rounded-md border border-moss px-6 py-3.5 font-semibold text-moss hover:bg-moss hover:text-paper"
+                >
+                  Ver la demo sin cuenta
+                </button>
+              )}
               <a href="#agricultores" className="font-semibold text-moss underline-offset-4 hover:underline">
                 Cómo funciona →
               </a>
             </div>
-            <dl className="fs-rise mt-12 grid max-w-md grid-cols-3 gap-4 border-t border-rule pt-6 [animation-delay:320ms]">
+            <dl className="fs-rise mt-8 grid sm:mt-12 max-w-md grid-cols-3 gap-4 border-t border-rule pt-6 [animation-delay:320ms]">
               <div>
                 <dt className="text-sm text-ink-soft">Fuentes verificadas</dt>
                 <dd className="font-serif text-3xl font-semibold text-moss">24</dd>

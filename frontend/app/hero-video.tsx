@@ -81,7 +81,7 @@ export function ParallaxHero({ children }: { children: ReactNode }) {
         <div
           ref={veil}
           aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-gradient-to-b from-paper/80 via-paper/55 to-paper/25 lg:bg-gradient-to-r lg:from-paper lg:via-paper/75 lg:to-paper/0"
+          className="absolute inset-0 -z-10 bg-gradient-to-b from-paper/92 via-paper/85 to-paper/45 lg:bg-gradient-to-r lg:from-paper lg:via-paper/75 lg:to-paper/0"
         />
         <div ref={content} className="w-full will-change-transform">
           {children}
