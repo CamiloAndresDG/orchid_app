@@ -33,11 +33,19 @@ PG_USER=${PG_USER:-fsadmin}
 PG_DB=${PG_DB:-orchid}
 # Solo letras y números (no hay que escaparla en la URL); "Fs1" asegura mayúscula, minúscula y dígito.
 PG_PASSWORD=${PG_PASSWORD:-Fs1$(openssl rand -hex 16)}
-# Guía de IA: Claude en Microsoft Foundry. Desplegar modelos de Anthropic pide datos de la organización
-# (se envían a Anthropic al aceptar sus términos en Azure Marketplace) y cuota de tokens por minuto.
+# Guía de IA en Microsoft Foundry. Por defecto gpt-5-mini (Azure OpenAI, con cuota en suscripciones nuevas).
+# Con ASSISTANT_PROVIDER=foundry usa Claude: desplegar modelos de Anthropic pide datos de la organización (se
+# envían a Anthropic al aceptar sus términos en Azure Marketplace) y cuota de Claude, que hay que solicitar.
 FOUNDRY=${FOUNDRY:-orchid-ai-$SUFFIX}
-ASSISTANT_MODEL=${ASSISTANT_MODEL:-claude-opus-5-5}
-ASSISTANT_FALLBACK_MODEL=${ASSISTANT_FALLBACK_MODEL:-claude-opus-4-8}
+ASSISTANT_PROVIDER=${ASSISTANT_PROVIDER:-azure_openai}
+if [[ "$ASSISTANT_PROVIDER" == "azure_openai" ]]; then
+  ASSISTANT_MODEL=${ASSISTANT_MODEL:-gpt-5-mini}
+  ASSISTANT_MODEL_VERSION=${ASSISTANT_MODEL_VERSION:-2025-08-07}
+  ASSISTANT_FALLBACK_MODEL=""
+else
+  ASSISTANT_MODEL=${ASSISTANT_MODEL:-claude-opus-5-5}
+  ASSISTANT_FALLBACK_MODEL=${ASSISTANT_FALLBACK_MODEL:-claude-opus-4-8}
+fi
 ASSISTANT_DAILY_LIMIT=${ASSISTANT_DAILY_LIMIT:-30}
 ORG_NAME=${ORG_NAME:-Orchid}
 ORG_INDUSTRY=${ORG_INDUSTRY:-Agriculture}
@@ -114,7 +122,7 @@ SUB=$(az account show --query id -o tsv)
 # Se usa en lugar de "az containerapp create --yaml", que con algunas versiones de la extensión falla con 400.
 put_app() {  # nombre plantilla
   local body="$HERE/.$1.rendered.json"
-  sed -e "s|__LOCATION__|$LOCATION|" -e "s|__ENV_ID__|$ENV_ID|" -e "s|__ACR__|$ACR|g"       -e "s|__ACR_PASSWORD__|$ACR_PASSWORD|" -e "s|__QUICKSTATS_KEY__|$QUICKSTATS_KEY|"       -e "s|__DATABASE_URL__|$DATABASE_URL|" -e "s|__ALLOWED_ORIGINS__|$WEB_URL,http://localhost:3000|"       -e "s|__FOUNDRY_RESOURCE__|$FOUNDRY_RESOURCE|" -e "s|__ASSISTANT_MODEL__|$ASSISTANT_MODEL|"       -e "s|__ASSISTANT_FALLBACK_MODEL__|$ASSISTANT_FALLBACK_MODEL|" -e "s|__ASSISTANT_DAILY_LIMIT__|$ASSISTANT_DAILY_LIMIT|"       -e "s|__TAG__|$TAG|" "$HERE/$2" > "$body"
+  sed -e "s|__LOCATION__|$LOCATION|" -e "s|__ENV_ID__|$ENV_ID|" -e "s|__ACR__|$ACR|g"       -e "s|__ACR_PASSWORD__|$ACR_PASSWORD|" -e "s|__QUICKSTATS_KEY__|$QUICKSTATS_KEY|"       -e "s|__DATABASE_URL__|$DATABASE_URL|" -e "s|__ALLOWED_ORIGINS__|$WEB_URL,http://localhost:3000|"       -e "s|__ASSISTANT_PROVIDER__|$ASSISTANT_PROVIDER|" -e "s|__FOUNDRY_RESOURCE__|$FOUNDRY_RESOURCE|" -e "s|__ASSISTANT_MODEL__|$ASSISTANT_MODEL|"       -e "s|__ASSISTANT_FALLBACK_MODEL__|$ASSISTANT_FALLBACK_MODEL|" -e "s|__ASSISTANT_DAILY_LIMIT__|$ASSISTANT_DAILY_LIMIT|"       -e "s|__TAG__|$TAG|" "$HERE/$2" > "$body"
   command -v cygpath >/dev/null && body=$(cygpath -m "$body")
   az rest --method put -o none     --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.App/containerApps/$1?api-version=2024-03-01"     --body "@$body"
   rm -f "$HERE/.$1.rendered.json"
@@ -138,12 +146,20 @@ deploy_claude() {  # despliegue (= nombre del modelo) y versión; no detiene el 
   if az rest --method put --url "$url" --body "@$b" -o none; then echo "    $1 desplegado"; else echo "    AVISO: no se pudo desplegar $1 (¿cuota? ver infra/azure/README.md). La Guía queda desactivada."; fi
   rm -f "$body"
 }
-deploy_claude "$ASSISTANT_MODEL" 2
-[[ -n "$ASSISTANT_FALLBACK_MODEL" ]] && deploy_claude "$ASSISTANT_FALLBACK_MODEL" 2
+if [[ "$ASSISTANT_PROVIDER" == "azure_openai" ]]; then
+  exists cognitiveservices account deployment show -g "$RG" -n "$FOUNDRY" --deployment-name "$ASSISTANT_MODEL" ||
+    az cognitiveservices account deployment create -g "$RG" -n "$FOUNDRY" --deployment-name "$ASSISTANT_MODEL" \
+      --model-name "$ASSISTANT_MODEL" --model-version "$ASSISTANT_MODEL_VERSION" --model-format OpenAI \
+      --sku-name GlobalStandard --sku-capacity 100 -o none ||
+    echo "    AVISO: no se pudo desplegar $ASSISTANT_MODEL. La Guía queda desactivada."
+else
+  deploy_claude "$ASSISTANT_MODEL" 2
+  [[ -n "$ASSISTANT_FALLBACK_MODEL" ]] && deploy_claude "$ASSISTANT_FALLBACK_MODEL" 2
+fi
 # La Guía solo se activa si el modelo principal está desplegado (si no, el backend la muestra como no disponible).
 DEPLOY_URL="https://management.azure.com/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RG/providers/Microsoft.CognitiveServices/accounts/$FOUNDRY/deployments/$ASSISTANT_MODEL?api-version=2025-10-01-preview"
 if exists rest --method get --url "$DEPLOY_URL"; then FOUNDRY_RESOURCE="$FOUNDRY"; else FOUNDRY_RESOURCE=""; fi
-exists rest --method get --url "${DEPLOY_URL/$ASSISTANT_MODEL/$ASSISTANT_FALLBACK_MODEL}" || ASSISTANT_FALLBACK_MODEL=""
+[[ -n "$ASSISTANT_FALLBACK_MODEL" ]] && { exists rest --method get --url "${DEPLOY_URL/$ASSISTANT_MODEL/$ASSISTANT_FALLBACK_MODEL}" || ASSISTANT_FALLBACK_MODEL=""; }
 
 echo "==> Imagen del backend"
 build_image orchid-api ./backend
