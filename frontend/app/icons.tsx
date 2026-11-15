@@ -71,3 +71,8 @@ export const AlertIcon = ({ className }: P) => (
     <path d="M12 10v4M12 17.5v.01" />
   </svg>
 );
+export const DownloadIcon = ({ className }: P) => (
+  <svg {...base} className={className}>
+    <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14" />
+  </svg>
+);

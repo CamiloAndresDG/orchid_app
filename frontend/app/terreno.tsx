@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { CheckIcon, ChevronIcon, ExternalIcon, PlusIcon, ShieldIcon, Spinner, TrashIcon } from "./icons";
-import { AboutFit, AboutHarvests, AboutRain, AboutSeason, useAgro } from "./agro";
+import { CheckIcon, ChevronIcon, DownloadIcon, ExternalIcon, PlusIcon, ShieldIcon, Spinner, TrashIcon } from "./icons";
 import { Analysis, TabId } from "./panels";
 import { CROPS, ECON_CROPS, EconUS, HA_PER_ACRE, HistoryRow, MONTH_NAMES, hasEcon, toMetric } from "./shared";
 import { PLOT_KEY as STORAGE_KEY } from "./auth";
@@ -13,9 +12,9 @@ import { SOURCE_LABEL, SourceKey, cdlUrl, ndviUrl, powerUrl, sourceUrl, ssurgoMa
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export type Point = { lat: number; lon: number };
-type Rotation = { sell: Option; cover: Option | null; label: string; note: string | null };
-type Note = { text: string; kind: "real" | "calc"; source?: SourceKey };
-type Option = {
+export type Rotation = { sell: Option; cover: Option | null; label: string; note: string | null };
+export type Note = { text: string; kind: "real" | "calc"; source?: SourceKey };
+export type Option = {
   crop: string;
   name: string;
   kind: "cash" | "cover";
@@ -28,7 +27,7 @@ type Option = {
   gaps: string[];
   economics: { margin_per_ha: number; margin_total: number; loss: boolean; investment?: boolean } | null;
 };
-type Result = {
+export type Result = {
   last_crop: string | null;
   bare_soil_months: number[];
   bare_source: "ndvi" | "history" | null;
@@ -40,24 +39,24 @@ type Result = {
   covers: Option[];
   disclaimer: string;
 };
-type SoilComp = {
+export type SoilComp = {
   map_unit: string; name: string; pct: number | null; drainage: string | null; hydgrp: string | null; slope: number | null;
   topsoil_depth_cm: number | null; sand: number | null; silt: number | null; clay: number | null;
   om: number | null; ph: number | null; ksat: number | null; awc: number | null;
 };
-type Ndvi = { available: boolean; series: { date: string; ndvi: number }[]; threshold: number; low_months?: number[]; product: string; note: string };
-type Soil = { available: boolean; components: SoilComp[]; sql: string; query_page: string; note: string };
+export type Ndvi = { available: boolean; series: { date: string; ndvi: number }[]; threshold: number; low_months?: number[]; product: string; note: string };
+export type Soil = { available: boolean; components: SoilComp[]; sql: string; query_page: string; note: string };
 export type LocalCrops = { available: boolean; years: Record<string, Record<string, number>>; note: string; radius_km: number };
 
 const THIS_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 7 }, (_, i) => THIS_YEAR - i);
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const monthList = (ms: number[]) => {
+export const monthList = (ms: number[]) => {
   const n = [...ms].sort((a, b) => a - b).map((m) => MONTH_NAMES[m - 1]);
   return n.length <= 1 ? n.join("") : `${n.slice(0, -1).join(", ")} y ${n[n.length - 1]}`;
 };
 
-const DRAINAGE: Record<string, string> = {
+export const DRAINAGE: Record<string, string> = {
   "Excessively drained": "drena en exceso (se seca rápido)",
   "Somewhat excessively drained": "drena algo en exceso",
   "Well drained": "bien drenado",
@@ -66,7 +65,7 @@ const DRAINAGE: Record<string, string> = {
   "Poorly drained": "drena mal (se encharca)",
   "Very poorly drained": "drena muy mal (se encharca)",
 };
-function textureWord(c: SoilComp) {
+export function textureWord(c: SoilComp) {
   if (c.sand !== null && c.sand >= 70) return "arenoso";
   if (c.clay !== null && c.clay >= 40) return "arcilloso";
   if (c.silt !== null && c.silt >= 50) return "limoso";
@@ -75,23 +74,7 @@ function textureWord(c: SoilComp) {
 
 const field = "w-full rounded-md border border-field bg-paper px-3 py-2.5 text-base text-ink";
 
-function Step({ n, title, done, children }: { n: number; title: string; done?: boolean; children: React.ReactNode }) {
-  return (
-    <section className="border-t border-rule pt-6">
-      <h3 className="flex items-center gap-3 font-serif text-xl font-semibold">
-        <span
-          className={`grid size-8 shrink-0 place-items-center rounded-full font-sans text-base ${done ? "bg-moss text-paper" : "border-2 border-moss text-moss"}`}
-          aria-hidden
-        >
-          {done ? <CheckIcon className="size-4" /> : n}
-        </span>
-        {title}
-        {done && <span className="sr-only">(listo)</span>}
-      </h3>
-      <div className="mt-4 pl-11">{children}</div>
-    </section>
-  );
-}
+export const REPORT_KEY = "orchid.report.v1";
 
 export function TerrenoPanel({
   point,
@@ -122,10 +105,10 @@ export function TerrenoPanel({
   const [err, setErr] = useState<string | null>(null);
   const [soil, setSoil] = useState<Soil | null>(null);
   const [ndvi, setNdvi] = useState<Ndvi | null>(null);
-  const [aboutOpen, setAboutOpen] = useState(false);
-  const agro = useAgro(point);
+  const [editing, setEditing] = useState(false);
+  const [loaded, setLoaded] = useState(false); // ya se leyó lo guardado: recién entonces se puede escribir
+  const [calcKey, setCalcKey] = useState<string | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
-  const aboutRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
     if (!point) return;
@@ -159,17 +142,18 @@ export function TerrenoPanel({
         /* eslint-enable react-hooks/set-state-in-effect */
       }
     } catch {}
+    setLoaded(true);
   }, []);
 
-  // No escribir hasta que la pagina haya leido lo guardado (evita borrar el terreno al recargar).
+  // No escribir hasta haber leído lo guardado (evita borrar el terreno al recargar o al volver a montar el panel).
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !loaded) return;
     try {
       const prev = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ name, acres, irrigated, history, point: point ?? prev?.point ?? null }));
     } catch {}
     notebookChanged();
-  }, [hydrated, name, acres, irrigated, history, point]);
+  }, [hydrated, loaded, name, acres, irrigated, history, point]);
 
   function addRow() {
     const y = history.length ? history[history.length - 1].harvest_year : THIS_YEAR - 1;
@@ -184,6 +168,9 @@ export function TerrenoPanel({
   const badDates = history.some((h) => h.harvest_year * 12 + h.harvest_month < h.plant_year * 12 + h.plant_month);
   const canGo = !!point && areaOk && !badDates && !busy;
   const econCount = ECON_CROPS.filter((c) => hasEcon(econ[c])).length;
+  const inputsKey = JSON.stringify([acres, irrigated, history, econ]);
+  const stale = !!result && calcKey !== inputsKey;
+  const showForm = editing || !areaOk;
 
   async function go() {
     if (!point) return;
@@ -199,6 +186,8 @@ export function TerrenoPanel({
       });
       if (!r.ok) throw new Error(String(r.status));
       setResult(await r.json());
+      setCalcKey(inputsKey);
+      setEditing(false);
       requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
     } catch {
       setErr("No pudimos calcular las opciones. Revisa tu conexión y pulsa el botón otra vez; tus datos siguen aquí.");
@@ -207,151 +196,188 @@ export function TerrenoPanel({
     }
   }
 
-  function openAbout() {
-    setAboutOpen(true);
-    requestAnimationFrame(() => aboutRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  // El informe completo se arma en /informe con lo que el agricultor ve aquí; se pasa por localStorage.
+  function openReport() {
+    try {
+      localStorage.setItem(
+        REPORT_KEY,
+        JSON.stringify({ createdAt: new Date().toISOString(), result: stale ? null : result, plot: { name, acres, irrigated, history, point }, econCount }),
+      );
+    } catch {}
+    window.open("/informe", "_blank");
   }
 
   const soilMain = soil?.available ? soil.components[0] : null;
   const missing = !point ? "Marca tu terreno en el mapa." : !areaOk ? "Escribe el tamaño de tu terreno en acres." : badDates ? "Revisa las fechas: alguna cosecha es antes de la siembra." : null;
+  const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
+  const facts = [areaOk ? `${acres} acres` : null, irrigated ? "con riego" : "solo lluvia", history.length ? `${plural(history.length, "cultivo")} anotado${history.length === 1 ? "" : "s"}` : "sin historial"]
+    .filter(Boolean)
+    .join(" · ");
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="font-serif text-3xl font-semibold">Mi terreno</h2>
-        <p className="mt-2 max-w-prose text-base text-ink-soft">Tres pasos y te sugerimos qué sembrar después. Tú decides: esto es una ayuda, no una orden.</p>
-      </div>
-
-      <Step n={1} title="Marca tu terreno" done={!!point}>
-        {!point ? (
-          <p className="text-base text-ink-soft">Haz clic sobre tu campo en el mapa de la izquierda.</p>
-        ) : (
-          <div className="space-y-2 text-base">
-            <p className="text-ink">Listo, ya tenemos tu terreno.</p>
-            <p className="text-ink-soft">
-              {soilMain ? (
-                <>
-                  Suelo {textureWord(soilMain)} que {DRAINAGE[soilMain.drainage ?? ""] ?? "sin dato de drenaje"}
-                  {data?.zone.id === "custom" ? " · " : "."}
-                </>
-              ) : (
-                soil === null && "Consultando el suelo… "
-              )}
-              {data?.zone.id === "custom" && <>meses más secos y calurosos: {monthList(data.most_vulnerable_months)}.</>}
-              {loadingPoint && !data && " Consultando el clima…"}
-            </p>
-            <button onClick={openAbout} className="inline-flex items-center gap-1 text-base font-semibold text-moss hover:underline">
-              Ver todo lo que sabemos de tu terreno <ChevronIcon className="size-4" />
-            </button>
-          </div>
-        )}
-      </Step>
-
-      <Step n={2} title="Tamaño y riego" done={areaOk}>
-        <div className="grid max-w-lg grid-cols-2 gap-4">
-          <label className="block text-base text-ink">
-            Tamaño en acres
-            <input className={`${field} mt-1`} type="number" inputMode="decimal" min="0" step="any" value={acres} onChange={(e) => setAcres(e.target.value)} placeholder="Ej.: 60" />
-          </label>
-          <label className="block text-base text-ink">
-            Nombre <span className="text-ink-soft">(opcional)</span>
-            <input className={`${field} mt-1`} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej.: Lote norte" />
-          </label>
-        </div>
-        {acres !== "" && !areaOk && <p className="mt-2 text-base text-clay">Escribe un número de acres mayor que cero.</p>}
-        <fieldset className="mt-5">
-          <legend className="text-base text-ink">¿Riegas este terreno?</legend>
-          <div className="mt-2 flex gap-2">
-            {[false, true].map((v) => (
-              <button
-                key={String(v)}
-                onClick={() => setIrrigated(v)}
-                aria-pressed={irrigated === v}
-                className={`rounded-md border px-5 py-2.5 text-base ${irrigated === v ? "border-moss bg-moss text-paper" : "border-field text-ink hover:border-moss"}`}
-              >
-                {v ? "Sí, tengo riego" : "No, solo lluvia"}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-      </Step>
-
-      <Step n={3} title="Qué sembraste" done={history.length > 0}>
-        <p className="text-base text-ink-soft">Agrega cada cultivo con su mes de siembra y de cosecha. Con uno o dos años basta.</p>
-        <div className="mt-4 space-y-3">
-          {history.map((h, i) => (
-            <div key={i} className="rounded-lg border border-rule p-4">
-              <div className="flex items-end gap-3">
-                <label className="flex-1 text-base text-ink">
-                  Cultivo
-                  <select className={`${field} mt-1`} value={h.crop} onChange={(e) => setRow(i, { crop: e.target.value })}>
-                    {Object.entries(CROPS).map(([k, n]) => (
-                      <option key={k} value={k}>{n}</option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  onClick={() => setHistory(history.filter((_, j) => j !== i))}
-                  aria-label={`Quitar ${CROPS[h.crop] ?? "cultivo"}`}
-                  className="grid size-11 place-items-center rounded-md border border-field text-ink-soft hover:border-clay hover:text-clay"
-                >
-                  <TrashIcon />
-                </button>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-4">
-                {(
-                  [
-                    ["Sembré", "plant_month", "plant_year"],
-                    ["Coseché", "harvest_month", "harvest_year"],
-                  ] as const
-                ).map(([label, mk, yk]) => (
-                  <fieldset key={label}>
-                    <legend className="text-base text-ink">{label}</legend>
-                    <div className="mt-1 grid grid-cols-[1fr_6rem] gap-2">
-                      <select aria-label={`Mes: ${label.toLowerCase()}`} className={field} value={h[mk]} onChange={(e) => setRow(i, { [mk]: +e.target.value })}>
-                        {MONTH_NAMES.map((m, j) => (
-                          <option key={m} value={j + 1}>{cap(m)}</option>
-                        ))}
-                      </select>
-                      <select aria-label={`Año: ${label.toLowerCase()}`} className={field} value={h[yk]} onChange={(e) => setRow(i, { [yk]: +e.target.value })}>
-                        {YEARS.map((y) => (
-                          <option key={y}>{y}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </fieldset>
-                ))}
-              </div>
-            </div>
-          ))}
-          {badDates && <p className="text-base text-clay">En algún cultivo la cosecha quedó antes de la siembra. Revisa esas fechas.</p>}
-          <button onClick={addRow} className="inline-flex items-center gap-2 rounded-md border border-moss px-4 py-2.5 text-base text-moss hover:bg-moss hover:text-paper">
-            <PlusIcon className="size-5" /> Agregar un cultivo
-          </button>
-          {history.length === 0 && <p className="text-base text-ink-soft">Si no lo recuerdas, puedes seguir sin historial; las opciones serán menos precisas.</p>}
-        </div>
-        <p className="mt-6 text-base text-ink-soft">
-          <span className="text-ink">¿Quieres evitar opciones que te den pérdida?</span>{" "}
-          {econCount > 0 ? `Tienes precios para ${econCount} cultivo${econCount === 1 ? "" : "s"}.` : "Pon tus precios y costos (opcional)."}{" "}
-          <button onClick={() => goTab("precios")} className="font-semibold text-moss hover:underline">
-            {econCount > 0 ? "Cambiar mis precios" : "Poner mis precios"}
+  if (!point) {
+    return (
+      <div className="space-y-6">
+        <h2 className="font-serif text-3xl font-semibold leading-tight">Marca tu campo en el mapa</h2>
+        <p className="max-w-prose text-lg text-ink-soft">
+          Busca tu pueblo o código postal en el mapa, acércate y haz clic sobre tu campo. Te diremos qué te conviene sembrar después.
+        </p>
+        <p className="text-base text-ink-soft">
+          ¿Primero quieres ver cómo funciona?{" "}
+          <button onClick={() => goTab("estrategias")} className="font-semibold text-moss hover:underline">
+            Mira un ejemplo real
           </button>
         </p>
-      </Step>
-
-      <div className="sticky bottom-0 -mx-10 border-t border-rule bg-paper px-10 py-4 shadow-[0_-6px_12px_-8px_rgb(0_0_0/0.25)]">
-        <div className="flex flex-wrap items-center gap-4">
-          <button
-            className="rounded-md bg-moss px-7 py-3.5 text-lg font-semibold text-paper shadow-[0_2px_6px_rgb(0_0_0/0.18)] hover:bg-moss-deep disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={!canGo}
-            onClick={go}
-          >
-            {busy ? "Buscando opciones…" : result ? "Volver a calcular" : "Ver qué me conviene sembrar"}
-          </button>
-          {missing && !busy && <span className="text-base text-ink-soft">{missing}</span>}
-        </div>
-        <div aria-live="polite">{busy && <Progress data={!!data} local={!!local} soil={soil !== null} ndvi={ndvi !== null} comparing={false} />}</div>
       </div>
+    );
+  }
+
+  return (
+    <div className="space-y-10">
+      <section aria-labelledby="plot-title">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 id="plot-title" className="font-serif text-3xl font-semibold leading-tight">
+            {name.trim() || "Tu terreno"}
+          </h2>
+          {!showForm && (
+            <button onClick={() => setEditing(true)} className="shrink-0 text-base font-semibold text-moss hover:underline">
+              Editar datos
+            </button>
+          )}
+        </div>
+        {!showForm && <p className="mt-1 text-base text-ink-soft">{facts}</p>}
+
+        <dl className="mt-5 space-y-2 text-base">
+          <div className="flex gap-3">
+            <dt className="w-32 shrink-0 text-ink-soft">Suelo</dt>
+            <dd className="text-ink">
+              {soilMain ? `${cap(textureWord(soilMain))}, ${DRAINAGE[soilMain.drainage ?? ""] ?? "sin dato de drenaje"}` : soil === null ? "Consultando…" : "Sin dato en este punto"}
+            </dd>
+          </div>
+          <div className="flex gap-3">
+            <dt className="w-32 shrink-0 text-ink-soft">Meses difíciles</dt>
+            <dd className="text-ink">
+              {data?.zone.id === "custom" ? cap(monthList(data.most_vulnerable_months)) : loadingPoint ? "Consultando el clima…" : "Sin dato todavía"}
+            </dd>
+          </div>
+        </dl>
+
+        {showForm && (
+          <div className="mt-6 space-y-6 border-t border-rule pt-6">
+            <div className="grid grid-cols-2 gap-4">
+              <label className="block text-base text-ink">
+                Tamaño en acres
+                <input className={`${field} mt-1`} type="number" inputMode="decimal" min="0" step="any" value={acres} onChange={(e) => setAcres(e.target.value)} placeholder="Ej.: 60" />
+              </label>
+              <label className="block text-base text-ink">
+                Nombre <span className="text-ink-soft">(opcional)</span>
+                <input className={`${field} mt-1`} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej.: Lote norte" />
+              </label>
+            </div>
+            {acres !== "" && !areaOk && <p className="text-base text-clay">Escribe un número de acres mayor que cero.</p>}
+
+            <fieldset>
+              <legend className="text-base text-ink">¿Riegas este terreno?</legend>
+              <div className="mt-2 flex gap-2">
+                {[false, true].map((v) => (
+                  <button
+                    key={String(v)}
+                    onClick={() => setIrrigated(v)}
+                    aria-pressed={irrigated === v}
+                    className={`rounded-md border px-5 py-2.5 text-base ${irrigated === v ? "border-moss bg-moss text-paper" : "border-field text-ink hover:border-moss"}`}
+                  >
+                    {v ? "Sí, tengo riego" : "No, solo lluvia"}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <div>
+              <h3 className="font-serif text-lg font-semibold">Qué sembraste</h3>
+              <p className="text-base text-ink-soft">Con uno o dos años basta.</p>
+              <div className="mt-3 space-y-3">
+                {history.map((h, i) => (
+                  <div key={i} className="rounded-lg border border-rule p-4">
+                    <div className="flex items-end gap-3">
+                      <label className="flex-1 text-base text-ink">
+                        Cultivo
+                        <select className={`${field} mt-1`} value={h.crop} onChange={(e) => setRow(i, { crop: e.target.value })}>
+                          {Object.entries(CROPS).map(([k, n]) => (
+                            <option key={k} value={k}>{n}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        onClick={() => setHistory(history.filter((_, j) => j !== i))}
+                        aria-label={`Quitar ${CROPS[h.crop] ?? "cultivo"}`}
+                        className="grid size-11 place-items-center rounded-md border border-field text-ink-soft hover:border-clay hover:text-clay"
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-4">
+                      {(
+                        [
+                          ["Sembré", "plant_month", "plant_year"],
+                          ["Coseché", "harvest_month", "harvest_year"],
+                        ] as const
+                      ).map(([label, mk, yk]) => (
+                        <fieldset key={label}>
+                          <legend className="text-base text-ink">{label}</legend>
+                          <div className="mt-1 grid grid-cols-[1fr_5.5rem] gap-2">
+                            <select aria-label={`Mes: ${label.toLowerCase()}`} className={field} value={h[mk]} onChange={(e) => setRow(i, { [mk]: +e.target.value })}>
+                              {MONTH_NAMES.map((m, j) => (
+                                <option key={m} value={j + 1}>{cap(m)}</option>
+                              ))}
+                            </select>
+                            <select aria-label={`Año: ${label.toLowerCase()}`} className={field} value={h[yk]} onChange={(e) => setRow(i, { [yk]: +e.target.value })}>
+                              {YEARS.map((y) => (
+                                <option key={y}>{y}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </fieldset>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {badDates && <p className="text-base text-clay">En algún cultivo la cosecha quedó antes de la siembra. Revisa esas fechas.</p>}
+                <button onClick={addRow} className="inline-flex items-center gap-2 rounded-md border border-moss px-4 py-2.5 text-base text-moss hover:bg-moss hover:text-paper">
+                  <PlusIcon className="size-5" /> Agregar un cultivo
+                </button>
+              </div>
+            </div>
+
+            <p className="text-base text-ink-soft">
+              {econCount > 0 ? `Tienes precios para ${plural(econCount, "cultivo")}.` : "Con tus precios te avisamos si algo te daría pérdida."}{" "}
+              <button onClick={() => goTab("precios")} className="font-semibold text-moss hover:underline">
+                {econCount > 0 ? "Cambiar mis precios" : "Poner mis precios"}
+              </button>
+            </p>
+
+            {editing && areaOk && !badDates && (
+              <button onClick={() => setEditing(false)} className="rounded-md border border-moss px-5 py-2.5 text-base text-moss hover:bg-moss hover:text-paper">
+                Listo
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+
+      {(!result || stale || busy) && (
+        <div className="sticky bottom-0 -mx-8 border-t border-rule bg-paper px-8 py-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <button
+              className="rounded-md bg-moss px-7 py-3.5 text-lg font-semibold text-paper hover:bg-moss-deep disabled:cursor-not-allowed disabled:opacity-45"
+              disabled={!canGo}
+              onClick={go}
+            >
+              {busy ? "Buscando opciones…" : result ? "Volver a calcular" : "Ver qué me conviene sembrar"}
+            </button>
+            {!busy && (missing ? <span className="text-base text-ink-soft">{missing}</span> : stale && <span className="text-base text-ink-soft">Cambiaste tus datos.</span>)}
+          </div>
+          <div aria-live="polite">{busy && <Progress data={!!data} local={!!local} soil={soil !== null} ndvi={ndvi !== null} comparing={false} />}</div>
+        </div>
+      )}
 
       {err && (
         <p role="alert" className="rounded-lg border border-clay/40 bg-paper-deep p-4 text-base text-clay">
@@ -359,43 +385,86 @@ export function TerrenoPanel({
         </p>
       )}
 
-      <div ref={resultsRef} className="scroll-mt-4">
-        {result && point && (
-        <>
-          <Results r={result} name={name} point={point} />
-          <div className="flex justify-end">
-            <button onClick={go} className="rounded-md border border-moss px-5 py-2.5 text-base text-moss hover:bg-moss hover:text-paper">
-              Volver a calcular con mis datos
-            </button>
-          </div>
-        </>
-      )}
+      <div ref={resultsRef} className="scroll-mt-4" aria-live="polite">
+        {result && !stale && <Summary r={result} onReport={openReport} />}
       </div>
 
-      {point && (
-        <details
-          ref={aboutRef}
-          open={aboutOpen}
-          onToggle={(e) => setAboutOpen((e.target as HTMLDetailsElement).open)}
-          className="group scroll-mt-4 border-t border-rule pt-6"
-        >
-          <summary className="flex cursor-pointer items-center gap-2 font-serif text-xl font-semibold">
-            <ChevronIcon className="size-5 text-moss transition-transform group-open:rotate-90" />
-            Lo que sabemos de tu terreno
-          </summary>
-          <div className="mt-5 space-y-8 pl-7 text-base">
-            <AboutClimate point={point} data={data} loading={loadingPoint} />
-            <AboutSeason grow={agro.grow} />
-            <AboutRain rain={agro.rain} />
-            <AboutCrops point={point} local={local} />
-            <AboutHarvests actual={agro.actual} />
-            <AboutFit suit={agro.suit} irrigated={irrigated} />
-            <AboutSoil point={point} soil={soil} />
-            <AboutGreen point={point} ndvi={ndvi} />
-          </div>
-        </details>
+      {(!result || stale) && (
+        <p className="text-base text-ink-soft">
+          ¿Quieres todo lo que sabemos de tu terreno?{" "}
+          <button onClick={openReport} className="font-semibold text-moss hover:underline">
+            Descargar el informe del terreno
+          </button>
+        </p>
       )}
     </div>
+  );
+}
+
+const TONE: Record<string, string> = { "Mejor opción": "text-moss", "Casi tan buena": "text-ink", "Más arriesgada": "text-clay" };
+
+/** La recomendación en limpio: qué sembrar, por qué, de qué cuidarse y el informe para ver el detalle. */
+function Summary({ r, onReport }: { r: Result; onReport: () => void }) {
+  const [best, ...rest] = r.rotations;
+  if (!best) return null;
+  const sell = best.sell;
+  const others = [
+    ...rest.map((rot) => ({
+      key: rot.sell.crop,
+      name: `${rot.sell.name} en ${MONTH_NAMES[rot.sell.plant_month - 1]}${rot.cover ? ` + ${rot.cover.name.toLowerCase()}` : ""}`,
+      label: rot.label,
+    })),
+    ...(r.baseline ? [{ key: "baseline", name: `Seguir igual: ${r.baseline.name.toLowerCase()} otra vez`, label: r.baseline.label }] : []),
+  ];
+  return (
+    <section aria-labelledby="best-title" className="space-y-8">
+      <article className="rounded-xl bg-moss-wash p-6">
+        <h2 id="best-title" className="font-serif text-3xl font-semibold leading-tight">
+          Te conviene <span className="text-moss">{sell.name.toLowerCase()} en {MONTH_NAMES[sell.plant_month - 1]}</span>
+        </h2>
+        {best.cover && (
+          <p className="mt-2 text-lg text-ink">
+            Y después de cosechar, {best.cover.name.toLowerCase()} para cubrir el suelo en invierno.
+          </p>
+        )}
+        <Money o={sell} />
+        {sell.why.length > 0 && (
+          <ul className="mt-4 list-disc space-y-1.5 pl-5 text-base text-ink marker:text-moss">
+            {sell.why.slice(0, 3).map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        )}
+        {sell.risks[0] && (
+          <p className="mt-4 text-base text-ink">
+            <span className="font-semibold text-clay">Ten cuidado:</span> {sell.risks[0]}
+          </p>
+        )}
+      </article>
+
+      <div className="space-y-2">
+        <button onClick={onReport} className="inline-flex items-center gap-2 rounded-md bg-moss px-6 py-3 text-base font-semibold text-paper hover:bg-moss-deep">
+          <DownloadIcon /> Descargar informe completo
+        </button>
+        <p className="text-sm text-ink-soft">Con la evidencia de cada dato, los riesgos, lo que aún no sabemos y las demás opciones.</p>
+      </div>
+
+      {others.length > 0 && (
+        <div>
+          <h3 className="font-serif text-xl font-semibold">Otras opciones</h3>
+          <ul className="mt-2 border-t border-rule">
+            {others.map((o) => (
+              <li key={o.key} className="flex items-baseline justify-between gap-4 border-b border-rule py-3 text-base">
+                <span className="text-ink">{o.name}</span>
+                <span className={`shrink-0 text-sm font-semibold ${TONE[o.label] ?? "text-ink-soft"}`}>{o.label}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <p className="text-sm text-ink-soft">{r.disclaimer}</p>
+    </section>
   );
 }
 
@@ -430,7 +499,7 @@ function Money({ o }: { o: Option }) {
   const total = Math.round(o.economics.margin_total);
   const fmt = (n: number) => n.toLocaleString("es-US");
   return (
-    <p className={`text-base ${o.economics.loss ? "text-clay" : "text-ink"}`}>
+    <p className={`mt-3 text-base ${o.economics.loss ? "text-clay" : "text-ink"}`}>
       <strong>{o.economics.investment ? "Costo estimado" : o.economics.loss ? "Pérdida estimada" : "Ganancia estimada"}:</strong>{" "}
       {fmt(perAcre)} $ por acre · {fmt(total)} $ en total, con tus números.
     </p>
@@ -562,7 +631,8 @@ function FieldNotes({ notes, point }: { notes: Note[]; point: Point }) {
   );
 }
 
-function Results({ r, name, point }: { r: Result; name: string; point: Point }) {
+/** Resultados con todo el detalle (evidencia, vacíos, riesgos, otras rotaciones). Se usa en el informe. */
+export function ReportResults({ r, name, point }: { r: Result; name: string; point: Point }) {
   const [best, ...rest] = r.rotations;
   return (
     <section className="space-y-8 border-t border-rule pt-8">
@@ -646,7 +716,7 @@ function SourceLink({ href, title, children }: { href: string; title: string; ch
   );
 }
 
-function AboutClimate({ point, data, loading }: { point: Point; data: Analysis | null; loading: boolean }) {
+export function AboutClimate({ point, data, loading }: { point: Point; data: Analysis | null; loading: boolean }) {
   return (
     <section>
       <h4 className="font-serif text-lg font-semibold">Clima</h4>
@@ -664,7 +734,7 @@ function AboutClimate({ point, data, loading }: { point: Point; data: Analysis |
   );
 }
 
-function AboutCrops({ point, local }: { point: Point; local: LocalCrops | null }) {
+export function AboutCrops({ point, local }: { point: Point; local: LocalCrops | null }) {
   const avg: Record<string, number> = {};
   if (local?.available) {
     const ys = Object.values(local.years);
@@ -700,7 +770,7 @@ function AboutCrops({ point, local }: { point: Point; local: LocalCrops | null }
   );
 }
 
-function AboutSoil({ point, soil }: { point: Point; soil: Soil | null }) {
+export function AboutSoil({ point, soil }: { point: Point; soil: Soil | null }) {
   const c = soil?.available ? soil.components[0] : null;
   const fmt = (v: number | null, d = 0, u = "") => (v === null ? "sin dato" : `${v.toFixed(d)}${u}`);
   return (
@@ -757,7 +827,7 @@ function AboutSoil({ point, soil }: { point: Point; soil: Soil | null }) {
   );
 }
 
-function AboutGreen({ point, ndvi }: { point: Point; ndvi: Ndvi | null }) {
+export function AboutGreen({ point, ndvi }: { point: Point; ndvi: Ndvi | null }) {
   const low = ndvi?.low_months ?? [];
   return (
     <section>

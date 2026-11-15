@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import * as maplibregl from "maplibre-gl";
 import { Guide } from "../assistant";
-import { ECON_KEY, PLOT_KEY, endSession, useSession } from "../auth";
+import { ECON_KEY, PLOT_KEY, endSession, useSession, type Session } from "../auth";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { AlertIcon, MoonIcon, PinIcon, SunIcon } from "../icons";
+import { AlertIcon, PinIcon } from "../icons";
 import { Analysis, ClimaPanel, EstrategiasPanel, FuentesPanel, TabId, VulnerabilidadPanel, Zone } from "../panels";
 import { flushNotebook, notebookChanged, pullNotebook } from "../notebook";
 import { PreciosPanel } from "../precios";
 import { EconUS, HistoryRow } from "../shared";
 import { LocalCrops, Point, TerrenoPanel } from "../terreno";
+import { UserMenu } from "../user-menu";
 
 // Next no empaqueta el worker de MapLibre: se sirve desde /public/maplibre.
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
@@ -33,11 +34,6 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
   layers: [{ id: "usgs", type: "raster", source: "usgs" }],
 };
 
-const PRIMARY: { id: "terreno" | "precios" | "mas"; label: string }[] = [
-  { id: "terreno", label: "Mi terreno" },
-  { id: "precios", label: "Mis precios" },
-  { id: "mas", label: "Más datos" },
-];
 const MORE: { id: TabId; label: string }[] = [
   { id: "clima", label: "Clima" },
   { id: "vulnerabilidad", label: "Meses difíciles" },
@@ -89,32 +85,27 @@ export default function MapaPage() {
   }
   return (
     <>
-      <MapaApp />
-      {offline && (
-        <p role="status" className="fixed bottom-16 left-4 z-50 max-w-xs rounded-lg border border-clay/40 bg-paper px-4 py-2 text-sm text-clay shadow-[0_4px_12px_rgb(0_0_0/0.25)]">
-          No pudimos abrir tu cuaderno guardado. Lo que cambies ahora no se guardará en tu cuenta; recarga la página en un rato.
-        </p>
-      )}
-      <button
-        type="button"
-        onClick={() => {
+      <MapaApp
+        session={session}
+        onLogout={() => {
           flushNotebook();
           endSession();
           router.replace("/");
         }}
-        className="fixed bottom-4 left-4 z-50 rounded-full border border-field bg-paper px-4 py-2 text-sm text-ink shadow-[0_4px_12px_rgb(0_0_0/0.25)] hover:border-moss"
-      >
-        Cerrar sesión · {session.name}
-      </button>
+      />
+      {offline && (
+        <p role="status" className="fixed bottom-4 left-4 z-50 max-w-xs rounded-lg border border-clay/40 bg-paper px-4 py-2 text-sm text-clay shadow-[0_4px_12px_rgb(0_0_0/0.25)]">
+          No pudimos abrir tu cuaderno guardado. Lo que cambies ahora no se guardará en tu cuenta; recarga la página en un rato.
+        </p>
+      )}
     </>
   );
 }
 
-function MapaApp() {
+function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void }) {
   const mapEl = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const pin = useRef<maplibregl.Marker | null>(null);
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const [zones, setZones] = useState<Zone[]>([]);
   const [example, setExample] = useState<Analysis | null>(null);
@@ -126,7 +117,6 @@ function MapaApp() {
   const [loadingExample, setLoadingExample] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("terreno");
-  const [lastMore, setLastMore] = useState<TabId>("clima");
   const [econ, setEcon] = useState<Record<string, EconUS>>({});
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -185,7 +175,7 @@ function MapaApp() {
       maxZoom: 16,
       attributionControl: { compact: true },
     });
-    map.current.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+    map.current.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-left");
     const style = document.createElement("style");
     style.textContent = ".maplibregl-ctrl-group button{width:44px!important;height:44px!important}";
     document.head.appendChild(style);
@@ -271,20 +261,11 @@ function MapaApp() {
       .finally(() => setLoadingExample(false));
   }
 
+  // El cuaderno muestra una sola vista a la vez: tu terreno (principal), tus precios o los datos de la zona.
+  const scrollRef = useRef<HTMLDivElement>(null);
   function goTab(t: TabId) {
     setTab(t);
-    if (isMore(t)) setLastMore(t);
-  }
-  const activePrimary = isMore(tab) ? "mas" : (tab as "terreno" | "precios");
-  function selectPrimary(id: "terreno" | "precios" | "mas") {
-    goTab(id === "mas" ? lastMore : id);
-  }
-  function onTabKey(e: KeyboardEvent<HTMLButtonElement>, i: number) {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    e.preventDefault();
-    const next = (i + (e.key === "ArrowRight" ? 1 : -1) + PRIMARY.length) % PRIMARY.length;
-    selectPrimary(PRIMARY[next].id);
-    tabRefs.current[next]?.focus();
+    scrollRef.current?.scrollTo({ top: 0 });
   }
 
   // Cultivos que ocupan al menos el 5% de la zona (mapa de cultivos USDA): se ofrecen en Mis precios.
@@ -301,85 +282,18 @@ function MapaApp() {
 
   return (
     <main className="flex h-screen min-w-[1024px]">
-      <section className="relative h-full w-1/2" aria-label="Mapa para marcar tu terreno">
-        <div ref={mapEl} className="h-full w-full" />
-        <form onSubmit={searchPlace} className="absolute left-4 right-16 top-4 flex gap-2" role="search">
-          <label className="sr-only" htmlFor="place">Buscar tu dirección, pueblo o código postal</label>
-          <input
-            id="place"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Pueblo y estado, condado o código postal"
-            className="min-w-0 flex-1 rounded-md border border-field bg-paper px-4 py-3 text-base text-ink shadow-[0_4px_12px_rgb(0_0_0/0.25)] placeholder:text-ink-soft"
-          />
-          <button disabled={searching} className="rounded-md bg-moss px-5 py-3 text-base font-semibold text-paper shadow-[0_4px_12px_rgb(0_0_0/0.25)] hover:bg-moss-deep disabled:opacity-60">
-            {searching ? "Buscando…" : "Buscar"}
-          </button>
-        </form>
-        {searchMsg && (
-          <p role="status" className="absolute left-4 right-16 top-[4.75rem] rounded-md bg-paper/95 px-4 py-2 text-base text-ink shadow-[0_4px_12px_rgb(0_0_0/0.25)]">
-            {searchMsg}
-          </p>
-        )}
-        <div className="pointer-events-none absolute inset-0 shadow-[inset_-12px_0_24px_-12px_rgb(0_0_0/0.35)]" />
-        {!point && !searchMsg && (
-          <div className="pointer-events-none absolute left-1/2 top-24 w-[min(28rem,calc(100%-3rem))] -translate-x-1/2 rounded-lg bg-paper/95 px-5 py-4 text-ink shadow-[0_6px_20px_rgb(0_0_0/0.3)]">
-            <p className="flex items-center gap-2 font-serif text-xl font-semibold">
-              <PinIcon className="text-moss" /> Toca tu terreno en el mapa
-            </p>
-            <p className="mt-1 text-sm text-ink-soft">
-              Acerca con la rueda del ratón o los botones + y − hasta ver tu campo, y haz clic encima. Disponible en EE. UU.
-            </p>
-          </div>
-        )}
-        {point && (
-          <p className="pointer-events-none absolute bottom-16 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-paper/95 px-4 py-2 text-sm text-ink shadow-[0_4px_12px_rgb(0_0_0/0.3)]">
-            ¿No es tu campo? Haz clic en el lugar correcto para mover el pin.
-          </p>
-        )}
-      </section>
-
-      <aside className="flex h-full w-1/2 flex-col border-l border-rule bg-paper text-ink">
-        <header className="px-10 pt-8">
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <h1 className="font-serif text-4xl font-semibold leading-tight">Orchid</h1>
-              <p className="mt-2 max-w-md text-base text-ink-soft">
-                Marca tu terreno, cuéntanos qué sembraste y te sugerimos qué sembrar después, con datos de satélite de la NASA.
-              </p>
-            </div>
-            <button
-              onClick={toggleTheme}
-              aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-              title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
-              className="grid size-10 shrink-0 place-items-center rounded-full border border-rule text-ink-soft hover:border-moss hover:text-ink"
-            >
-              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-            </button>
-          </div>
-
-          <div className="mt-6 flex gap-1 border-b border-rule" role="tablist" aria-label="Secciones">
-            {PRIMARY.map((t, i) => (
-              <button
-                key={t.id}
-                ref={(el) => {
-                  tabRefs.current[i] = el;
-                }}
-                role="tab"
-                id={`tab-${t.id}`}
-                aria-selected={activePrimary === t.id}
-                aria-controls={`panel-${t.id}`}
-                tabIndex={activePrimary === t.id ? 0 : -1}
-                onClick={() => selectPrimary(t.id)}
-                onKeyDown={(e) => onTabKey(e, i)}
-                className={`-mb-px border-b-[3px] px-5 py-3 text-base ${activePrimary === t.id ? "border-moss font-semibold text-ink" : "border-transparent text-ink-soft hover:text-ink"}`}
-              >
-                {t.label}
+      <aside className="flex h-full w-[30rem] shrink-0 flex-col border-r border-rule bg-paper text-ink">
+        <header className="px-8 pb-2 pt-7">
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="font-serif text-2xl font-semibold leading-none">Orchid</h1>
+            {tab !== "terreno" && (
+              <button onClick={() => goTab("terreno")} className="text-base font-semibold text-moss hover:underline">
+                ← Volver a tu terreno
               </button>
-            ))}
+            )}
           </div>
-          {activePrimary === "mas" && (
-            <nav className="flex flex-wrap gap-2 pt-4" aria-label="Más datos">
+          {isMore(tab) && (
+            <nav className="flex flex-wrap gap-2 pt-5" aria-label="Datos de la zona">
               {MORE.map((m) => (
                 <button
                   key={m.id}
@@ -394,14 +308,14 @@ function MapaApp() {
           )}
         </header>
 
-        <div className="relative flex-1 overflow-y-auto px-10 pb-10 pt-6" id="scroll-area">
+        <div ref={scrollRef} className="relative flex-1 overflow-y-auto px-8 pb-10 pt-6" id="scroll-area">
           {error && (
             <p role="alert" className="mb-5 flex items-start gap-3 rounded-lg border border-clay/40 bg-paper-deep p-4 text-base text-clay">
               <AlertIcon className="mt-0.5 shrink-0" /> {error}
             </p>
           )}
 
-          <div role="tabpanel" id="panel-terreno" aria-labelledby="tab-terreno" hidden={tab !== "terreno"}>
+          <div hidden={tab !== "terreno"}>
             <TerrenoPanel
               point={point}
               data={pointData}
@@ -413,12 +327,22 @@ function MapaApp() {
               hydrated={hydrated}
               go={goTab}
             />
+            <nav aria-label="Más datos" className="mt-12 border-t border-rule pt-6 text-base text-ink-soft">
+              <p>Más datos de la zona:</p>
+              <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                {MORE.map((m) => (
+                  <button key={m.id} onClick={() => goTab(m.id)} className="font-semibold text-moss hover:underline">
+                    {m.label}
+                  </button>
+                ))}
+              </p>
+            </nav>
           </div>
-          <div role="tabpanel" id="panel-precios" aria-labelledby="tab-precios" hidden={tab !== "precios"}>
+          <div hidden={tab !== "precios"}>
             <PreciosPanel econ={econ} setEcon={setEcon} point={point} history={history} zoneCrops={zoneCrops} go={goTab} />
           </div>
           {isMore(tab) && (
-            <div role="tabpanel" id="panel-mas" aria-labelledby="tab-mas">
+            <div>
               {tab === "estrategias" && (
                 <ExamplesHeader zones={zones} activeId={exampleId} onOpen={openExample} loading={loadingExample} />
               )}
@@ -433,7 +357,48 @@ function MapaApp() {
           )}
         </div>
       </aside>
-      <Guide point={point} />
+
+      <section className="relative h-full min-w-0 flex-1" aria-label="Mapa para marcar tu terreno">
+        <div ref={mapEl} className="h-full w-full" />
+        <div className="pointer-events-none absolute inset-0 shadow-[inset_12px_0_24px_-12px_rgb(0_0_0/0.35)]" />
+        <form onSubmit={searchPlace} className="absolute left-4 top-4 flex w-[min(30rem,calc(100%-6.5rem))] gap-2" role="search">
+          <label className="sr-only" htmlFor="place">Buscar tu dirección, pueblo o código postal</label>
+          <input
+            id="place"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Pueblo y estado, condado o código postal"
+            className="min-w-0 flex-1 rounded-md border border-field bg-paper px-4 py-3 text-base text-ink shadow-[0_4px_12px_rgb(0_0_0/0.25)] placeholder:text-ink-soft"
+          />
+          <button disabled={searching} className="rounded-md bg-moss px-5 py-3 text-base font-semibold text-paper shadow-[0_4px_12px_rgb(0_0_0/0.25)] hover:bg-moss-deep disabled:opacity-60">
+            {searching ? "Buscando…" : "Buscar"}
+          </button>
+        </form>
+        <div className="absolute right-4 top-4 z-20">
+          <UserMenu session={session} theme={theme} onToggleTheme={toggleTheme} onPrices={() => goTab("precios")} onLogout={onLogout} />
+        </div>
+        {searchMsg && (
+          <p role="status" className="absolute left-4 top-[4.75rem] w-[min(30rem,calc(100%-6.5rem))] rounded-md bg-paper/95 px-4 py-2 text-base text-ink shadow-[0_4px_12px_rgb(0_0_0/0.25)]">
+            {searchMsg}
+          </p>
+        )}
+        {!point && !searchMsg && (
+          <div className="pointer-events-none absolute left-1/2 top-24 w-[min(28rem,calc(100%-3rem))] -translate-x-1/2 rounded-lg bg-paper/95 px-5 py-4 text-ink shadow-[0_6px_20px_rgb(0_0_0/0.3)]">
+            <p className="flex items-center gap-2 font-serif text-xl font-semibold">
+              <PinIcon className="text-moss" /> Toca tu terreno en el mapa
+            </p>
+            <p className="mt-1 text-sm text-ink-soft">
+              Acerca con la rueda del ratón o los botones + y − hasta ver tu campo, y haz clic encima. Disponible en EE. UU.
+            </p>
+          </div>
+        )}
+        {point && (
+          <p className="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-paper/95 px-4 py-2 text-sm text-ink shadow-[0_4px_12px_rgb(0_0_0/0.3)]">
+            ¿No es tu campo? Haz clic en el lugar correcto para mover el pin.
+          </p>
+        )}
+        <Guide point={point} />
+      </section>
     </main>
   );
 }
