@@ -5,11 +5,14 @@
 # Todo se puede cambiar con variables de entorno (RG, LOCATION, ACR, STORAGE...).
 set -euo pipefail
 
+# Todo va dentro de { ... } para que bash lea el script completo antes de ejecutarlo: en Windows los
+# procesos hijos (az) pueden mover la posición de lectura del archivo y bash leería basura.
+{
+
 # Windows (Git Bash) con Azure CLI instalado por pip: ese "az" se relanza con os.execl y devuelve el control
 # antes de terminar, así que $(az ...) queda vacío. Se llama a su Python directamente.
 if [[ "${OSTYPE:-}" == msys* || "${OSTYPE:-}" == cygwin* ]]; then
-  AZ_PY=$(head -1 "$(command -v az)" | sed -n 's/^#!//p' | tr -d '
-')
+  AZ_PY=$(head -1 "$(command -v az)" | sed -n 's/^#!//p' | tr -d '\r\n')
   if [[ -n "$AZ_PY" && "$AZ_PY" == *python* && -x "$(cygpath -u "$AZ_PY")" ]]; then
     AZ_PY=$(cygpath -u "$AZ_PY")
     az() { "$AZ_PY" -m azure.cli "$@"; }
@@ -103,3 +106,6 @@ Para el despliegue automático con GitHub Actions, crea estas *variables* del re
   AZURE_RG=$RG  ACR_NAME=$ACR  API_APP=$API_APP  WEB_APP=$WEB_APP
 y los secretos AZURE_CLIENT_ID, AZURE_TENANT_ID y AZURE_SUBSCRIPTION_ID (ver infra/azure/README.md).
 OUT
+
+exit 0
+}
