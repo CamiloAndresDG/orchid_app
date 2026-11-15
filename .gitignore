@@ -1,7 +1,10 @@
 backend/.venv/
 backend/cache/
-backend/data/
+backend/instance/
 __pycache__/
 *.pyc
 .env
 .env.local
+
+# ETL: descargas y archivos intermedios (las tablas de backend/data/db si se versionan)
+backend/data/raw/
