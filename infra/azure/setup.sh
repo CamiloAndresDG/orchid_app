@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Crea todo en Azure y hace el primer despliegue de Orchid.
+# Crea todo en Azure y hace el primer despliegue de ORCHID.
 # Uso (desde la raíz del repo, con Azure CLI y `az login` hecho):
 #   QUICKSTATS_KEY=tu_clave bash infra/azure/setup.sh
 # Todo se puede cambiar con variables de entorno (RG, LOCATION, ACR, STORAGE...).

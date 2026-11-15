@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ParallaxHero } from "./hero-video";
-import { CREDIT, OrchidMark } from "./logo";
+import { CREDIT, FULL_NAME, OrchidMark } from "./logo";
 import { endSession, startSession, useSession } from "./auth";
 import { useLang } from "./i18n";
 import { LangToggle } from "./lang-toggle";
@@ -30,7 +30,7 @@ const COPY = {
     steps: [
       {
         title: "Marca tu terreno",
-        text: "Busca tu pueblo o haz clic sobre tu campo en el mapa satelital. Orchid toma el clima y el suelo de ese punto.",
+        text: "Busca tu pueblo o haz clic sobre tu campo en el mapa satelital. ORCHID toma el clima y el suelo de ese punto.",
       },
       {
         title: "Compara rotaciones",
@@ -41,7 +41,7 @@ const COPY = {
         text: "Pon tus precios y tus costos. La herramienta muestra lo que sabe y lo que no sabe; la decisión final es tuya.",
       },
     ],
-    juryLead: "Cómo responde Orchid al reto «Adapting Farms with NASA Data». Lo que no está conectado se marca como pendiente.",
+    juryLead: "Cómo responde ORCHID al reto «Adapting Farms with NASA Data». Lo que no está conectado se marca como pendiente.",
     team: ["Equipo: ", ", participante en el NASA Space Apps Challenge 2026."],
     requirements: [
       "Compara al menos tres estrategias de rotación, incluida la actual.",
@@ -88,7 +88,7 @@ const COPY = {
     steps: [
       {
         title: "Mark your field",
-        text: "Search for your town or click on your field on the satellite map. Orchid pulls the climate and soil for that spot.",
+        text: "Search for your town or click on your field on the satellite map. ORCHID pulls the climate and soil for that spot.",
       },
       {
         title: "Compare rotations",
@@ -99,7 +99,7 @@ const COPY = {
         text: "Enter your prices and costs. The tool shows what it knows and what it doesn't; the final call is yours.",
       },
     ],
-    juryLead: "How Orchid answers the “Adapting Farms with NASA Data” challenge. Anything not connected yet is marked as pending.",
+    juryLead: "How ORCHID answers the “Adapting Farms with NASA Data” challenge. Anything not connected yet is marked as pending.",
     team: ["Team: ", ", taking part in the NASA Space Apps Challenge 2026."],
     requirements: [
       "Compares at least three rotation strategies, including the current one.",
@@ -141,9 +141,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-paper text-ink">
       <header className={`relative z-20 flex items-center justify-between py-5 ${WRAP}`}>
-        <Link href="/" className="flex items-center gap-3 font-serif text-2xl font-semibold tracking-tight">
+        <Link href="/" className="flex items-center gap-3" aria-label={`ORCHID, ${FULL_NAME}`}>
           <OrchidMark size={40} />
-          Orchid
+          <span className="leading-none">
+            <span className="block font-serif text-2xl font-semibold tracking-wide">ORCHID</span>
+            <span className="mt-1 hidden text-xs text-ink-soft lg:block">{FULL_NAME}</span>
+          </span>
         </Link>
         <nav className="flex items-center gap-2 text-sm sm:gap-4">
           <a href="#agricultores" className="hidden px-2 text-ink-soft hover:text-ink sm:inline">
@@ -254,6 +257,9 @@ export default function Home() {
               <strong className="font-semibold text-paper">Orbital Farmers</strong>
               {c.team[1]}
             </p>
+            <p className="mt-3 text-base text-paper/80">
+              <strong className="font-semibold text-paper">ORCHID</strong> = {FULL_NAME}.
+            </p>
             <ul className="mt-8 space-y-4">
               {c.requirements.map((r) => (
                 <li key={r} className="flex gap-3 leading-relaxed">
@@ -304,7 +310,7 @@ export default function Home() {
           <span className="flex items-center gap-2.5">
             <OrchidMark size={24} />
             <span>
-              <span className="font-semibold text-ink">Orchid</span> · {CREDIT[lang]}.
+              <span className="font-semibold text-ink">ORCHID</span> ({FULL_NAME}) · {CREDIT[lang]}.
             </span>
           </span>
           <span>{c.footer}</span>

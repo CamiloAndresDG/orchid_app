@@ -27,7 +27,7 @@ export function Mascot({
       className={`brote ${className}`}
       data-state={state}
       role={decorative ? undefined : "img"}
-      aria-label={decorative ? undefined : lang === "en" ? "Brote, Orchid's guide" : "Brote, la guía de Orchid"}
+      aria-label={decorative ? undefined : lang === "en" ? "Brote, ORCHID's guide" : "Brote, la guía de ORCHID"}
       aria-hidden={decorative || undefined}
     >
       {/* sombra en la tierra */}

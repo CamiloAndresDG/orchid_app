@@ -36,7 +36,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Orchid API", lifespan=lifespan)
+app = FastAPI(title="ORCHID API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,

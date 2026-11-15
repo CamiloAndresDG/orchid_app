@@ -13,7 +13,7 @@ import { PreciosPanel } from "../precios";
 import { EconUS, HistoryRow } from "../shared";
 import { LocalCrops, Point, TerrenoPanel } from "../terreno";
 import { UserMenu } from "../user-menu";
-import { CREDIT, OrchidMark } from "../logo";
+import { CREDIT, FULL_NAME, OrchidMark } from "../logo";
 import { Lang, currentLang, langHeaders, useLang } from "../i18n";
 
 // Next no empaqueta el worker de MapLibre: se sirve desde /public/maplibre.
@@ -45,7 +45,7 @@ const COPY = {
     pin: "Mi terreno",
     opening: "Abriendo tu cuaderno…",
     offline: "No pudimos abrir tu cuaderno guardado. Lo que cambies ahora no se guardará en tu cuenta; recarga la página en un rato.",
-    noServer: "No pudimos conectar con el servidor de Orchid. Revisa tu conexión y vuelve a cargar la página.",
+    noServer: "No pudimos conectar con el servidor de ORCHID. Revisa tu conexión y vuelve a cargar la página.",
     found: (label: string) => `${label}. Ahora acércate y haz clic sobre tu campo para marcarlo.`,
     notFound: "No encontramos ese lugar.",
     searchFail: "No pudimos buscar ahora. Revisa tu conexión o acércate con el mapa.",
@@ -77,7 +77,7 @@ const COPY = {
     pin: "My field",
     opening: "Opening your notebook…",
     offline: "We couldn't open your saved notebook. Changes you make now won't be saved to your account; reload the page in a while.",
-    noServer: "We couldn't reach the Orchid server. Check your connection and reload the page.",
+    noServer: "We couldn't reach the ORCHID server. Check your connection and reload the page.",
     found: (label: string) => `${label}. Now zoom in and click on your field to mark it.`,
     notFound: "We couldn't find that place.",
     searchFail: "We couldn't search right now. Check your connection or zoom in on the map.",
@@ -354,9 +354,10 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
       <aside className="flex h-full w-[30rem] shrink-0 flex-col border-r border-rule bg-paper text-ink">
         <header className="px-8 pb-2 pt-7">
           <div className="flex items-center justify-between gap-4">
-            <h1 className="flex items-center gap-2.5 font-serif text-2xl font-semibold leading-none">
+            <h1 className="flex items-center gap-2.5" title={FULL_NAME}>
               <OrchidMark size={34} />
-              Orchid
+              <span className="font-serif text-2xl font-semibold leading-none tracking-wide">ORCHID</span>
+              <span className="sr-only">, {FULL_NAME}</span>
             </h1>
             {tab !== "terreno" && (
               <button onClick={() => goTab("terreno")} className="text-base font-semibold text-moss hover:underline">
@@ -409,7 +410,9 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
                 ))}
               </p>
             </nav>
-            <p className="mt-8 text-sm text-ink-faint">{CREDIT[lang]}.</p>
+            <p className="mt-8 text-sm text-ink-faint">
+              ORCHID: {FULL_NAME}. {CREDIT[lang]}.
+            </p>
           </div>
           <div hidden={tab !== "precios"}>
             <PreciosPanel econ={econ} setEcon={setEcon} point={point} history={history} zoneCrops={zoneCrops} go={goTab} />

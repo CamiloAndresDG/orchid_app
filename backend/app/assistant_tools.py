@@ -1,4 +1,4 @@
-"""Herramientas de la Guía de Orchid.
+"""Herramientas de la Guía de ORCHID.
 
 Cada herramienta llama al mismo código que usa la plataforma y devuelve los datos junto con su fuente oficial.
 El servidor numera las fuentes ([1], [2], ...) y arma la lista que ve el agricultor: el modelo no puede inventar
@@ -29,8 +29,8 @@ MONTHS_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "ag
 # ---------- Catálogo de fuentes ----------
 
 SOURCES: dict[str, dict] = {
-    "farmer": {"name": "Tu cuaderno en Orchid", "url": None,
-               "what": "Lo que cargaste en Orchid: terreno, historial de cultivos y precios.", "coverage": "Tu cuenta"},
+    "farmer": {"name": "Tu cuaderno en ORCHID", "url": None,
+               "what": "Lo que cargaste en ORCHID: terreno, historial de cultivos y precios.", "coverage": "Tu cuenta"},
     "census": {"name": "Censo de EE. UU. (Gazetteer y Geocoder)", "url": "https://geocoding.geo.census.gov/geocoder/",
                "what": "Ubicación de pueblos, condados, códigos postales y direcciones.", "coverage": "EE. UU."},
     "nasa_power": {"name": "NASA POWER", "url": "https://power.larc.nasa.gov/",
@@ -61,7 +61,7 @@ SOURCES: dict[str, dict] = {
     "srtm": {"name": "NASA SRTM (relieve)", "url": earthdata.LINKS["srtm"],
              "what": "Altura del terreno medida por radar desde el transbordador espacial en el año 2000; de ahí sale la pendiente.",
              "coverage": "Global entre 60° N y 56° S, píxeles de ~30 m"},
-    "orchid": {"name": "Motor de rotaciones de Orchid", "url": None,
+    "orchid": {"name": "Motor de rotaciones de ORCHID", "url": None,
                "what": "Compara opciones de cultivo con el clima (NASA POWER), el suelo (SSURGO), la vegetación "
                        "(MODIS), el relieve (SRTM), el agua del suelo (NLDAS y SMAP), los cultivos de la zona (CDL) y tu "
                        "historial.", "coverage": "EE. UU."},
@@ -128,7 +128,7 @@ def _tool(name: str, description: str, schema: dict) -> dict:
 
 TOOLS = [
     _tool("mi_terreno",
-          "Devuelve el terreno que el agricultor guardó en Orchid (nombre, acres, si riega, ubicación, historial "
+          "Devuelve el terreno que el agricultor guardó en ORCHID (nombre, acres, si riega, ubicación, historial "
           "de cultivos y precios) y el punto que tiene marcado ahora en el mapa. Úsala siempre que hable de "
           "\"mi terreno\", \"mi campo\" o \"lo que sembré\", antes de cualquier otra herramienta.",
           {"type": "object", "properties": {}, "additionalProperties": False}),
@@ -179,7 +179,7 @@ TOOLS = [
           "pendiente, erosión, curvas de nivel, encharcamiento por zonas bajas o altura del campo.",
           GlobalPointArgs.model_json_schema() | {"additionalProperties": False}),
     _tool("opciones_de_rotacion",
-          "Compara opciones para el próximo cultivo con el motor de Orchid (clima, suelo, vegetación, cultivos de "
+          "Compara opciones para el próximo cultivo con el motor de ORCHID (clima, suelo, vegetación, cultivos de "
           "la zona, historial y precios). Úsala para \"¿qué siembro después?\" o para comparar rotaciones. Con "
           "usar_mi_historial=true usa el historial, el riego, el área y los precios del terreno guardado.",
           {"type": "object",
@@ -264,7 +264,7 @@ def _mi_terreno(_, ctx: ToolContext) -> tuple[dict, str]:
     p = ctx.plot
     if not p or not p.get("point"):
         data = {"tiene_terreno": False,
-                "nota": "El agricultor todavía no marcó su terreno en Orchid. Pídele que lo marque en el mapa o que "
+                "nota": "El agricultor todavía no marcó su terreno en ORCHID. Pídele que lo marque en el mapa o que "
                         "diga el pueblo y el estado."}
     else:
         hist = [{"cultivo": CATALOG.get(h["crop"], {}).get("name", h["crop"]),
@@ -300,7 +300,7 @@ def _clima(a: PointArgs, _ctx) -> tuple[dict, str]:
     return {"periodo": "promedio 2015-2024", "meses": rows,
             "meses_mas_vulnerables": [MONTHS_ES[m["month"] - 1] for m in top],
             "metodo": (f"Vulnerabilidad = {WEIGHTS['heat']} calor + {WEIGHTS['dryness']} suelo seco + {WEIGHTS['low_rain']} poca lluvia, "
-                       "relativo al propio punto. Los pesos los eligió Orchid; los datos son de NASA POWER."),
+                       "relativo al propio punto. Los pesos los eligió ORCHID; los datos son de NASA POWER."),
             "consulta_oficial": f"{POWER_URL}?parameters={POWER_PARAMS}&community=AG&longitude={lon}&latitude={lat}"
                                 f"&start=2015&end=2024&format=JSON"}, "nasa_power"
 

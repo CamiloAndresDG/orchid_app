@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { InteractiveField } from "../interactive-field";
 import { login, register, startSession, useSession } from "../auth";
-import { CREDIT, OrchidMark } from "../logo";
+import { CREDIT, FULL_NAME, OrchidMark } from "../logo";
 import { useLang } from "../i18n";
 import { LangToggle } from "../lang-toggle";
 
@@ -124,9 +124,12 @@ export default function LoginPage() {
       <InteractiveField />
       <LangToggle className="absolute right-5 top-5 z-20 bg-paper/90 backdrop-blur" />
       <div className="relative z-10 w-full max-w-md">
-        <Link href="/" className="mb-8 flex items-center justify-center gap-3 font-serif text-3xl font-semibold tracking-tight text-ink">
-          <OrchidMark size={44} />
-          Orchid
+        <Link href="/" className="mb-8 flex flex-col items-center gap-2 text-ink" aria-label={`ORCHID, ${FULL_NAME}`}>
+          <span className="flex items-center gap-3 font-serif text-3xl font-semibold tracking-wide">
+            <OrchidMark size={44} />
+            ORCHID
+          </span>
+          <span className="rounded-full bg-paper/85 px-3 py-0.5 text-center text-xs text-ink-soft backdrop-blur-sm">{FULL_NAME}</span>
         </Link>
 
         <div className="fs-rise rounded-xl border border-rule bg-paper/90 p-7 shadow-[0_24px_60px_-30px_rgb(35_48_31/0.45)] backdrop-blur sm:p-9">

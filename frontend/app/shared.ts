@@ -27,7 +27,7 @@ export const CROP_NAMES: Record<"es" | "en", Record<string, string>> = {
   },
 };
 
-// Otras clases del mapa de cultivos (CDL) que se ven alrededor del terreno pero no son cultivos de Orchid.
+// Otras clases del mapa de cultivos (CDL) que se ven alrededor del terreno pero no son cultivos de ORCHID.
 export const LAND_NAMES: Record<"es" | "en", Record<string, string>> = {
   es: { pastizal: "pastizal", "alfalfa/heno": "alfalfa/heno", barbecho: "barbecho", algodon: "algodón", arroz: "arroz" },
   en: { pastizal: "grassland", "alfalfa/heno": "alfalfa/hay", barbecho: "fallow", algodon: "cotton", arroz: "rice" },

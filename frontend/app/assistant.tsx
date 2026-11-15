@@ -9,7 +9,7 @@ import { API } from "./shared";
 import type { Point } from "./terreno";
 import { Lang, currentLang, langHeaders, useLang } from "./i18n";
 
-// Brote, la guía de Orchid: chat con IA anclado a las fuentes, por texto o voz (Web Speech API del navegador).
+// Brote, la guía de ORCHID: chat con IA anclado a las fuentes, por texto o voz (Web Speech API del navegador).
 
 type Source = { n: number; id: string; name: string; url: string | null };
 type Msg = { role: "user" | "assistant"; content: string; sources?: Source[]; error?: boolean };

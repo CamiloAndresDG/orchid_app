@@ -14,9 +14,9 @@ const publicSans = Public_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Orchid",
-  description: "Rotaciones de cultivo con datos NASA para suelo y agua más resilientes. Hecho por Orbital Farmers para el NASA Space Apps Challenge 2026.",
-  applicationName: "Orchid",
+  title: "ORCHID · Orbital Rotation & Crop Health Intelligent Decision Platform",
+  description: "ORCHID (Orbital Rotation & Crop Health Intelligent Decision Platform). Rotaciones de cultivo con datos NASA para suelo y agua más resilientes. Hecho por Orbital Farmers para el NASA Space Apps Challenge 2026.",
+  applicationName: "ORCHID",
   authors: [{ name: "Orbital Farmers" }],
   creator: "Orbital Farmers",
 };

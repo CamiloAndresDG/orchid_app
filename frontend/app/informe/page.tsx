@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { AboutFit, AboutHarvests, AboutRain, AboutSeason, useAgro } from "../agro";
 import { DownloadIcon } from "../icons";
 import { AboutImerg, AboutNldas, AboutSmap, AboutSrtm, useNasa } from "../nasa";
-import { CREDIT, OrchidMark } from "../logo";
+import { CREDIT, FULL_NAME, OrchidMark } from "../logo";
 import type { Analysis } from "../panels";
 import { API, CROP_NAMES, HA_PER_ACRE, HistoryRow, MONTHS } from "../shared";
 import { currentLang, langHeaders, locale, useLang } from "../i18n";
@@ -53,7 +53,7 @@ const T = {
     irrigated: "con riego",
     rainOnly: "solo lluvia",
     prepared:
-      "Preparado por Orchid con datos públicos de la NASA, el USDA y la FAO. Es un apoyo para tu decisión: revísalo con tu asesor o la oficina de extensión de tu condado.",
+      "Preparado por ORCHID con datos públicos de la NASA, el USDA y la FAO. Es un apoyo para tu decisión: revísalo con tu asesor o la oficina de extensión de tu condado.",
     planted: "Lo que sembraste",
     crop: "Cultivo",
     sow: "Siembra",
@@ -82,7 +82,7 @@ const T = {
     irrigated: "irrigated",
     rainOnly: "rain only",
     prepared:
-      "Prepared by Orchid with public data from NASA, USDA and FAO. It's support for your decision: review it with your advisor or your county extension office.",
+      "Prepared by ORCHID with public data from NASA, USDA and FAO. It's support for your decision: review it with your advisor or your county extension office.",
     planted: "What you planted",
     crop: "Crop",
     sow: "Planting",
@@ -190,12 +190,12 @@ export default function InformePage() {
 
       <main className="mx-auto max-w-3xl space-y-12 px-8 pb-20 pt-10">
         <header className="report-section space-y-3 border-b border-rule pb-8">
-          <OrchidMark size={44} title="Orchid" />
+          <OrchidMark size={44} title="ORCHID" />
           <h1 className="font-serif text-4xl font-semibold leading-tight">
             {t.reportOf(plot.name.trim())}
           </h1>
           <p className="text-base text-ink-soft">
-            Orchid · {created} · {acres > 0 ? `${plot.acres} acres (${(acres * HA_PER_ACRE).toFixed(1)} ha)` : t.noSize} ·{" "}
+            ORCHID · {created} · {acres > 0 ? `${plot.acres} acres (${(acres * HA_PER_ACRE).toFixed(1)} ha)` : t.noSize} ·{" "}
             {plot.irrigated ? t.irrigated : t.rainOnly} · {point.lat.toFixed(4)}, {point.lon.toFixed(4)}
           </p>
           <p className="max-w-prose text-base text-ink-soft">{t.prepared}</p>
@@ -261,7 +261,7 @@ export default function InformePage() {
         <footer className="report-section flex items-center gap-3 border-t border-rule pt-6 text-sm text-ink-soft">
           <OrchidMark size={28} />
           <span>
-            <span className="font-semibold text-ink">Orchid</span> · {CREDIT[lang]}.
+            <span className="font-semibold text-ink">ORCHID</span> ({FULL_NAME}) · {CREDIT[lang]}.
           </span>
         </footer>
       </main>

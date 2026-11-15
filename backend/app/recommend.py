@@ -32,7 +32,7 @@ def _soil_text(w: float) -> str:
 
 WATER_FACTOR = {"low": 0.6, "med": 1.0, "high": 1.4}
 
-# Reglas de puntuación de Orchid. Son supuestos nuestros, no datos: todavía no los validó un agrónomo de la zona.
+# Reglas de puntuación de ORCHID. Son supuestos nuestros, no datos: todavía no los validó un agrónomo de la zona.
 # Se usan en build_options y se muestran tal cual en el informe (method_rules), así nunca se desincronizan.
 RULES = {
     "base": 60,                  # puntaje de partida de cada cultivo

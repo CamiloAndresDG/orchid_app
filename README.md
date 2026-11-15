@@ -1,4 +1,6 @@
-# Orchid
+# ORCHID
+
+**Orbital Rotation & Crop Health Intelligent Decision Platform**
 
 Hecho por **Orbital Farmers**, equipo participante en el NASA Space Apps Challenge 2026.
 

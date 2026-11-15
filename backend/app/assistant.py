@@ -1,9 +1,9 @@
-"""Guía de Orchid: chat con IA anclado a las fuentes de la plataforma.
+"""Guía de ORCHID: chat con IA anclado a las fuentes de la plataforma.
 
 Proveedores (ASSISTANT_PROVIDER): un modelo de OpenAI en Microsoft Foundry (gpt-5-mini, predeterminado), Claude en
 Microsoft Foundry o el API directo de Claude.
 
-Flujo por pregunta: el modelo decide qué herramientas consultar, el servidor las ejecuta con el código de Orchid,
+Flujo por pregunta: el modelo decide qué herramientas consultar, el servidor las ejecuta con el código de ORCHID,
 el modelo responde citando los resultados, y el servidor envía al navegador el texto (SSE) y la lista de fuentes
 que de verdad se consultaron.
 """
@@ -156,12 +156,12 @@ def _session_note(ctx: ToolContext) -> str:
     """Contexto de esta conversación. Va en el mensaje del usuario para no romper la caché del prompt fijo."""
     has_plot = bool(ctx.plot and ctx.plot.get("point"))
     lines = [f"Fecha de hoy: {date.today().isoformat()}.",
-             "El agricultor tiene un terreno guardado en Orchid (consúltalo con mi_terreno)." if has_plot
-             else "El agricultor todavía no guardó un terreno en Orchid."]
+             "El agricultor tiene un terreno guardado en ORCHID (consúltalo con mi_terreno)." if has_plot
+             else "El agricultor todavía no guardó un terreno en ORCHID."]
     if ctx.map_point:
         lines.append("Tiene un punto marcado en el mapa (aparece en mi_terreno).")
     if ctx.lang == "en":
-        lines.append("Idioma: el agricultor usa Orchid en inglés. Responde en inglés claro y sencillo (el mismo rol y las "
+        lines.append("Idioma: el agricultor usa ORCHID en inglés. Responde en inglés claro y sencillo (el mismo rol y las "
                      "mismas reglas), aunque los datos de las herramientas vengan en español.")
     else:
         lines.append("Idioma: responde en español.")
