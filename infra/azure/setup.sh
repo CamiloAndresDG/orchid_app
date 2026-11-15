@@ -113,7 +113,7 @@ put_app() {  # nombre plantilla
   until [[ "$st" == "Succeeded" ]]; do
     sleep 10
     st=$(az containerapp show -g "$RG" -n "$1" --query properties.provisioningState -o tsv)
-    [[ "$st" == "Failed" ]] && { echo "ERROR: la app $1 quedó en estado Failed" >&2; exit 1; }
+    if [[ "$st" == "Failed" ]]; then echo "ERROR: la app $1 quedó en estado Failed" >&2; exit 1; fi
   done
 }
 
