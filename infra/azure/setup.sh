@@ -94,34 +94,46 @@ exists postgres flexible-server db show -g "$RG" -s "$PG" -d "$PG_DB" ||
   az postgres flexible-server db create -g "$RG" -s "$PG" -d "$PG_DB" -o none
 DATABASE_URL="postgresql+psycopg://$PG_USER:$PG_PASSWORD@$PG.postgres.database.azure.com:5432/$PG_DB?sslmode=require"
 
+# Las URLs de Container Apps son <app>.<dominio del entorno>: se conocen antes de crear las apps, así el
+# frontend se compila con la URL del API y el API nace con CORS para el frontend.
+ENV_DOMAIN=$(az containerapp env show -g "$RG" -n "$ENV_NAME" --query properties.defaultDomain -o tsv)
+API_URL="https://$API_APP.$ENV_DOMAIN"
+WEB_URL="https://$WEB_APP.$ENV_DOMAIN"
+SUB=$(az account show --query id -o tsv)
+
+# Crea o actualiza una Container App con una plantilla JSON (PUT de ARM con api-version estable).
+# Se usa en lugar de "az containerapp create --yaml", que con algunas versiones de la extensión falla con 400.
+put_app() {  # nombre plantilla
+  local body="$HERE/.$1.rendered.json"
+  sed -e "s|__LOCATION__|$LOCATION|" -e "s|__ENV_ID__|$ENV_ID|" -e "s|__ACR__|$ACR|g"       -e "s|__ACR_PASSWORD__|$ACR_PASSWORD|" -e "s|__QUICKSTATS_KEY__|$QUICKSTATS_KEY|"       -e "s|__DATABASE_URL__|$DATABASE_URL|" -e "s|__ALLOWED_ORIGINS__|$WEB_URL,http://localhost:3000|"       -e "s|__TAG__|$TAG|" "$HERE/$2" > "$body"
+  command -v cygpath >/dev/null && body=$(cygpath -m "$body")
+  az rest --method put -o none     --url "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.App/containerApps/$1?api-version=2024-03-01"     --body "@$body"
+  rm -f "$HERE/.$1.rendered.json"
+  local st=""
+  until [[ "$st" == "Succeeded" ]]; do
+    sleep 10
+    st=$(az containerapp show -g "$RG" -n "$1" --query properties.provisioningState -o tsv)
+    [[ "$st" == "Failed" ]] && { echo "ERROR: la app $1 quedó en estado Failed" >&2; exit 1; }
+  done
+}
+
 echo "==> Imagen del backend"
 build_image orchid-api ./backend
 
-echo "==> Container App del backend"
-TMP=$(mktemp)
-sed -e "s|__LOCATION__|$LOCATION|" -e "s|__ENV_ID__|$ENV_ID|" -e "s|__ACR__|$ACR|g"     -e "s|__ACR_PASSWORD__|$ACR_PASSWORD|" -e "s|__QUICKSTATS_KEY__|$QUICKSTATS_KEY|"     -e "s|__DATABASE_URL__|$DATABASE_URL|" -e "s|__TAG__|$TAG|" "$HERE/api.yaml" > "$TMP"
-if exists containerapp show -g "$RG" -n "$API_APP"; then
-  az containerapp update -g "$RG" -n "$API_APP" --yaml "$TMP" -o none
-else
-  az containerapp create -g "$RG" -n "$API_APP" --yaml "$TMP" -o none
-fi
-rm -f "$TMP"
-API_URL="https://$(az containerapp show -g "$RG" -n "$API_APP" --query properties.configuration.ingress.fqdn -o tsv)"
-echo "    API: $API_URL"
+echo "==> Container App del backend ($API_URL)"
+put_app "$API_APP" api.json
 
 echo "==> Imagen del frontend (con la URL del API dentro)"
 build_image orchid-web ./frontend "NEXT_PUBLIC_API_URL=$API_URL"
 
-echo "==> Container App del frontend"
-if exists containerapp show -g "$RG" -n "$WEB_APP"; then
-  az containerapp update -g "$RG" -n "$WEB_APP" --image "$ACR.azurecr.io/orchid-web:$TAG" -o none
-else
-  az containerapp create -g "$RG" -n "$WEB_APP" --environment "$ENV_NAME"     --image "$ACR.azurecr.io/orchid-web:$TAG"     --registry-server "$ACR.azurecr.io" --registry-username "$ACR" --registry-password "$ACR_PASSWORD"     --ingress external --target-port 3000 --cpu 0.5 --memory 1Gi     --min-replicas 0 --max-replicas 2 -o none
-fi
-WEB_URL="https://$(az containerapp show -g "$RG" -n "$WEB_APP" --query properties.configuration.ingress.fqdn -o tsv)"
+echo "==> Container App del frontend ($WEB_URL)"
+put_app "$WEB_APP" web.json
 
-echo "==> CORS: el backend acepta llamadas del frontend"
-az containerapp update -g "$RG" -n "$API_APP" --set-env-vars "ALLOWED_ORIGINS=$WEB_URL,http://localhost:3000" -o none
+echo "==> Comprobando que el backend responde"
+for _ in $(seq 1 18); do
+  [[ "$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$API_URL/health")" == 200 ]] && { echo "    $API_URL/health OK"; break; }
+  sleep 10
+done
 
 cat <<OUT
 
