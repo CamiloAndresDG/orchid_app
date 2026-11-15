@@ -50,6 +50,19 @@ az group create -n "$RG" -l "$LOCATION" -o none
 # Cada paso revisa si el recurso ya existe: el script se puede volver a correr sin romper nada.
 exists() { az "$@" -o none >/dev/null 2>&1; }
 
+# Construye y sube una imagen. Con Docker disponible se construye en este equipo; si no, con ACR Tasks
+# (az acr build), que algunas suscripciones nuevas o de prueba no permiten.
+build_image() {  # nombre carpeta [build-arg]
+  local img="$ACR.azurecr.io/$1:$TAG"
+  if [[ "${BUILD:-auto}" != acr ]] && command -v docker >/dev/null && docker info >/dev/null 2>&1; then
+    az acr login -n "$ACR" -o none
+    docker build --platform linux/amd64 -t "$img" ${3:+--build-arg "$3"} "$2"
+    docker push "$img"
+  else
+    az acr build -r "$ACR" -t "$1:$TAG" ${3:+--build-arg "$3"} "$2" -o none
+  fi
+}
+
 echo "==> Container Registry $ACR"
 exists acr show -n "$ACR" || az acr create -g "$RG" -n "$ACR" --sku Basic --admin-enabled true -o none
 ACR_PASSWORD=$(az acr credential show -n "$ACR" --query "passwords[0].value" -o tsv)
@@ -82,7 +95,7 @@ exists postgres flexible-server db show -g "$RG" -s "$PG" -d "$PG_DB" ||
 DATABASE_URL="postgresql+psycopg://$PG_USER:$PG_PASSWORD@$PG.postgres.database.azure.com:5432/$PG_DB?sslmode=require"
 
 echo "==> Imagen del backend"
-az acr build -r "$ACR" -t "orchid-api:$TAG" ./backend -o none
+build_image orchid-api ./backend
 
 echo "==> Container App del backend"
 TMP=$(mktemp)
@@ -97,7 +110,7 @@ API_URL="https://$(az containerapp show -g "$RG" -n "$API_APP" --query propertie
 echo "    API: $API_URL"
 
 echo "==> Imagen del frontend (con la URL del API dentro)"
-az acr build -r "$ACR" -t "orchid-web:$TAG" --build-arg "NEXT_PUBLIC_API_URL=$API_URL" ./frontend -o none
+build_image orchid-web ./frontend "NEXT_PUBLIC_API_URL=$API_URL"
 
 echo "==> Container App del frontend"
 if exists containerapp show -g "$RG" -n "$WEB_APP"; then
