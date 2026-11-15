@@ -27,6 +27,8 @@ ACR=${ACR:-acrorchid$SUFFIX}
 STORAGE=${STORAGE:-storchid$SUFFIX}
 ENV_NAME=${ENV_NAME:-env-orchid}
 PG=${PG:-pg-orchid$SUFFIX}
+# Algunas suscripciones no permiten PostgreSQL Flexible Server en todas las regiones (p. ej. eastus2).
+PG_LOCATION=${PG_LOCATION:-centralus}
 PG_USER=${PG_USER:-fsadmin}
 PG_DB=${PG_DB:-orchid}
 # Solo letras y números (no hay que escaparla en la URL); "Fs1" asegura mayúscula, minúscula y dígito.
@@ -67,13 +69,13 @@ exists storage share-rm show -g "$RG" --storage-account "$STORAGE" -n cache ||
 STORAGE_KEY=$(az storage account keys list -g "$RG" -n "$STORAGE" --query "[0].value" -o tsv)
 az containerapp env storage set -g "$RG" -n "$ENV_NAME" --storage-name cache   --azure-file-account-name "$STORAGE" --azure-file-account-key "$STORAGE_KEY"   --azure-file-share-name cache --access-mode ReadWrite -o none
 
-echo "==> PostgreSQL Flexible Server $PG (tarda unos minutos)"
+echo "==> PostgreSQL Flexible Server $PG en $PG_LOCATION (tarda unos minutos)"
 if exists postgres flexible-server show -g "$RG" -n "$PG"; then
   # Ya existe: no conocemos su contraseña, así que se pone la nueva.
   az postgres flexible-server update -g "$RG" -n "$PG" --admin-password "$PG_PASSWORD" -o none
 else
   # --public-access 0.0.0.0 abre el firewall solo a servicios de Azure. Para aislarlo del todo, usa una red virtual.
-  az postgres flexible-server create -g "$RG" -n "$PG" -l "$LOCATION"     --tier Burstable --sku-name Standard_B1ms --storage-size 32 --version 16     --admin-user "$PG_USER" --admin-password "$PG_PASSWORD" --public-access 0.0.0.0 --yes -o none
+  az postgres flexible-server create -g "$RG" -n "$PG" -l "$PG_LOCATION"     --tier Burstable --sku-name Standard_B1ms --storage-size 32 --version 16     --admin-user "$PG_USER" --admin-password "$PG_PASSWORD" --public-access 0.0.0.0 --yes -o none
 fi
 exists postgres flexible-server db show -g "$RG" -s "$PG" -d "$PG_DB" ||
   az postgres flexible-server db create -g "$RG" -s "$PG" -d "$PG_DB" -o none
