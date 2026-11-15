@@ -284,8 +284,17 @@ Pares de opciones como «No, solo lluvia / Sí, tengo riego»: rectángulos de 6
 ### Menú de cuenta
 Círculo moss de 44px con las iniciales en paper y borde paper de 2px, arriba a la derecha sobre el mapa (lleva la sombra de lo que flota sobre la imagen). Abre una hoja de papel de 288px, radio 8px: nombre en serif, correo en ink-soft, y debajo «Mis precios y costos», «Modo oscuro / claro» y «Cerrar sesión», separados por líneas rule. Escape lo cierra y las flechas recorren las opciones.
 
+### Marca
+Monograma «O»: un anillo musgo grueso (la O de Orchid) sobre papel, con una Cattleya trianae (la orquídea flor
+nacional de Colombia) adentro: pétalos y sépalos lavanda, labio en trompeta magenta y garganta amarilla. El anillo es lo
+que se reconoce a 16px. Es la única pieza con colores fuera de la paleta del
+cuaderno, porque es el logo. Va junto a la palabra «Orchid» en la portada (40px), el cuaderno del mapa (34px), el
+inicio de sesión y el informe (44px), y es el favicon (`app/icon.svg`, `favicon.ico` de 16/32/48 y `apple-icon.png`).
+`app/logo.tsx` y `app/icon.svg` llevan el mismo dibujo. El crédito «Hecho por Orbital Farmers, equipo participante en
+el NASA Space Apps Challenge 2026» va al pie de la portada, del inicio de sesión, del cuaderno y del informe.
+
 ### Brote (la guía con IA)
-Una semilla de papel con contorno de tinta de 3px, dos hojas moss con nervio paper, ojos de tinta con brillo, mejillas moss al 22% y una sombra suave en la tierra. Siempre se dibuja con los tokens, así que cambia solo con el tema. Estados animados: reposo (respira, parpadea, mece las hojas), escuchando (hojas arriba, ojos abiertos), pensando (mira hacia arriba, tres puntos moss) y hablando (abre y cierra la boca, también mientras lee en voz alta). Con movimiento reducido queda quieto. En el mapa es un disco paper de 76px con borde moss de 2px junto a la píldora «Pregúntale a Brote»; en el chat, 56px junto a su nombre.
+Una semilla de papel con contorno de tinta de 3px, dos hojas moss con nervio paper, ojos de tinta con brillo, mejillas moss al 22% y una sombra suave en la tierra. Siempre se dibuja con los tokens, así que cambia solo con el tema. Estados animados: reposo (respira, parpadea, mece las hojas), escuchando (hojas arriba, ojos abiertos), pensando (mira hacia arriba, tres puntos moss) y hablando (abre y cierra la boca, también mientras lee en voz alta). Con movimiento reducido queda quieto. En el mapa es un disco paper de 64px con borde moss de 2px junto a la píldora «Pregúntale a Brote», a 48px del borde inferior para no tapar la atribución del mapa; en el chat, 56px junto a su nombre.
 
 ### Barra de acción y avance
 Barra pegajosa al pie con el botón principal grande. Mientras calcula, muestra en vivo cada fuente que se consulta: palomita moss cuando terminó, giro moss mientras espera, con el texto pasando de ink-soft a ink.

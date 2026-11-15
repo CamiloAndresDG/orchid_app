@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { InteractiveField } from "../interactive-field";
 import { login, register, startSession, useSession } from "../auth";
+import { CREDIT, OrchidMark } from "../logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -59,7 +60,8 @@ export default function LoginPage() {
     <main className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-paper px-5 pb-32 pt-12">
       <InteractiveField />
       <div className="relative z-10 w-full max-w-md">
-        <Link href="/" className="mb-8 block text-center font-serif text-3xl font-semibold tracking-tight text-ink">
+        <Link href="/" className="mb-8 flex items-center justify-center gap-3 font-serif text-3xl font-semibold tracking-tight text-ink">
+          <OrchidMark size={44} />
           Orchid
         </Link>
 
@@ -168,6 +170,9 @@ export default function LoginPage() {
           <Link href="/" className="text-ink-soft underline-offset-4 hover:text-ink hover:underline">
             ← Volver al inicio
           </Link>
+        </p>
+        <p className="mt-3 text-center">
+          <span className="inline-block rounded-full bg-paper/90 px-3 py-1 text-xs text-ink-soft backdrop-blur-sm">{CREDIT}.</span>
         </p>
       </div>
     </main>

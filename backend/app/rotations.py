@@ -1,9 +1,9 @@
 """Motor de reglas de rotacion (MVP).
 
-Tabla curada: cada estrategia declara beneficios, evidencia, vacios y riesgos,
-como exige el reto (apoyar el criterio del agricultor, no reemplazarlo).
-Las cifras cualitativas deben validarse con extension services locales
-(K-State Research and Extension, Iowa State Extension) antes de la demo final.
+Tabla escrita a mano para las dos zonas de ejemplo: cada estrategia declara beneficios, evidencia,
+vacios y riesgos, como exige el reto (apoyar el criterio del agricultor, no reemplazarlo).
+"evidence" nombra el tipo de dato que respalda cada punto; no son consultas hechas para el ejemplo.
+Nada de esto lo ha validado todavia la extension agricola local (K-State, Iowa State).
 """
 
 STRATEGIES = {
@@ -25,8 +25,8 @@ STRATEGIES = {
             "is_current": False,
             "benefits": ["Corta ciclos de plagas y malezas", "Necesita menos agua que el maíz", "Ingreso extra por el sorgo"],
             "risks": ["Riesgo de sequía durante el establecimiento del sorgo", "Necesita maquinaria y comprador"],
-            "evidence": ["Precipitación (NASA POWER)", "Rotaciones documentadas por K-State"],
-            "gaps": ["Precio local del sorgo", "Si hay contratos disponibles"],
+            "evidence": ["Precipitación (NASA POWER)"],
+            "gaps": ["Precio local del sorgo", "Si hay contratos disponibles", "Que la extensión agrícola de Kansas (K-State) confirme la rotación para tu zona"],
         },
         {
             "id": "wheat-cover-soy",
@@ -57,8 +57,8 @@ STRATEGIES = {
             "is_current": False,
             "benefits": ["Corta ciclos de plagas", "Reduce el fertilizante nitrogenado", "Ingreso extra por avena y paja"],
             "risks": ["Menos ganancia que el maíz en años de buen precio", "Hay que planificar la siembra"],
-            "evidence": ["Rotaciones largas de Iowa State", "Vegetación (NDVI) y humedad del suelo"],
-            "gaps": ["Precios locales de la avena"],
+            "evidence": ["Vegetación (NDVI) y humedad del suelo"],
+            "gaps": ["Precios locales de la avena", "Que la extensión agrícola de Iowa (Iowa State) confirme la rotación para tu zona"],
         },
         {
             "id": "corn-rye-soy",

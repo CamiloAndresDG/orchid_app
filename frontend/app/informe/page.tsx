@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { AboutFit, AboutHarvests, AboutRain, AboutSeason, useAgro } from "../agro";
 import { DownloadIcon } from "../icons";
 import { AboutImerg, AboutNldas, AboutSmap, AboutSrtm, useNasa } from "../nasa";
+import { CREDIT, OrchidMark } from "../logo";
 import type { Analysis } from "../panels";
 import { API, CROPS, HA_PER_ACRE, HistoryRow, MONTH_NAMES } from "../shared";
 import {
@@ -118,6 +119,7 @@ export default function InformePage() {
 
       <main className="mx-auto max-w-3xl space-y-12 px-8 pb-20 pt-10">
         <header className="report-section space-y-3 border-b border-rule pb-8">
+          <OrchidMark size={44} title="Orchid" />
           <h1 className="font-serif text-4xl font-semibold leading-tight">
             Informe de {plot.name.trim() ? `«${plot.name.trim()}»` : "tu terreno"}
           </h1>
@@ -126,8 +128,8 @@ export default function InformePage() {
             {plot.irrigated ? "con riego" : "solo lluvia"} · {point.lat.toFixed(4)}, {point.lon.toFixed(4)}
           </p>
           <p className="max-w-prose text-base text-ink-soft">
-            Preparado con datos públicos de la NASA, el USDA y la FAO. Es un apoyo para tu decisión: revísalo con tu asesor o la oficina de extensión de
-            tu condado.
+            Preparado por Orchid con datos públicos de la NASA, el USDA y la FAO. Es un apoyo para tu decisión: revísalo con tu asesor o la oficina de
+            extensión de tu condado.
           </p>
         </header>
 
@@ -188,6 +190,13 @@ export default function InformePage() {
             <AboutGreen point={point} ndvi={ndvi} />
           </div>
         </section>
+
+        <footer className="report-section flex items-center gap-3 border-t border-rule pt-6 text-sm text-ink-soft">
+          <OrchidMark size={28} />
+          <span>
+            <span className="font-semibold text-ink">Orchid</span> · {CREDIT}.
+          </span>
+        </footer>
       </main>
     </div>
   );

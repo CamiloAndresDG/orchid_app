@@ -13,6 +13,7 @@ import { PreciosPanel } from "../precios";
 import { EconUS, HistoryRow } from "../shared";
 import { LocalCrops, Point, TerrenoPanel } from "../terreno";
 import { UserMenu } from "../user-menu";
+import { CREDIT, OrchidMark } from "../logo";
 
 // Next no empaqueta el worker de MapLibre: se sirve desde /public/maplibre.
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
@@ -285,7 +286,10 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
       <aside className="flex h-full w-[30rem] shrink-0 flex-col border-r border-rule bg-paper text-ink">
         <header className="px-8 pb-2 pt-7">
           <div className="flex items-center justify-between gap-4">
-            <h1 className="font-serif text-2xl font-semibold leading-none">Orchid</h1>
+            <h1 className="flex items-center gap-2.5 font-serif text-2xl font-semibold leading-none">
+              <OrchidMark size={34} />
+              Orchid
+            </h1>
             {tab !== "terreno" && (
               <button onClick={() => goTab("terreno")} className="text-base font-semibold text-moss hover:underline">
                 ← Volver a tu terreno
@@ -337,6 +341,7 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
                 ))}
               </p>
             </nav>
+            <p className="mt-8 text-sm text-ink-faint">{CREDIT}.</p>
           </div>
           <div hidden={tab !== "precios"}>
             <PreciosPanel econ={econ} setEcon={setEcon} point={point} history={history} zoneCrops={zoneCrops} go={goTab} />

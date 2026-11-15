@@ -285,12 +285,12 @@ export function Guide({ point }: { point: Point | null }) {
   return (
     <>
       {!open && (
-        <button type="button" onClick={() => setOpen(true)} className="brote-launcher group fixed bottom-6 right-6 z-40 flex items-center gap-3">
-          <span className="rounded-full bg-paper px-4 py-2 text-base font-semibold text-ink shadow-[0_4px_14px_rgb(0_0_0/0.3)] group-hover:text-moss">
+        <button type="button" onClick={() => setOpen(true)} className="brote-launcher group fixed bottom-12 right-5 z-40 flex items-center gap-2.5">
+          <span className="rounded-full bg-paper px-3.5 py-1.5 text-sm font-semibold text-ink shadow-[0_4px_14px_rgb(0_0_0/0.3)] group-hover:text-moss">
             Pregúntale a Brote
           </span>
-          <span className="grid size-[4.75rem] place-items-center rounded-full border-2 border-moss bg-paper shadow-[0_8px_22px_-4px_rgb(0_0_0/0.45)] transition-transform duration-300 ease-out group-hover:-translate-y-1">
-            <Mascot size={62} decorative />
+          <span className="grid size-16 place-items-center rounded-full border-2 border-moss bg-paper shadow-[0_8px_22px_-4px_rgb(0_0_0/0.45)] transition-transform duration-300 ease-out group-hover:-translate-y-1">
+            <Mascot size={50} decorative />
           </span>
         </button>
       )}
@@ -298,7 +298,7 @@ export function Guide({ point }: { point: Point | null }) {
         <section
           role="dialog"
           aria-label="Brote, tu guía de campo"
-          className="fixed bottom-6 right-6 top-20 z-50 flex w-[420px] flex-col overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_24px_60px_-20px_rgb(0_0_0/0.55)]"
+          className="fixed bottom-12 right-5 top-20 z-50 flex w-[420px] flex-col overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_24px_60px_-20px_rgb(0_0_0/0.55)]"
         >
           <header className="flex items-start justify-between gap-3 border-b border-rule px-5 py-4">
             <div className="flex items-center gap-3">
