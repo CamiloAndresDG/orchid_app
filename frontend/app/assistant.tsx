@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { currentSession, type Session } from "./auth";
 import { ExternalIcon, Spinner } from "./icons";
+import { Mascot, type MascotState } from "./mascot";
 import { API } from "./shared";
 import type { Point } from "./terreno";
 
-// Guía de Orchid: chat con IA anclado a las fuentes, por texto o voz (Web Speech API del navegador).
+// Brote, la guía de Orchid: chat con IA anclado a las fuentes, por texto o voz (Web Speech API del navegador).
 
 type Source = { n: number; id: string; name: string; url: string | null };
 type Msg = { role: "user" | "assistant"; content: string; sources?: Source[]; error?: boolean };
@@ -100,6 +101,7 @@ export function Guide({ point }: { point: Point | null }) {
   const [listening, setListening] = useState(false);
   const [speak, setSpeak] = useState(false);
   const [canListen, setCanListen] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const recRef = useRef<Recognition | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -134,7 +136,10 @@ export function Guide({ point }: { point: Point | null }) {
   function toggleSpeak() {
     const next = !speak;
     setSpeak(next);
-    if (!next) window.speechSynthesis?.cancel();
+    if (!next) {
+      window.speechSynthesis?.cancel();
+      setSpeaking(false);
+    }
     try {
       localStorage.setItem(SPEAK_KEY, next ? "1" : "0");
     } catch {}
@@ -146,6 +151,9 @@ export function Guide({ point }: { point: Point | null }) {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(forSpeech(text));
       u.lang = speechLang();
+      u.onstart = () => setSpeaking(true);
+      u.onend = () => setSpeaking(false);
+      u.onerror = () => setSpeaking(false);
       window.speechSynthesis.speak(u);
     },
     [speak],
@@ -271,28 +279,34 @@ export function Guide({ point }: { point: Point | null }) {
   }
 
   const loggedIn = !!session?.token;
+  const streaming = busy && !status;
+  const mood: MascotState = listening ? "listening" : busy && status ? "thinking" : streaming || speaking ? "talking" : "idle";
 
   return (
     <>
       {!open && (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-moss px-5 py-3 text-base font-semibold text-paper shadow-[0_8px_24px_-8px_rgb(35_48_31/0.6)] hover:bg-moss-deep"
-        >
-          <ChatIcon /> Pregúntale a la guía
+        <button type="button" onClick={() => setOpen(true)} className="brote-launcher group fixed bottom-6 right-6 z-40 flex items-center gap-3">
+          <span className="rounded-full bg-paper px-4 py-2 text-base font-semibold text-ink shadow-[0_4px_14px_rgb(0_0_0/0.3)] group-hover:text-moss">
+            Pregúntale a Brote
+          </span>
+          <span className="grid size-[4.75rem] place-items-center rounded-full border-2 border-moss bg-paper shadow-[0_8px_22px_-4px_rgb(0_0_0/0.45)] transition-transform duration-300 ease-out group-hover:-translate-y-1">
+            <Mascot size={62} decorative />
+          </span>
         </button>
       )}
       {open && (
         <section
           role="dialog"
-          aria-label="Guía de Orchid"
-          className="fixed bottom-4 right-4 top-4 z-50 flex w-[420px] flex-col overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_24px_60px_-30px_rgb(35_48_31/0.6)]"
+          aria-label="Brote, tu guía de campo"
+          className="fixed bottom-6 right-6 top-20 z-50 flex w-[420px] flex-col overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_24px_60px_-20px_rgb(0_0_0/0.55)]"
         >
           <header className="flex items-start justify-between gap-3 border-b border-rule px-5 py-4">
-            <div>
-              <h2 className="font-serif text-xl font-semibold">Guía de Orchid</h2>
-              <p className="text-sm text-ink-soft">Respuestas con datos de NASA, USDA y FAO, siempre con su fuente.</p>
+            <div className="flex items-center gap-3">
+              <Mascot state={mood} size={56} className="shrink-0" decorative />
+              <div>
+                <h2 className="font-serif text-xl font-semibold leading-tight">Brote</h2>
+                <p className="text-sm text-ink-soft">Tu guía de campo. Responde con datos de NASA, USDA y FAO.</p>
+              </div>
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -315,7 +329,7 @@ export function Guide({ point }: { point: Point | null }) {
           <div className="flex-1 overflow-y-auto px-5 py-4" aria-live="polite">
             {!loggedIn ? (
               <div className="space-y-3 text-base">
-                <p>La Guía responde preguntas sobre tu terreno con datos oficiales, por texto o por voz.</p>
+                <p>Soy Brote. Respondo preguntas sobre tu terreno con datos oficiales, por texto o por voz.</p>
                 <p className="text-ink-soft">Para usarla necesitas una cuenta gratuita (así tus preguntas usan tu terreno guardado).</p>
                 <Link href="/login" className="inline-block rounded-md bg-moss px-5 py-2.5 font-semibold text-paper hover:bg-moss-deep">
                   Crear cuenta o iniciar sesión
@@ -323,13 +337,13 @@ export function Guide({ point }: { point: Point | null }) {
               </div>
             ) : enabled === false ? (
               <p className="rounded-lg border border-clay/40 bg-paper-deep p-4 text-base text-clay">
-                La Guía todavía no está activada en este servidor. Vuelve a intentarlo más tarde.
+                Brote todavía no está disponible en este servidor. Vuelve a intentarlo más tarde.
               </p>
             ) : messages.length === 0 ? (
               <div className="space-y-4">
                 <p className="text-base">
-                  Hola{session?.name ? `, ${session.name}` : ""}. Pregúntame sobre tu terreno o sobre otro lugar. Respondo solo con datos de las
-                  fuentes y te digo de dónde sale cada uno.
+                  Hola{session?.name ? `, ${session.name.split(" ")[0]}` : ""}. Soy Brote. Pregúntame sobre tu terreno o sobre otro lugar: respondo
+                  solo con datos de las fuentes y te digo de dónde sale cada uno.
                 </p>
                 <div className="flex flex-col gap-2">
                   {SUGGESTIONS.map((s) => (
@@ -452,11 +466,6 @@ const svg = {
   strokeLinejoin: "round" as const,
   "aria-hidden": true,
 };
-const ChatIcon = () => (
-  <svg {...svg}>
-    <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
-  </svg>
-);
 const MicIcon = () => (
   <svg {...svg}>
     <rect x="9" y="3" width="6" height="11" rx="3" />

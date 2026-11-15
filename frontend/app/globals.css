@@ -110,3 +110,166 @@ summary::-webkit-details-marker {
 .fs-rise {
   animation: fs-fade-up 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
+
+/* ---------- Brote, el personaje de la Guía ---------- */
+.brote {
+  overflow: visible;
+}
+.brote * {
+  transform-box: fill-box;
+}
+.brote-body {
+  transform-origin: 50% 100%;
+  animation: brote-breathe 3.6s ease-in-out infinite;
+}
+.brote-leaf-l {
+  transform-origin: 100% 85%;
+  animation: brote-sway-l 3.2s ease-in-out infinite;
+}
+.brote-leaf-r {
+  transform-origin: 0% 90%;
+  animation: brote-sway-r 3.2s ease-in-out infinite;
+}
+.brote-eye {
+  transform-origin: 50% 50%;
+  animation: brote-blink 5.2s ease-in-out infinite;
+}
+.brote-eyes {
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.brote-mouth,
+.brote-dots {
+  opacity: 0;
+}
+.brote-mouth {
+  transform-origin: 50% 30%;
+}
+.brote-dots circle {
+  transform-origin: 50% 50%;
+}
+
+.brote[data-state="listening"] .brote-body {
+  animation: brote-perk 1.1s ease-in-out infinite;
+}
+.brote[data-state="listening"] .brote-leaf-l {
+  animation: brote-ears-l 1.1s ease-in-out infinite;
+}
+.brote[data-state="listening"] .brote-leaf-r {
+  animation: brote-ears-r 1.1s ease-in-out infinite;
+}
+.brote[data-state="listening"] .brote-eye {
+  animation: none;
+  transform: scale(1.15);
+}
+
+.brote[data-state="thinking"] .brote-eyes {
+  transform: translate(3px, -3px);
+}
+.brote[data-state="thinking"] .brote-leaf-l,
+.brote[data-state="thinking"] .brote-leaf-r {
+  animation-duration: 0.9s;
+}
+.brote[data-state="thinking"] .brote-dots {
+  opacity: 1;
+}
+.brote[data-state="thinking"] .brote-dots circle {
+  animation: brote-dot 1.2s ease-in-out infinite;
+}
+.brote[data-state="thinking"] .brote-dots circle:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.brote[data-state="thinking"] .brote-dots circle:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.brote[data-state="talking"] .brote-smile {
+  opacity: 0;
+}
+.brote[data-state="talking"] .brote-mouth {
+  opacity: 1;
+  animation: brote-talk 0.26s ease-in-out infinite alternate;
+}
+
+@keyframes brote-breathe {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50% { transform: translateY(-1.5px) scale(1.015, 0.99); }
+}
+@keyframes brote-perk {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes brote-sway-l {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-7deg); }
+}
+@keyframes brote-sway-r {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(6deg); }
+}
+@keyframes brote-ears-l {
+  0%, 100% { transform: rotate(10deg); }
+  50% { transform: rotate(18deg); }
+}
+@keyframes brote-ears-r {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(-18deg); }
+}
+@keyframes brote-blink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.12); }
+}
+@keyframes brote-dot {
+  0%, 100% { transform: scale(0.6); opacity: 0.35; }
+  50% { transform: scale(1); opacity: 1; }
+}
+@keyframes brote-talk {
+  from { transform: scale(1, 0.35); }
+  to { transform: scale(1, 1); }
+}
+
+/* Al pasar por encima del botón, Brote levanta las hojas. */
+.brote-launcher:hover .brote-leaf-l,
+.brote-launcher:focus-visible .brote-leaf-l {
+  animation: brote-ears-l 1.1s ease-in-out infinite;
+}
+.brote-launcher:hover .brote-leaf-r,
+.brote-launcher:focus-visible .brote-leaf-r {
+  animation: brote-ears-r 1.1s ease-in-out infinite;
+}
+
+/* ---------- Informe imprimible ---------- */
+@media print {
+  @page {
+    size: letter;
+    margin: 16mm 14mm;
+  }
+  .no-print {
+    display: none !important;
+  }
+  /* El informe siempre se imprime en papel claro, aunque la persona use el modo oscuro. */
+  :root,
+  :root[data-theme="dark"] {
+    --paper: #ffffff;
+    --paper-deep: #f3eddd;
+    --moss-wash: #e2e6cf;
+    --ink: #23301f;
+    --ink-soft: #46523f;
+    --ink-faint: #575f4e;
+    --rule: #cfc5a8;
+    --field: #8a8470;
+    --moss: #3f6b3a;
+    --moss-deep: #2c4d29;
+    --clay: #9a4220;
+    color-scheme: light;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  .report-section {
+    break-inside: avoid-page;
+  }
+  a {
+    color: inherit !important;
+  }
+}

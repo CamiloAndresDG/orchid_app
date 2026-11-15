@@ -158,14 +158,16 @@ components:
 
 **Creative North Star: "The Field Notebook"**
 
-Un cuaderno de campo abierto junto a una foto aérea del terreno. La mitad izquierda es el mundo real (imagen satelital del USGS, con el pin «Mi terreno»); la mitad derecha es la libreta donde se anota lo que se sabe de ese pedazo de tierra: tres pasos numerados, una recomendación y, siempre a mano, de dónde sale cada dato. Se lee como una página escrita a mano con cuidado, no como un tablero de control.
+Un cuaderno de campo abierto junto a una foto aérea del terreno. A la izquierda va la libreta, angosta, donde se anota lo justo de ese pedazo de tierra: su nombre, dos datos clave y una recomendación clara; a la derecha, el mundo real (imagen satelital del USGS, con el pin «Mi terreno»). El detalle completo, con la evidencia de cada dato, vive en un informe imprimible, no en la pantalla. Se lee como una página escrita a mano con cuidado, no como un tablero de control.
 
 El papel es claro por defecto porque la escena de uso es una oficina o una cocina con luz de día; el modo oscuro existe como una libreta de noche en verde bosque, elegida por la persona y recordada. El sistema es plano: la jerarquía viene de la serif Fraunces en los títulos, del tamaño y de líneas finas de color «rule», no de tarjetas, sombras ni adornos. El verde musgo es la única voz de acción; el barro (clay) solo avisa de pérdida, riesgo o error.
 
 El lenguaje es español sencillo de agricultor, con unidades de EE. UU. (acres, bushels, dólares por acre). Nada de rótulos en mayúsculas encima de los títulos ni de bordes laterales de color: el título dice lo que es y la línea separa.
 
 **Key Characteristics:**
-- Pantalla partida 50/50: mapa satelital a la izquierda, cuaderno a la derecha.
+- Cuaderno angosto a la izquierda (30rem), mapa satelital a la derecha ocupando el resto.
+- Una sola tarea a la vista: lo esencial en pantalla, el detalle en el informe descargable.
+- Brote, una semilla con su brote dibujada en la misma tinta, es la cara de la guía con IA.
 - Papel crema claro por defecto; libreta verde bosque como modo oscuro opcional.
 - Líneas en lugar de tarjetas; una sola superficie tintada para «Tu mejor opción».
 - Musgo para actuar y elegir; barro solo para pérdida, riesgo y error.
@@ -223,7 +225,9 @@ Papel crema y tinta verde oscura, con un solo acento musgo y un barro rojizo res
 
 ## Layout
 
-Pantalla completa partida en dos mitades iguales con ancho mínimo de 1024px (pensado para computadora de escritorio): el mapa ocupa la izquierda a toda altura y el cuaderno la derecha, separado por una línea rule; solo el cuaderno se desplaza. El cuaderno tiene un margen lateral de 40px; la cabecera (título, botón de tema, pestañas) queda fija arriba y el contenido corre debajo.
+Pantalla completa con ancho mínimo de 1024px (pensado para computadora de escritorio): el cuaderno ocupa la izquierda con 30rem fijos y el mapa todo lo demás, separados por una línea rule; solo el cuaderno se desplaza. El cuaderno tiene un margen lateral de 32px y una cabecera mínima (la palabra «Orchid» y, en vistas secundarias, «← Volver a tu terreno»). Sobre el mapa flotan tres cosas en sus esquinas: el buscador arriba a la izquierda, el botón de cuenta arriba a la derecha y Brote abajo a la derecha; los controles de zoom van abajo a la izquierda.
+
+El cuaderno muestra una vista a la vez. La principal tiene tres estados: sin campo (solo qué hacer), con campo (nombre, una línea «120 acres · solo lluvia · 2 cultivos anotados», dos datos clave y «Editar datos» que despliega el formulario) y con resultado (la recomendación y el informe). «Mis precios» y «Más datos de la zona» son vistas secundarias a un clic, no pestañas.
 
 El ritmo vertical es de 32px entre bloques mayores, 24px desde cada línea divisoria hasta su contenido y 16px dentro de grupos. El contenido de cada paso se sangra 44px para alinearse con el texto del título, a la derecha del círculo numerado; los desplegables sangran 28px bajo su chevron. La barra de acción principal es pegajosa al pie del cuaderno, a sangre completa, con línea rule arriba y papel al 95%.
 
@@ -273,17 +277,24 @@ Pares de opciones como «No, solo lluvia / Sí, tengo riego»: rectángulos de 6
 - **Error / Disabled:** el mensaje aparece debajo en clay 16px, en palabras llanas que dicen cómo arreglarlo. Las casillas usan el color de acento moss.
 
 ### Navigation
-- **Pestañas principales:** tres pestañas de texto 16px con 12px 20px de relleno sobre una línea rule; la activa lleva subrayado moss de 3px, peso 600 y texto ink; las demás ink-soft que pasan a ink en hover. Se recorren con las flechas izquierda/derecha.
-- **Sub-pestañas:** debajo de «Más datos», una fila de píldoras (ver Chips) que recuerda la última elegida.
+- **Sin pestañas:** la vista principal es el terreno. «Mis precios y costos» se abre desde el menú de cuenta o desde el formulario; «Más datos de la zona» (Clima, Meses difíciles, Ejemplos, De dónde salen los datos) es una fila de enlaces moss al pie del cuaderno.
+- **Sub-pestañas:** dentro de «Más datos», una fila de píldoras (ver Chips).
+- **Volver:** enlace moss «← Volver a tu terreno» a la derecha de la cabecera en toda vista secundaria.
 
-### Pasos numerados
-Cada paso abre con una línea rule y 24px de aire; el título serif va precedido de un círculo de 32px: pendiente = borde moss de 2px con el número en moss; listo = relleno moss con una palomita en paper (y «(listo)» para lectores de pantalla). El contenido se sangra 44px.
+### Menú de cuenta
+Círculo moss de 44px con las iniciales en paper y borde paper de 2px, arriba a la derecha sobre el mapa (lleva la sombra de lo que flota sobre la imagen). Abre una hoja de papel de 288px, radio 8px: nombre en serif, correo en ink-soft, y debajo «Mis precios y costos», «Modo oscuro / claro» y «Cerrar sesión», separados por líneas rule. Escape lo cierra y las flechas recorren las opciones.
+
+### Brote (la guía con IA)
+Una semilla de papel con contorno de tinta de 3px, dos hojas moss con nervio paper, ojos de tinta con brillo, mejillas moss al 22% y una sombra suave en la tierra. Siempre se dibuja con los tokens, así que cambia solo con el tema. Estados animados: reposo (respira, parpadea, mece las hojas), escuchando (hojas arriba, ojos abiertos), pensando (mira hacia arriba, tres puntos moss) y hablando (abre y cierra la boca, también mientras lee en voz alta). Con movimiento reducido queda quieto. En el mapa es un disco paper de 76px con borde moss de 2px junto a la píldora «Pregúntale a Brote»; en el chat, 56px junto a su nombre.
 
 ### Barra de acción y avance
 Barra pegajosa al pie con el botón principal grande. Mientras calcula, muestra en vivo cada fuente que se consulta: palomita moss cuando terminó, giro moss mientras espera, con el texto pasando de ink-soft a ink.
 
 ### Tu mejor opción
-Tarjeta moss-wash de 12px con el titular serif de 30px: «Tu mejor opción:» en moss y la siembra sugerida en ink. Debajo, el veredicto en 18px, el dinero estimado, dos columnas «Por qué sí» (viñetas moss) y «Ten cuidado con» (viñetas clay), y la evidencia. Las otras opciones van debajo como lista desplegable entre líneas rule, con chevron moss que gira 90° al abrir.
+Tarjeta moss-wash de 12px con el titular serif de 30px «Te conviene» en ink y la siembra en moss; debajo, la cobertura en 18px, el dinero estimado si hay precios, hasta tres razones con viñetas moss y una sola precaución con «Ten cuidado:» en clay. Debajo de la tarjeta, el botón principal «Descargar informe completo» y una línea que dice qué trae. Las otras opciones van en una lista simple entre líneas rule: nombre a la izquierda, etiqueta a la derecha (moss, ink o clay).
+
+### Informe imprimible
+Página aparte (`/informe`) en una columna de 48rem, pensada para papel carta: titular serif con el nombre del terreno, una línea con fecha, tamaño, riego y coordenadas, el historial en tabla, la recomendación con toda su evidencia y sus vacíos, las demás rotaciones y todo lo que se sabe del terreno. Al cargar ofrece guardar como PDF; al imprimir usa siempre el papel claro, abre los desplegables y oculta la barra de herramientas.
 
 ### ¿De dónde sale esto?
 Desplegable con escudo y texto moss. Cada evidencia termina en «Ver dato oficial» (moss 600 subrayado, con icono externo) cuando viene de una fuente pública, o en «(cálculo de Orchid)» en ink-faint cuando es nuestro. «Lo que aún no sabemos» lista las lagunas con viñetas field.
