@@ -45,26 +45,38 @@ for ns in Microsoft.App Microsoft.OperationalInsights Microsoft.ContainerRegistr
 done
 az group create -n "$RG" -l "$LOCATION" -o none
 
+# Cada paso revisa si el recurso ya existe: el script se puede volver a correr sin romper nada.
+exists() { az "$@" -o none >/dev/null 2>&1; }
+
 echo "==> Container Registry $ACR"
-az acr create -g "$RG" -n "$ACR" --sku Basic --admin-enabled true -o none
+exists acr show -n "$ACR" || az acr create -g "$RG" -n "$ACR" --sku Basic --admin-enabled true -o none
 ACR_PASSWORD=$(az acr credential show -n "$ACR" --query "passwords[0].value" -o tsv)
 
 echo "==> Entorno de Container Apps $ENV_NAME"
-az containerapp env create -g "$RG" -n "$ENV_NAME" -l "$LOCATION" -o none
+exists containerapp env show -g "$RG" -n "$ENV_NAME" || az containerapp env create -g "$RG" -n "$ENV_NAME" -l "$LOCATION" -o none
+until [[ "$(az containerapp env show -g "$RG" -n "$ENV_NAME" --query properties.provisioningState -o tsv)" == "Succeeded" ]]; do
+  echo "    esperando a que el entorno termine de crearse..."; sleep 15
+done
 ENV_ID=$(az containerapp env show -g "$RG" -n "$ENV_NAME" --query id -o tsv)
 
 echo "==> Azure Files para la caché del backend"
-az storage account create -g "$RG" -n "$STORAGE" -l "$LOCATION" --sku Standard_LRS --kind StorageV2 -o none
-az storage share-rm create -g "$RG" --storage-account "$STORAGE" -n cache --quota 5 -o none
+exists storage account show -g "$RG" -n "$STORAGE" ||
+  az storage account create -g "$RG" -n "$STORAGE" -l "$LOCATION" --sku Standard_LRS --kind StorageV2 -o none
+exists storage share-rm show -g "$RG" --storage-account "$STORAGE" -n cache ||
+  az storage share-rm create -g "$RG" --storage-account "$STORAGE" -n cache --quota 5 -o none
 STORAGE_KEY=$(az storage account keys list -g "$RG" -n "$STORAGE" --query "[0].value" -o tsv)
-az containerapp env storage set -g "$RG" -n "$ENV_NAME" --storage-name cache \
-  --azure-file-account-name "$STORAGE" --azure-file-account-key "$STORAGE_KEY" \
-  --azure-file-share-name cache --access-mode ReadWrite -o none
+az containerapp env storage set -g "$RG" -n "$ENV_NAME" --storage-name cache   --azure-file-account-name "$STORAGE" --azure-file-account-key "$STORAGE_KEY"   --azure-file-share-name cache --access-mode ReadWrite -o none
 
 echo "==> PostgreSQL Flexible Server $PG (tarda unos minutos)"
-# --public-access 0.0.0.0 abre el firewall solo a servicios de Azure. Para aislarlo del todo, usa una red virtual.
-az postgres flexible-server create -g "$RG" -n "$PG" -l "$LOCATION"   --tier Burstable --sku-name Standard_B1ms --storage-size 32 --version 16   --admin-user "$PG_USER" --admin-password "$PG_PASSWORD" --public-access 0.0.0.0 --yes -o none
-az postgres flexible-server db create -g "$RG" -s "$PG" -d "$PG_DB" -o none
+if exists postgres flexible-server show -g "$RG" -n "$PG"; then
+  # Ya existe: no conocemos su contraseña, así que se pone la nueva.
+  az postgres flexible-server update -g "$RG" -n "$PG" --admin-password "$PG_PASSWORD" -o none
+else
+  # --public-access 0.0.0.0 abre el firewall solo a servicios de Azure. Para aislarlo del todo, usa una red virtual.
+  az postgres flexible-server create -g "$RG" -n "$PG" -l "$LOCATION"     --tier Burstable --sku-name Standard_B1ms --storage-size 32 --version 16     --admin-user "$PG_USER" --admin-password "$PG_PASSWORD" --public-access 0.0.0.0 --yes -o none
+fi
+exists postgres flexible-server db show -g "$RG" -s "$PG" -d "$PG_DB" ||
+  az postgres flexible-server db create -g "$RG" -s "$PG" -d "$PG_DB" -o none
 DATABASE_URL="postgresql+psycopg://$PG_USER:$PG_PASSWORD@$PG.postgres.database.azure.com:5432/$PG_DB?sslmode=require"
 
 echo "==> Imagen del backend"
@@ -72,10 +84,12 @@ az acr build -r "$ACR" -t "orchid-api:$TAG" ./backend -o none
 
 echo "==> Container App del backend"
 TMP=$(mktemp)
-sed -e "s|__LOCATION__|$LOCATION|" -e "s|__ENV_ID__|$ENV_ID|" -e "s|__ACR__|$ACR|g" \
-    -e "s|__ACR_PASSWORD__|$ACR_PASSWORD|" -e "s|__QUICKSTATS_KEY__|$QUICKSTATS_KEY|" \
-    -e "s|__DATABASE_URL__|$DATABASE_URL|" -e "s|__TAG__|$TAG|" "$HERE/api.yaml" > "$TMP"
-az containerapp create -g "$RG" -n "$API_APP" --yaml "$TMP" -o none
+sed -e "s|__LOCATION__|$LOCATION|" -e "s|__ENV_ID__|$ENV_ID|" -e "s|__ACR__|$ACR|g"     -e "s|__ACR_PASSWORD__|$ACR_PASSWORD|" -e "s|__QUICKSTATS_KEY__|$QUICKSTATS_KEY|"     -e "s|__DATABASE_URL__|$DATABASE_URL|" -e "s|__TAG__|$TAG|" "$HERE/api.yaml" > "$TMP"
+if exists containerapp show -g "$RG" -n "$API_APP"; then
+  az containerapp update -g "$RG" -n "$API_APP" --yaml "$TMP" -o none
+else
+  az containerapp create -g "$RG" -n "$API_APP" --yaml "$TMP" -o none
+fi
 rm -f "$TMP"
 API_URL="https://$(az containerapp show -g "$RG" -n "$API_APP" --query properties.configuration.ingress.fqdn -o tsv)"
 echo "    API: $API_URL"
@@ -84,11 +98,11 @@ echo "==> Imagen del frontend (con la URL del API dentro)"
 az acr build -r "$ACR" -t "orchid-web:$TAG" --build-arg "NEXT_PUBLIC_API_URL=$API_URL" ./frontend -o none
 
 echo "==> Container App del frontend"
-az containerapp create -g "$RG" -n "$WEB_APP" --environment "$ENV_NAME" \
-  --image "$ACR.azurecr.io/orchid-web:$TAG" \
-  --registry-server "$ACR.azurecr.io" --registry-username "$ACR" --registry-password "$ACR_PASSWORD" \
-  --ingress external --target-port 3000 --cpu 0.5 --memory 1Gi \
-  --min-replicas 0 --max-replicas 2 -o none
+if exists containerapp show -g "$RG" -n "$WEB_APP"; then
+  az containerapp update -g "$RG" -n "$WEB_APP" --image "$ACR.azurecr.io/orchid-web:$TAG" -o none
+else
+  az containerapp create -g "$RG" -n "$WEB_APP" --environment "$ENV_NAME"     --image "$ACR.azurecr.io/orchid-web:$TAG"     --registry-server "$ACR.azurecr.io" --registry-username "$ACR" --registry-password "$ACR_PASSWORD"     --ingress external --target-port 3000 --cpu 0.5 --memory 1Gi     --min-replicas 0 --max-replicas 2 -o none
+fi
 WEB_URL="https://$(az containerapp show -g "$RG" -n "$WEB_APP" --query properties.configuration.ingress.fqdn -o tsv)"
 
 echo "==> CORS: el backend acepta llamadas del frontend"
