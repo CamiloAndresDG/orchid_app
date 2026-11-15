@@ -80,7 +80,19 @@ export function sourceUrl(key: SourceKey, lat: number, lon: number): string {
   return key === "cdl" ? cdlUrl(lat, lon) : key === "ssurgo" ? ssurgoMapUrl(lat, lon) : key === "ndvi" ? ndviUrl(lat, lon) : powerUrl(lat, lon);
 }
 
-export const SOURCE_LABEL: Record<SourceKey, string> = {
+// Visor oficial de datos de FAO GAEZ v4 (idoneidad, temporada y cosechas reales).
+export function gaezUrl(): string {
+  return "https://gaez.fao.org/pages/data-viewer";
+}
+
+// Ficha oficial (NOAA NCEI) de una estacion GHCN-Daily, por ejemplo una de CoCoRaHS (US1...).
+export function stationUrl(id: string): string {
+  return `https://www.ncei.noaa.gov/cdo-web/datasets/GHCND/stations/GHCND:${id}/detail`;
+}
+
+export const SOURCE_LABEL: Record<SourceKey | "gaez" | "cocorahs", string> = {
+  gaez: "FAO GAEZ v4: visor oficial de datos agroecológicos (temas 2, 4 y 5)",
+  cocorahs: "CoCoRaHS en GHCN-Daily (NOAA NCEI): ficha oficial de la estación con sus datos diarios",
   power: "NASA POWER (página oficial): punto, fechas y parámetros ya cargados; pulsa Submit para ver o descargar",
   cdl: "CDL (USDA NASS): imagen oficial de la capa 2025 en este punto",
   ssurgo: "SSURGO (USDA NRCS): mapa oficial de unidades de suelo en este punto",
