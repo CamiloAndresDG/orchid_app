@@ -1,4 +1,4 @@
-"""Zonas de demo. Cada zona trae un campo representativo (punto) y su rotacion actual."""
+"""Demo zones. Each zone has a representative field (point) and its current rotation."""
 from .i18n import t
 
 ZONES = [

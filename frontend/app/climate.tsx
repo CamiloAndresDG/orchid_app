@@ -108,7 +108,7 @@ const T = {
   },
 };
 
-// "2025-11" -> "nov 2025"; el resto de etiquetas se deja igual
+// "2025-11" -> "nov 2025"; other labels are left as is
 const prettyLabel = (s: string, l: Lang) => (/^\d{4}-\d{2}$/.test(s) ? `${T[l].months[+s.slice(5) - 1]} ${s.slice(0, 4)}` : s);
 const toIn = (mm: number) => mm / 25.4;
 const toF = (c: number) => (c * 9) / 5 + 32;
@@ -121,12 +121,12 @@ const shift = (d: Date, days: number) => new Date(d.getTime() + days * 86400000)
 
 const field = "rounded-md border border-field bg-paper px-3 py-2.5 text-base text-ink";
 
-export function ClimaExplorer({ lat, lon }: { lat: number; lon: number }) {
+export function ClimateExplorer({ lat, lon }: { lat: number; lon: number }) {
   const l = useLang();
   const t = T[l];
   const series = SERIES[l];
   const today = new Date();
-  const maxDate = iso(shift(today, -3)); // POWER publica con ~2-3 dias de retraso
+  const maxDate = iso(shift(today, -3)); // POWER publishes ~2-3 days late
   const [res, setRes] = useState<Res>("monthly");
   const [start, setStart] = useState(iso(shift(today, -365)));
   const [end, setEnd] = useState(maxDate);

@@ -1,8 +1,11 @@
-"""Herramientas de la Guía de ORCHID.
+"""Tools for the ORCHID Guide.
 
-Cada herramienta llama al mismo código que usa la plataforma y devuelve los datos junto con su fuente oficial.
-El servidor numera las fuentes ([1], [2], ...) y arma la lista que ve el agricultor: el modelo no puede inventar
-enlaces porque solo cita números que vienen de aquí.
+Each tool calls the same code the platform uses and returns the data along with its official source.
+The server numbers the sources ([1], [2], ...) and builds the list the farmer sees: the model can't invent
+links because it only cites numbers that come from here.
+
+Tool names, descriptions and result keys are model-facing content and stay in Spanish, matching the
+system prompt (assistant_prompt.py) that refers to them.
 """
 import json
 from dataclasses import dataclass, field
@@ -26,7 +29,7 @@ HA_PER_ACRE = 0.404686
 MONTHS_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre",
              "noviembre", "diciembre"]
 
-# ---------- Catálogo de fuentes ----------
+# ---------- Source catalog ----------
 
 SOURCES: dict[str, dict] = {
     "farmer": {"name": "Tu cuaderno en ORCHID", "url": None,
@@ -70,11 +73,11 @@ SOURCES: dict[str, dict] = {
 
 @dataclass
 class ToolContext:
-    """Lo que las herramientas saben de la sesión. El terreno se lee del servidor, no del navegador."""
+    """What the tools know about the session. The field is read from the server, not from the browser."""
     plot: dict | None
     map_point: dict | None
-    cited: list[str] = field(default_factory=list)  # ids de fuente en orden de primera cita
-    lang: str = "es"  # idioma de la respuesta que pidió el navegador
+    cited: list[str] = field(default_factory=list)  # source ids in order of first citation
+    lang: str = "es"  # response language the browser asked for
 
     def cite(self, source_id: str) -> str:
         if source_id not in self.cited:
@@ -86,10 +89,10 @@ class ToolContext:
                 for i, s in enumerate(self.cited)]
 
 
-# ---------- Validación de entradas ----------
+# ---------- Input validation ----------
 
 class PointArgs(BaseModel):
-    lat: float = Field(ge=18, le=72)  # EE. UU. continental, Alaska, Hawái y Puerto Rico
+    lat: float = Field(ge=18, le=72)  # continental U.S., Alaska, Hawaii and Puerto Rico
     lon: float = Field(ge=-180, le=-60)
 
 
@@ -122,7 +125,7 @@ POINT_SCHEMA = {
 
 
 def _tool(name: str, description: str, schema: dict) -> dict:
-    # eager_input_streaming: las entradas llegan sin buffer; las validamos con pydantic antes de ejecutar.
+    # eager_input_streaming: inputs arrive unbuffered; we validate them with pydantic before running.
     return {"name": name, "description": description, "input_schema": schema, "eager_input_streaming": True}
 
 
@@ -230,7 +233,7 @@ STATUS_EN = {
     "que_es_la_fuente": "Looking up the source description",
 }
 
-# ---------- Conversión de precios (mismas unidades que frontend/app/shared.ts) ----------
+# ---------- Price conversion (same units as frontend/app/shared.ts) ----------
 
 KG_PER_CWT = 45.3592
 US_UNITS = {
@@ -247,7 +250,7 @@ def _num(v) -> float | None:
 
 
 def _to_metric(crop: str, e: dict) -> dict:
-    """Rinde, precio y costo del agricultor (unidades de EE. UU.) a t/ha, $/t y $/ha, como hace el frontend."""
+    """Farmer's yield, price and cost (U.S. units) to t/ha, $/t and $/ha, as the frontend does."""
     y, p, c = _num(e.get("yield")), _num(e.get("price")), _num(e.get("cost"))
     u = US_UNITS.get(crop)
     return {
@@ -257,10 +260,10 @@ def _to_metric(crop: str, e: dict) -> dict:
     }
 
 
-# ---------- Ejecutores ----------
+# ---------- Executors ----------
 
 
-def _mi_terreno(_, ctx: ToolContext) -> tuple[dict, str]:
+def _my_field(_, ctx: ToolContext) -> tuple[dict, str]:
     p = ctx.plot
     if not p or not p.get("point"):
         data = {"tiene_terreno": False,
@@ -278,7 +281,7 @@ def _mi_terreno(_, ctx: ToolContext) -> tuple[dict, str]:
     return data, "farmer"
 
 
-def _buscar_lugar(a: PlaceArgs, _ctx) -> tuple[dict, str]:
+def _find_place(a: PlaceArgs, _ctx) -> tuple[dict, str]:
     from .geocode import search
 
     hit = search(a.lugar)
@@ -287,7 +290,7 @@ def _buscar_lugar(a: PlaceArgs, _ctx) -> tuple[dict, str]:
     return {"encontrado": True, **hit}, "census"
 
 
-def _clima(a: PointArgs, _ctx) -> tuple[dict, str]:
+def _climate(a: PointArgs, _ctx) -> tuple[dict, str]:
     lat, lon = round(a.lat, 2), round(a.lon, 2)
     months = vulnerability_by_month(monthly_climatology(lat, lon))
     rows = [{"mes": MONTHS_ES[m["month"] - 1],
@@ -305,7 +308,7 @@ def _clima(a: PointArgs, _ctx) -> tuple[dict, str]:
                                 f"&start=2015&end=2024&format=JSON"}, "nasa_power"
 
 
-def _suelo(a: PointArgs, _ctx) -> tuple[dict, str]:
+def _soil(a: PointArgs, _ctx) -> tuple[dict, str]:
     s = soil_at(a.lat, a.lon)
     return {"disponible": s.get("available"), "nota": s.get("note"), "componentes": s.get("components", [])[:3],
             "unidades": {"pct": "% del mapa", "slope": "% de pendiente", "topsoil_depth_cm": "cm", "sand/silt/clay": "%",
@@ -322,61 +325,61 @@ def _ndvi(a: GlobalPointArgs, _ctx) -> tuple[dict, str]:
             "consulta_oficial": n.get("official_url")}, "modis"
 
 
-def _cultivos(a: PointArgs, _ctx) -> tuple[dict, str]:
+def _local_crops(a: PointArgs, _ctx) -> tuple[dict, str]:
     c = local_crops(a.lat, a.lon)
     return {"disponible": c.get("available"), "radio_km": c.get("radius_km"), "nota": c.get("note"),
             "porcentaje_por_anio": c.get("years", {})}, "cdl"
 
 
-def _recortar(lista: list, n: int) -> list:
-    return lista[:n] if isinstance(lista, list) else lista
+def _trim(items: list, n: int) -> list:
+    return items[:n] if isinstance(items, list) else items
 
 
-def _idoneidad(a: GlobalPointArgs, _ctx) -> tuple[dict, str]:
+def _suitability(a: GlobalPointArgs, _ctx) -> tuple[dict, str]:
     g = suitability_at(a.lat, a.lon, "High")
     return {"disponible": g.get("available"), "nota": g.get("note"), "fuente_detalle": g.get("source"),
-            "nivel_de_insumos": "alto", "cultivos": _recortar(g.get("crops", []), 15)}, "gaez"
+            "nivel_de_insumos": "alto", "cultivos": _trim(g.get("crops", []), 15)}, "gaez"
 
 
-def _crecimiento(a: GlobalPointArgs, _ctx) -> tuple[dict, str]:
+def _growing(a: GlobalPointArgs, _ctx) -> tuple[dict, str]:
     g = growing_at(a.lat, a.lon)
     return {k: v for k, v in g.items() if k not in ("lat", "lon")}, "gaez"
 
 
-def _lluvia(a: PointArgs, _ctx) -> tuple[dict, str]:
+def _station_rain(a: PointArgs, _ctx) -> tuple[dict, str]:
     s = stations_near(a.lat, a.lon)
     return {k: v for k, v in s.items() if k not in ("lat", "lon")}, "cocorahs"
 
 
-def _sin_ruido(d: dict, *drop: str) -> dict:
+def _without_noise(d: dict, *drop: str) -> dict:
     return {k: v for k, v in d.items() if k not in ("official_url", "source", *drop)}
 
 
 def _smap(a: GlobalPointArgs, _ctx) -> tuple[dict, str]:
     r = earthdata.smap_at(a.lat, a.lon)
     r["series"] = [x for x in r.get("series", []) if x["value"] is not None]
-    return _sin_ruido(r), "smap"
+    return _without_noise(r), "smap"
 
 
 def _imerg(a: GlobalPointArgs, _ctx) -> tuple[dict, str]:
     r = earthdata.imerg_at(a.lat, a.lon)
     if r.get("series"):
-        r["series"] = [x for x in r["series"] if x["mm"]]  # solo los días con lluvia
+        r["series"] = [x for x in r["series"] if x["mm"]]  # only the days with rain
         r["unidades"] = "mm por día; total_in en pulgadas"
-    return _sin_ruido(r), "imerg"
+    return _without_noise(r), "imerg"
 
 
 def _nldas(a: PointArgs, _ctx) -> tuple[dict, str]:
     r = earthdata.nldas_at(a.lat, a.lon)
     r["unidades"] = "milímetros de agua (kg/m²) por mes; soil_0_100_mm es el agua guardada al final del mes"
-    return _sin_ruido(r), "nldas"
+    return _without_noise(r), "nldas"
 
 
 def _srtm(a: GlobalPointArgs, _ctx) -> tuple[dict, str]:
-    return _sin_ruido(earthdata.srtm_at(a.lat, a.lon), "tile"), "srtm"
+    return _without_noise(earthdata.srtm_at(a.lat, a.lon), "tile"), "srtm"
 
 
-def _rotacion(a: RotationArgs, ctx: ToolContext) -> tuple[dict, str]:
+def _rotation(a: RotationArgs, ctx: ToolContext) -> tuple[dict, str]:
     plot = ctx.plot if a.usar_mi_historial else None
     history = (plot or {}).get("history", [])
     irrigated = bool((plot or {}).get("irrigated"))
@@ -388,13 +391,13 @@ def _rotacion(a: RotationArgs, ctx: ToolContext) -> tuple[dict, str]:
                         soil=soil_at(a.lat, a.lon), ndvi=ndvi_at(a.lat, a.lon), today=date.today(),
                         terrain=earthdata.srtm_at(a.lat, a.lon), water=earthdata.nldas_at(a.lat, a.lon),
                         moisture=earthdata.smap_at(a.lat, a.lon))
-    out["reglas_de_orchid"] = out.pop("method", [])  # supuestos nuestros, no datos
+    out["reglas_de_orchid"] = out.pop("method", [])  # our own assumptions, not data
     out["supuestos"] = {"usa_historial_guardado": bool(plot), "area_acres": round(area_ha / HA_PER_ACRE, 1),
                         "riega": irrigated, "nota_area": None if acres else "Sin área guardada: se usaron 25 acres para los totales."}
     return out, "orchid"
 
 
-def _fuente(a: SourceArgs, _ctx) -> tuple[dict, str]:
+def _source_info(a: SourceArgs, _ctx) -> tuple[dict, str]:
     s = SOURCES.get(a.fuente)
     if not s:
         return {"nota": "Fuente desconocida."}, "orchid"
@@ -402,26 +405,26 @@ def _fuente(a: SourceArgs, _ctx) -> tuple[dict, str]:
 
 
 EXECUTORS = {
-    "mi_terreno": (None, _mi_terreno),
-    "buscar_lugar": (PlaceArgs, _buscar_lugar),
-    "clima_del_punto": (GlobalPointArgs, _clima),
-    "suelo_del_punto": (PointArgs, _suelo),
+    "mi_terreno": (None, _my_field),
+    "buscar_lugar": (PlaceArgs, _find_place),
+    "clima_del_punto": (GlobalPointArgs, _climate),
+    "suelo_del_punto": (PointArgs, _soil),
     "vegetacion_ndvi": (GlobalPointArgs, _ndvi),
-    "cultivos_cercanos": (PointArgs, _cultivos),
-    "idoneidad_cultivos": (GlobalPointArgs, _idoneidad),
-    "periodo_crecimiento": (GlobalPointArgs, _crecimiento),
-    "lluvia_estaciones": (PointArgs, _lluvia),
+    "cultivos_cercanos": (PointArgs, _local_crops),
+    "idoneidad_cultivos": (GlobalPointArgs, _suitability),
+    "periodo_crecimiento": (GlobalPointArgs, _growing),
+    "lluvia_estaciones": (PointArgs, _station_rain),
     "humedad_suelo_satelite": (GlobalPointArgs, _smap),
     "lluvia_reciente_satelite": (GlobalPointArgs, _imerg),
     "balance_agua_suelo": (PointArgs, _nldas),
     "relieve_terreno": (GlobalPointArgs, _srtm),
-    "opciones_de_rotacion": (RotationArgs, _rotacion),
-    "que_es_la_fuente": (SourceArgs, _fuente),
+    "opciones_de_rotacion": (RotationArgs, _rotation),
+    "que_es_la_fuente": (SourceArgs, _source_info),
 }
 
 
 def run_tool(name: str, raw_input, ctx: ToolContext, tool_use_id: str) -> dict:
-    """Ejecuta una herramienta y devuelve el bloque tool_result. Nunca lanza: los errores vuelven a Claude."""
+    """Runs a tool and returns the tool_result block. Never raises: errors go back to Claude."""
     def result(payload: dict, is_error: bool = False) -> dict:
         return {"type": "tool_result", "tool_use_id": tool_use_id, "is_error": is_error,
                 "content": json.dumps(payload, ensure_ascii=False, default=str)}
@@ -432,12 +435,12 @@ def run_tool(name: str, raw_input, ctx: ToolContext, tool_use_id: str) -> dict:
     try:
         args = model.model_validate(raw_input) if model else None
     except ValidationError as e:
-        # Entrada inválida (o JSON truncado con eager streaming): no se ejecuta; Claude puede corregirla.
+        # Invalid input (or JSON truncated by eager streaming): not run; Claude can correct it.
         msg = "; ".join(f"{'.'.join(map(str, err['loc']))}: {err['msg']}" for err in e.errors())
         hint = " Esta fuente solo cubre EE. UU." if model in (PointArgs, RotationArgs) else ""
         return result({"error": f"Entrada inválida: {msg}.{hint}", "INVALID_JSON": json.dumps(raw_input, ensure_ascii=False)}, True)
     try:
         data, source_id = fn(args, ctx)
-    except Exception as e:  # fuente caída o sin red: se informa, no se inventa
+    except Exception as e:  # source down or no network: report it, never make it up
         return result({"error": f"La fuente no respondió ({type(e).__name__}). No hay datos para esta consulta."}, True)
     return result({"cita": ctx.cite(source_id), "fuente": SOURCES[source_id]["name"], "datos": data})

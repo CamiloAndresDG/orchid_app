@@ -9,9 +9,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
-# Tablas del ETL ya construidas (GAEZ, celdas, rasgos de cultivos); las demás se generan con `python -m app.etl`.
+# ETL tables already built (GAEZ, cells, crop traits); the rest are generated with `python -m app.etl`.
 COPY data/db ./data/db
 
-# En Azure, /app/cache es un recurso compartido de Azure Files (ver infra/azure).
+# On Azure, /app/cache is an Azure Files share (see infra/azure).
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

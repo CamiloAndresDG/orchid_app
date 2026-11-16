@@ -1,4 +1,4 @@
-"""Cuentas, sesiones y el cuaderno (terreno y precios) de cada agricultor."""
+"""Accounts, sessions and each farmer's notebook (field and prices)."""
 import hashlib
 import hmac
 import re
@@ -19,7 +19,7 @@ from .db import AuthSession, Plot, User, as_utc, get_db, utcnow
 router = APIRouter()
 bearer = HTTPBearer(auto_error=False)
 
-# ---------- Contraseñas y tokens ----------
+# ---------- Passwords and tokens ----------
 
 _SCRYPT = {"n": 2**14, "r": 8, "p": 1, "dklen": 32}
 
@@ -39,7 +39,7 @@ def verify_password(pw: str, stored: str) -> bool:
         return False
 
 
-# Para que un correo inexistente tarde lo mismo que una contraseña equivocada.
+# So a nonexistent email takes as long as a wrong password.
 _DUMMY_HASH = hash_password(secrets.token_hex(8))
 
 
@@ -50,7 +50,7 @@ def _token_hash(token: str) -> str:
 def _new_session(db: Session, user: User) -> str:
     token = secrets.token_urlsafe(32)
     now = utcnow()
-    db.execute(delete(AuthSession).where(AuthSession.expires_at < now))  # limpieza de vencidas
+    db.execute(delete(AuthSession).where(AuthSession.expires_at < now))  # clean up expired ones
     db.add(AuthSession(token_hash=_token_hash(token), user_id=user.id, created_at=now, expires_at=now + timedelta(days=SESSION_DAYS)))
     db.commit()
     return token
@@ -65,7 +65,7 @@ def current_user(cred: HTTPAuthorizationCredentials | None = Depends(bearer), db
     return s.user
 
 
-# ---------- Esquemas ----------
+# ---------- Schemas ----------
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -120,7 +120,7 @@ class PointIn(BaseModel):
 
 
 class PlotIn(BaseModel):
-    """Mismo formato que usa el frontend (acres como texto, tal cual lo escribe la persona)."""
+    """Same format the frontend uses (acres as text, exactly as the person types it)."""
     name: str = Field("", max_length=120)
     acres: str = Field("", max_length=20)
     irrigated: bool = False
@@ -148,7 +148,7 @@ def register(req: Register, db: Session = Depends(get_db)):
     db.add(user)
     try:
         db.flush()
-    except IntegrityError:  # dos registros simultáneos con el mismo correo
+    except IntegrityError:  # two simultaneous sign-ups with the same email
         db.rollback()
         raise HTTPException(409, t("Ya existe una cuenta con ese correo. Inicia sesión.", "An account with that email already exists. Sign in."))
     return AuthOut(token=_new_session(db, user), user=_user_out(user))
@@ -219,6 +219,6 @@ def put_notebook(nb: Notebook, user: User = Depends(current_user), db: Session =
 
 @router.delete("/me", status_code=204)
 def delete_account(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    """Borra la cuenta, sus sesiones y su terreno."""
+    """Deletes the account, its sessions and its field."""
     db.delete(user)
     db.commit()

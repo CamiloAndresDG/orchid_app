@@ -1,50 +1,50 @@
-"""Tabla 10: crop_traits. Borrador botanico editable en db/crop_traits.csv.
+"""Table 10: crop_traits. Editable botanical draft in db/crop_traits.csv.
 
-Solo se rellenan familia botanica y fijacion de nitrogeno de los cultivos evidentes; todo lo demas
-queda vacio a proposito para que el equipo lo complete y verifique (FAO, extension agraria, literatura).
-Si el CSV ya existe se respeta tal cual (es la fuente editable) y solo se regenera el parquet.
+Only botanical family and nitrogen fixation are filled in, for the obvious crops; everything else is
+left empty on purpose for the team to complete and verify (FAO, agricultural extension, literature).
+If the CSV already exists it is kept as is (it's the editable source) and only the parquet is regenerated.
 """
 import pandas as pd
 
-from .config import DB, cargar, guardar, hecho
+from .config import DB, done, load, save
 
 CSV_TRAITS = DB / "crop_traits.csv"
 
-FAMILIA = {"Wheat": "Poaceae", "Barley": "Poaceae", "Maize": "Poaceae", "Sorghum": "Poaceae",
-           "Millet": "Poaceae", "Wetland rice": "Poaceae", "Rice": "Poaceae", "Sugarcane": "Poaceae",
-           "Soybean": "Fabaceae", "Groundnut": "Fabaceae", "Pulses": "Fabaceae",
-           "Sunflower": "Asteraceae", "Rapeseed": "Brassicaceae", "Cotton": "Malvaceae",
-           "Sugarbeet": "Amaranthaceae", "Olive": "Oleaceae", "Oil palm": "Arecaceae",
-           "Banana": "Musaceae", "Cassava": "Euphorbiaceae", "Tobacco": "Solanaceae"}
-FIJADOR = {"Soybean": "si", "Groundnut": "si", "Pulses": "si"}
-COLUMNAS_VACIAS = ("profundidad_raiz", "ciclo_dias", "necesidad_agua", "plagas_comunes", "fuente_dato")
+FAMILY = {"Wheat": "Poaceae", "Barley": "Poaceae", "Maize": "Poaceae", "Sorghum": "Poaceae",
+          "Millet": "Poaceae", "Wetland rice": "Poaceae", "Rice": "Poaceae", "Sugarcane": "Poaceae",
+          "Soybean": "Fabaceae", "Groundnut": "Fabaceae", "Pulses": "Fabaceae",
+          "Sunflower": "Asteraceae", "Rapeseed": "Brassicaceae", "Cotton": "Malvaceae",
+          "Sugarbeet": "Amaranthaceae", "Olive": "Oleaceae", "Oil palm": "Arecaceae",
+          "Banana": "Musaceae", "Cassava": "Euphorbiaceae", "Tobacco": "Solanaceae"}
+FIXER = {"Soybean": "si", "Groundnut": "si", "Pulses": "si"}
+EMPTY_COLUMNS = ("profundidad_raiz", "ciclo_dias", "necesidad_agua", "plagas_comunes", "fuente_dato")
 
 
-def _base_cultivos() -> pd.DataFrame:
-    if hecho("gaez_actual"):
-        return cargar("gaez_actual")[["crop_code", "crop"]].drop_duplicates().sort_values("crop")
-    from .gaez import nombres_cultivo           # sin gaez_actual: lista de cultivos del servidor FAO
+def _base_crops() -> pd.DataFrame:
+    if done("gaez_actual"):
+        return load("gaez_actual")[["crop_code", "crop"]].drop_duplicates().sort_values("crop")
+    from .gaez import crop_names           # without gaez_actual: crop list from the FAO server
 
-    nom = nombres_cultivo()
-    return pd.DataFrame({"crop_code": list(nom), "crop": list(nom.values())}).sort_values("crop")
+    names = crop_names()
+    return pd.DataFrame({"crop_code": list(names), "crop": list(names.values())}).sort_values("crop")
 
 
-def construir() -> pd.DataFrame:
+def build() -> pd.DataFrame:
     if CSV_TRAITS.exists():
         ct = pd.read_csv(CSV_TRAITS)
-        print("cargado desde", CSV_TRAITS)
+        print("loaded from", CSV_TRAITS)
     else:
-        ct = _base_cultivos().copy()
-        ct["familia_botanica"] = ct["crop"].map(FAMILIA)
-        ct["fijador_nitrogeno"] = ct["crop"].map(FIJADOR).fillna(
+        ct = _base_crops().copy()
+        ct["familia_botanica"] = ct["crop"].map(FAMILY)
+        ct["fijador_nitrogeno"] = ct["crop"].map(FIXER).fillna(
             ct["familia_botanica"].notna().map({True: "no", False: None}))
-        for c in COLUMNAS_VACIAS:
+        for c in EMPTY_COLUMNS:
             ct[c] = None
         ct["estado"] = "borrador"
         ct.to_csv(CSV_TRAITS, index=False)
-        print("creado", CSV_TRAITS, "-> editalo y verifica cada fila")
+        print("created", CSV_TRAITS, "-> edit it and verify every row")
     for c in ct.columns:
         if ct[c].dtype == object:
             ct[c] = ct[c].astype("string")
-    guardar(ct, "crop_traits")
+    save(ct, "crop_traits")
     return ct

@@ -1,5 +1,5 @@
-// Marca de ORCHID: monograma «O». Un anillo musgo (la O de ORCHID) con una Cattleya trianae, la orquídea flor
-// nacional de Colombia, adentro. Es el mismo dibujo que app/icon.svg (favicon); si cambia uno, cambia el otro.
+// ORCHID's mark: an «O» monogram. A moss ring (the O in ORCHID) with a Cattleya trianae, the orchid that is
+// Colombia's national flower, inside. It's the same drawing as app/icon.svg (favicon); if one changes, change the other.
 
 const RING = "#3f6b3a";
 const PAPER = "#f3eddd";
@@ -37,10 +37,10 @@ export function OrchidMark({ size = 32, className = "", title }: { size?: number
   );
 }
 
-/** Nombre completo: ORCHID es la sigla. */
+/** Full name: ORCHID is the acronym. */
 export const FULL_NAME = "Orbital Rotation & Crop Health Intelligent Decision Platform";
 
-/** Crédito del equipo, en una sola línea. */
+/** Team credit, on a single line. */
 export const AUTHORS = "Orbital Farmers";
 export const CREDIT = {
   es: "Hecho por Orbital Farmers, equipo participante en el NASA Space Apps Challenge 2026",

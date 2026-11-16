@@ -1,11 +1,11 @@
-"""Guía de ORCHID: chat con IA anclado a las fuentes de la plataforma.
+"""ORCHID Guide: AI chat grounded in the platform's sources.
 
-Proveedores (ASSISTANT_PROVIDER): un modelo de OpenAI en Microsoft Foundry (gpt-5-mini, predeterminado), Claude en
-Microsoft Foundry o el API directo de Claude.
+Providers (ASSISTANT_PROVIDER): an OpenAI model on Microsoft Foundry (gpt-5-mini, the default), Claude on
+Microsoft Foundry, or the Claude API directly.
 
-Flujo por pregunta: el modelo decide qué herramientas consultar, el servidor las ejecuta con el código de ORCHID,
-el modelo responde citando los resultados, y el servidor envía al navegador el texto (SSE) y la lista de fuentes
-que de verdad se consultaron.
+Flow per question: the model decides which tools to query, the server runs them with ORCHID's code,
+the model answers citing the results, and the server streams the text (SSE) to the browser along with the list
+of sources that were actually consulted.
 """
 import json
 import logging
@@ -32,12 +32,12 @@ from .db import AssistantUsage, User, get_db
 log = logging.getLogger("orchid.assistant")
 router = APIRouter(prefix="/assistant")
 
-MAX_TOOL_ROUNDS = 8      # tope de idas y vueltas con herramientas por pregunta
-MAX_TOKENS = 32000       # con streaming no hay riesgo de timeout; las respuestas pedidas son cortas
+MAX_TOOL_ROUNDS = 8      # cap on tool round trips per question
+MAX_TOKENS = 32000       # with streaming there's no timeout risk; the requested answers are short
 
 
 def _azure_token_provider():
-    # Sin claves: identidad administrada en Azure Container Apps, `az login` en local.
+    # No keys: managed identity on Azure Container Apps, `az login` locally.
     from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
     return get_bearer_token_provider(DefaultAzureCredential(), FOUNDRY_TOKEN_SCOPE)
@@ -45,8 +45,8 @@ def _azure_token_provider():
 
 @lru_cache(maxsize=1)
 def _foundry_key() -> str:
-    """Clave del recurso de Foundry leída con la identidad del backend (rol Contributor) vía la API de Azure.
-    Se usa cuando la suscripción no permite asignar el rol de datos. Vive solo en memoria: no se guarda ni se registra."""
+    """Foundry resource key read with the backend's identity (Contributor role) through the Azure API.
+    Used when the subscription doesn't allow assigning the data role. Lives only in memory: never stored or logged."""
     import httpx
     from azure.identity import DefaultAzureCredential
 
@@ -78,7 +78,7 @@ def _openai_client():
                        api_version=AZURE_OPENAI_API_VERSION, timeout=300, max_retries=2, **_foundry_auth())
 
 
-# ---------- Esquemas ----------
+# ---------- Schemas ----------
 
 
 class Turn(BaseModel):
@@ -94,7 +94,7 @@ class MapPoint(BaseModel):
 class ChatRequest(BaseModel):
     messages: list[Turn] = Field(min_length=1, max_length=20)
     map_point: MapPoint | None = None
-    lang: Literal["es", "en"] | None = None  # si falta, el de Accept-Language
+    lang: Literal["es", "en"] | None = None  # if missing, the one from Accept-Language
 
 
 # ---------- Endpoints ----------
@@ -115,7 +115,7 @@ def _plot_snapshot(user: User) -> dict | None:
 
 
 def _count_question(db: Session, user: User) -> int:
-    """Suma una pregunta al día de hoy y devuelve cuántas quedan. 429 si ya no quedan."""
+    """Adds one question to today's count and returns how many are left. 429 if none are left."""
     today = date.today()
     row = db.get(AssistantUsage, (user.id, today))
     used = row.count if row else 0
@@ -137,7 +137,7 @@ def chat(req: ChatRequest, user: User = Depends(current_user), db: Session = Dep
     if req.messages[-1].role != "user":
         raise HTTPException(400, t("El último mensaje debe ser del agricultor.", "The last message must be from the farmer."))
     remaining = _count_question(db, user)
-    # Todo lo que el generador necesita se lee ahora: la sesión de base de datos no vive durante el streaming.
+    # Everything the generator needs is read now: the database session doesn't live through the streaming.
     ctx = ToolContext(plot=_plot_snapshot(user), map_point=req.map_point.model_dump() if req.map_point else None,
                       lang=req.lang or LANG.get())
     stream = _stream_openai if ASSISTANT_PROVIDER == "azure_openai" else _stream
@@ -145,7 +145,7 @@ def chat(req: ChatRequest, user: User = Depends(current_user), db: Session = Dep
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
-# ---------- Conversación con Claude ----------
+# ---------- Conversation with Claude ----------
 
 
 def _sse(obj: dict) -> str:
@@ -153,7 +153,7 @@ def _sse(obj: dict) -> str:
 
 
 def _session_note(ctx: ToolContext) -> str:
-    """Contexto de esta conversación. Va en el mensaje del usuario para no romper la caché del prompt fijo."""
+    """Context for this conversation. It goes in the user message so it doesn't break the fixed prompt's cache."""
     has_plot = bool(ctx.plot and ctx.plot.get("point"))
     lines = [f"Fecha de hoy: {date.today().isoformat()}.",
              "El agricultor tiene un terreno guardado en ORCHID (consúltalo con mi_terreno)." if has_plot
@@ -170,7 +170,7 @@ def _session_note(ctx: ToolContext) -> str:
 
 def _build_messages(turns: list[Turn], ctx: ToolContext) -> list[dict]:
     msgs: list[dict] = [{"role": t.role, "content": t.content} for t in turns]
-    # La conversación debe empezar con el usuario; se descartan respuestas sueltas al inicio.
+    # The conversation must start with the user; stray replies at the start are dropped.
     while msgs and msgs[0]["role"] != "user":
         msgs.pop(0)
     last = msgs[-1]
@@ -179,9 +179,8 @@ def _build_messages(turns: list[Turn], ctx: ToolContext) -> list[dict]:
 
 
 def _echo_content(content: list) -> list:
-    """Contenido del turno para reenviarlo a Claude. Si hubo cambio al modelo de respaldo a mitad de respuesta,
-    se omiten los bloques de razonamiento y de herramienta anteriores al último bloque `fallback` (que se conserva
-    en su lugar), como exige el API."""
+    """Turn content to send back to Claude. If there was a switch to the fallback model mid-answer, the reasoning
+    and tool blocks before the last `fallback` block are dropped (that block stays in place), as the API requires."""
     idx = [i for i, b in enumerate(content) if getattr(b, "type", None) == "fallback"]
     if not idx:
         return list(content)
@@ -230,7 +229,7 @@ def _status(ctx: ToolContext, name: str) -> str:
 
 
 def _run_tool(name, args, ctx: ToolContext, call_id):
-    """Ejecuta la herramienta con el idioma de la conversación (el streaming corre fuera del contexto de la petición)."""
+    """Runs the tool with the conversation's language (the streaming runs outside the request context)."""
     token = LANG.set(ctx.lang)
     try:
         return run_tool(name, args, ctx, call_id)
@@ -242,8 +241,8 @@ def _stream(turns: list[Turn], ctx: ToolContext, remaining: int):
     messages = _build_messages(turns, ctx)
     client = _client()
     try:
-        # Sin BetaFallbackState: su variable de contexto no sobrevive entre fragmentos del streaming. El middleware
-        # igual reintenta cada petición rechazada con el modelo de respaldo.
+        # No BetaFallbackState: its context variable doesn't survive between streaming chunks. The middleware
+        # still retries every rejected request with the fallback model.
         for _ in range(MAX_TOOL_ROUNDS):
             final = None
             for attempt in range(2):
@@ -263,7 +262,7 @@ def _stream(turns: list[Turn], ctx: ToolContext, remaining: int):
                         final = stream.get_final_message()
                     break
                 except ValueError:
-                    # JSON de una herramienta que el SDK no pudo leer (eager streaming): se repite la ronda una vez.
+                    # Tool JSON the SDK couldn't parse (eager streaming): the round is retried once.
                     if attempt == 1:
                         raise
                     yield _sse({"type": "status", "text": _msg(ctx, "retry")})
@@ -279,7 +278,7 @@ def _stream(turns: list[Turn], ctx: ToolContext, remaining: int):
                     yield _sse({"type": "text", "text": "\n\n" + _msg(ctx, "cut")})
                 break
             if final.stop_reason == "max_tokens":
-                # La entrada de la herramienta puede venir truncada: no se ejecuta.
+                # The tool input may arrive truncated: it isn't run.
                 yield _sse({"type": "text", "text": "\n\n" + _msg(ctx, "unfinished")})
                 break
             results = []
@@ -296,7 +295,7 @@ def _stream(turns: list[Turn], ctx: ToolContext, remaining: int):
     except anthropic.APIStatusError as e:
         log.warning("Error del servicio de IA: %s %s", e.status_code, getattr(e, "message", ""))
         yield _sse({"type": "error", "text": _msg(ctx, "api")})
-    except Exception:  # noqa: BLE001 - el navegador siempre recibe un cierre limpio
+    except Exception:  # noqa: BLE001 - the browser always gets a clean close
         log.exception("Fallo inesperado en la Guía")
         yield _sse({"type": "error", "text": _msg(ctx, "fail")})
     yield _sse({"type": "sources", "items": ctx.sources()})
@@ -323,7 +322,7 @@ def _stream_openai(turns: list[Turn], ctx: ToolContext, remaining: int):
             text, calls, finish = "", {}, None
             stream = client.chat.completions.create(
                 model=ASSISTANT_MODEL, messages=msgs, tools=OPENAI_TOOLS, stream=True,
-                max_completion_tokens=16000,  # incluye el razonamiento interno del modelo
+                max_completion_tokens=16000,  # includes the model's internal reasoning
                 reasoning_effort="low",
             )
             for chunk in stream:
@@ -365,7 +364,7 @@ def _stream_openai(turns: list[Turn], ctx: ToolContext, remaining: int):
                 try:
                     args = json.loads(c["args"] or "{}")
                 except json.JSONDecodeError:
-                    args = c["args"]  # run_tool lo rechaza como entrada inválida y el modelo puede corregirla
+                    args = c["args"]  # run_tool rejects it as invalid input and the model can correct it
                 r = _run_tool(c["name"], args, ctx, c["id"])
                 msgs.append({"role": "tool", "tool_call_id": c["id"], "content": r["content"]})
         else:
@@ -381,14 +380,14 @@ def _stream_openai(turns: list[Turn], ctx: ToolContext, remaining: int):
             log.warning("Petición rechazada por Azure OpenAI: %s", e)
             yield _sse({"type": "error", "text": _msg(ctx, "api")})
     except openai.AuthenticationError:
-        # Clave rotada o permiso retirado: la próxima pregunta vuelve a leer la clave.
+        # Key rotated or permission removed: the next question reads the key again.
         _foundry_key.cache_clear()
         _openai_client.cache_clear()
         yield _sse({"type": "error", "text": _msg(ctx, "auth")})
     except openai.APIStatusError as e:
         log.warning("Error de Azure OpenAI: %s", e)
         yield _sse({"type": "error", "text": _msg(ctx, "api")})
-    except Exception:  # noqa: BLE001 - el navegador siempre recibe un cierre limpio
+    except Exception:  # noqa: BLE001 - the browser always gets a clean close
         log.exception("Fallo inesperado en la Guía")
         yield _sse({"type": "error", "text": _msg(ctx, "fail")})
     yield _sse({"type": "sources", "items": ctx.sources()})

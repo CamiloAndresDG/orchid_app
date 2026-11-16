@@ -1,10 +1,10 @@
-"""Configuración por variables de entorno (local y Azure)."""
+"""Configuration from environment variables (local and Azure)."""
 import os
 from pathlib import Path
 
 
 def _load_dotenv() -> None:
-    """En local lee backend/.env (CLAVE=valor). No pisa variables ya definidas; en Azure vienen de los secretos."""
+    """Locally reads backend/.env (KEY=value). Doesn't override variables already set; on Azure they come from the secrets."""
     path = Path(__file__).resolve().parent.parent / ".env"
     if not path.exists():
         return
@@ -17,26 +17,26 @@ def _load_dotenv() -> None:
 
 _load_dotenv()
 
-# Carpeta de caché. En Azure se monta un recurso compartido de Azure Files aquí.
+# Cache folder. On Azure an Azure Files share is mounted here.
 CACHE_DIR = Path(os.environ.get("CACHE_DIR") or Path(__file__).resolve().parent.parent / "cache")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-# Orígenes que pueden llamar al API, separados por coma.
+# Origins allowed to call the API, comma-separated.
 ALLOWED_ORIGINS = [o.strip().rstrip("/") for o in os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
 
-# Token de NASA Earthdata (https://urs.earthdata.nasa.gov, vence a los 60 días): SMAP, GPM IMERG, NLDAS y SRTM.
+# NASA Earthdata token (https://urs.earthdata.nasa.gov, expires after 60 days): SMAP, GPM IMERG, NLDAS and SRTM.
 EARTHDATA_TOKEN = os.environ.get("EARTHDATA_TOKEN", "").strip()
 if len(EARTHDATA_TOKEN) < 20:
-    EARTHDATA_TOKEN = ""  # vacío o marcador ("-") = sin token
+    EARTHDATA_TOKEN = ""  # empty or placeholder ("-") = no token
 
-# Clave de USDA QuickStats del servidor (opcional). Si existe, el usuario no necesita la suya.
+# Server's USDA QuickStats key (optional). If set, the user doesn't need their own.
 QUICKSTATS_KEY = os.environ.get("QUICKSTATS_KEY", "").strip()
 if len(QUICKSTATS_KEY) < 8:
-    QUICKSTATS_KEY = ""  # vacío o marcador ("-") = sin clave del servidor
+    QUICKSTATS_KEY = ""  # empty or placeholder ("-") = no server key
 
-# Base de datos. En Azure: postgresql+psycopg://usuario:clave@servidor:5432/orchid?sslmode=require
-# Sin DATABASE_URL se usa SQLite local (backend/instance/orchid.db) para desarrollar sin Postgres.
-# (backend/data es del ETL y se versiona: no mezclar ahí la base de cuentas.)
+# Database. On Azure: postgresql+psycopg://user:password@server:5432/orchid?sslmode=require
+# Without DATABASE_URL, local SQLite (backend/instance/orchid.db) is used to develop without Postgres.
+# (backend/data belongs to the ETL and is versioned: don't put the accounts database there.)
 _LOCAL_DB = Path(__file__).resolve().parent.parent / "instance" / "orchid.db"
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 if not DATABASE_URL:
@@ -45,26 +45,26 @@ if not DATABASE_URL:
 elif DATABASE_URL.startswith(("postgres://", "postgresql://")):
     DATABASE_URL = "postgresql+psycopg://" + DATABASE_URL.split("://", 1)[1]
 
-# Días que dura una sesión iniciada.
+# Days a signed-in session lasts.
 SESSION_DAYS = int(os.environ.get("SESSION_DAYS", "30"))
 
-# ---------- Guía de IA ----------
-# "azure_openai": modelo de OpenAI desplegado en Microsoft Foundry (Azure), p. ej. gpt-5-mini. Predeterminado.
-# "foundry": Claude desplegado en Microsoft Foundry (requiere cuota de Claude en la suscripción).
-# "anthropic": API directo de Claude (lee ANTHROPIC_API_KEY o un perfil de `ant auth login`).
-# En Azure todos se autentican con la identidad administrada del backend; en local, con `az login`.
+# ---------- AI Guide ----------
+# "azure_openai": OpenAI model deployed on Microsoft Foundry (Azure), e.g. gpt-5-mini. Default.
+# "foundry": Claude deployed on Microsoft Foundry (requires Claude quota in the subscription).
+# "anthropic": Claude API directly (reads ANTHROPIC_API_KEY or an `ant auth login` profile).
+# On Azure all of them authenticate with the backend's managed identity; locally, with `az login`.
 ASSISTANT_PROVIDER = os.environ.get("ASSISTANT_PROVIDER", "azure_openai").strip().lower()
-FOUNDRY_RESOURCE = os.environ.get("FOUNDRY_RESOURCE", "").strip()  # p. ej. orchid-ai-f0dbd8
+FOUNDRY_RESOURCE = os.environ.get("FOUNDRY_RESOURCE", "").strip()  # e.g. orchid-ai-f0dbd8
 FOUNDRY_TOKEN_SCOPE = os.environ.get("FOUNDRY_TOKEN_SCOPE", "https://cognitiveservices.azure.com/.default")
 AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2025-04-01-preview")
-# Id ARM del recurso de Foundry (/subscriptions/.../accounts/orchid-ai-...). Si está definido, el backend lee la clave
-# del recurso con su identidad (basta el rol Contributor) y la guarda solo en memoria; si no, usa tokens de Entra ID
-# (requiere el rol de datos Cognitive Services User).
+# ARM id of the Foundry resource (/subscriptions/.../accounts/orchid-ai-...). If set, the backend reads the resource
+# key with its identity (the Contributor role is enough) and keeps it only in memory; otherwise it uses Entra ID tokens
+# (requires the Cognitive Services User data role).
 FOUNDRY_RESOURCE_ID = os.environ.get("FOUNDRY_RESOURCE_ID", "").strip()
-# Nombre del despliegue (Foundry) o del modelo (API directo).
+# Deployment name (Foundry) or model name (direct API).
 ASSISTANT_MODEL = os.environ.get("ASSISTANT_MODEL", "").strip() or (
     "gpt-5-mini" if ASSISTANT_PROVIDER == "azure_openai" else "claude-opus-5-5")
-# Solo Claude: modelo de respaldo si el principal rechaza una petición (middleware del SDK). Vacío = sin respaldo.
+# Claude only: fallback model if the main one rejects a request (SDK middleware). Empty = no fallback.
 ASSISTANT_FALLBACK_MODEL = os.environ.get("ASSISTANT_FALLBACK_MODEL", "claude-opus-4-8").strip()
 ASSISTANT_DAILY_LIMIT = int(os.environ.get("ASSISTANT_DAILY_LIMIT", "30"))
 

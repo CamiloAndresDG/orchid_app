@@ -1,2 +1,2 @@
-# Los scripts de shell deben tener finales LF o bash falla.
+# Shell scripts must have LF line endings or bash fails.
 *.sh text eol=lf

@@ -1,4 +1,4 @@
-"""NDVI real por punto: MODIS MOD13Q1 (250 m, cada 16 dias) via el servicio del ORNL DAAC (NASA), sin cuenta."""
+"""Real NDVI per point: MODIS MOD13Q1 (250 m, every 16 days) via the ORNL DAAC (NASA) service, no account."""
 import json
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -9,7 +9,7 @@ import httpx
 from .config import CACHE_DIR
 BASE = "https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset"
 BAND = "250m_16_days_NDVI"
-LOW_NDVI = 0.3  # criterio nuestro: por debajo se considera poca o ninguna cobertura
+LOW_NDVI = 0.3  # our own criterion: below it counts as little or no cover
 
 
 def _modis_date(d: date) -> str:
@@ -17,7 +17,7 @@ def _modis_date(d: date) -> str:
 
 
 def _composites(start: date, end: date) -> list[date]:
-    """Fechas de composicion de MOD13Q1: dias 1, 17, 33, ... de cada anio."""
+    """MOD13Q1 composite dates: days 1, 17, 33, ... of each year."""
     out = []
     for y in range(start.year, end.year + 1):
         d = date(y, 1, 1)
@@ -39,18 +39,18 @@ def _chunk(lat: float, lon: float, dates: list[date]) -> list[dict]:
     key = CACHE_DIR / f"ndvi_{lat}_{lon}_{_modis_date(s)}_{_modis_date(e)}.json"
     if key.exists():
         cached = json.loads(key.read_text())
-        # Los tramos recientes se siguen completando: se reutilizan solo 12 horas.
+        # Recent stretches are still being filled in: they're reused for only 12 hours.
         if not recent or time.time() - cached["fetched"] < 12 * 3600:
             return cached["rows"]
     rows = None
-    for _attempt in range(2):  # el servicio del ORNL a veces tarda o falla: un reintento
+    for _attempt in range(2):  # the ORNL service is sometimes slow or fails: one retry
         try:
             r = httpx.get(subset_url(lat, lon, s, e), headers={"Accept": "application/json"}, timeout=120)
             r.raise_for_status()
             rows = [
                 {"date": x["calendar_date"], "ndvi": round(x["data"][0] * 0.0001, 3)}
                 for x in r.json().get("subset", [])
-                if x["data"] and x["data"][0] > -2000  # -3000 = sin dato
+                if x["data"] and x["data"][0] > -2000  # -3000 = no data
             ]
             break
         except Exception:
@@ -65,7 +65,7 @@ def ndvi_at(lat: float, lon: float, months: int = 14) -> dict:
     lat, lon = round(lat, 3), round(lon, 3)
     end = date.today()
     start = end - timedelta(days=months * 30)
-    last_composite = end - timedelta(days=28)  # MODIS publica los compuestos con ~3-4 semanas de retraso
+    last_composite = end - timedelta(days=28)  # MODIS publishes composites ~3-4 weeks late
     dates = _composites(start, last_composite)
     chunks = [dates[i:i + 4] for i in range(0, len(dates), 4)]
     with ThreadPoolExecutor(max_workers=8) as ex:
@@ -83,7 +83,7 @@ def ndvi_at(lat: float, lon: float, months: int = 14) -> dict:
     if not series:
         out["note"] = "No se pudo obtener NDVI para este punto ahora."
         return out
-    # Promedio por mes calendario de los ultimos 12 meses con dato.
+    # Average per calendar month over the last 12 months with data.
     last_year = [r for r in series if r["date"] >= (end - timedelta(days=365)).isoformat()]
     by_month: dict[int, list[float]] = {}
     for r in last_year:

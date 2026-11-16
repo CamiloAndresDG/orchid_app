@@ -1,4 +1,4 @@
-"""Motor de reglas: opciones para el proximo cultivo segun historial, clima real y cultivos de la zona."""
+"""Rules engine: options for the next crop based on history, real climate and the area's crops."""
 from datetime import date
 
 from .crops import CATALOG, crop_name
@@ -13,7 +13,7 @@ def _month(m: int) -> str:
 
 
 def _rain_text(mm_day: float) -> str:
-    """Lluvia del mes en pulgadas (con mm al lado): promedio diario x 30.4 dias."""
+    """Monthly rain in inches (with mm alongside): daily average x 30.4 days."""
     inches = mm_day * 30.4 / 25.4
     return t(f"{inches:.1f} pulgadas al mes ({mm_day * 30.4:.0f} mm)", f"{inches:.1f} inches a month ({mm_day * 30.4:.0f} mm)")
 
@@ -32,34 +32,34 @@ def _soil_text(w: float) -> str:
 
 WATER_FACTOR = {"low": 0.6, "med": 1.0, "high": 1.4}
 
-# Reglas de puntuación de ORCHID. Son supuestos nuestros, no datos: todavía no los validó un agrónomo de la zona.
-# Se usan en build_options y se muestran tal cual en el informe (method_rules), así nunca se desincronizan.
+# ORCHID's scoring rules. They're our own assumptions, not data: no local agronomist has validated them yet.
+# They're used in build_options and shown as is in the report (method_rules), so they never drift apart.
 RULES = {
-    "base": 60,                  # puntaje de partida de cada cultivo
-    "repeat_crop": -35,          # repetir el último cultivo
-    "same_family": -18,          # misma familia botánica que el último cultivo
-    "other_family": 8,           # otra familia: corta plagas
-    "legume_after_grass": 8,     # leguminosa después de una gramínea: devuelve nitrógeno
-    "stress_free": 0.30,         # estrés hídrico tolerado sin castigo
-    "stress_weight": 90,         # castigo por cada punto de estrés por encima de lo tolerado
-    "cover_texture": 6,          # cobertura en suelo arenoso o arcilloso
-    "cover_bare": 14,            # cobertura cuando hay meses de suelo desnudo
-    "cover_no_bare": -10,        # cobertura cuando el suelo ya está cubierto casi todo el año
-    "cover_slope": 8,            # cobertura en pendiente de 5% o más
-    "cover_slope_min": 5,        # % de pendiente desde el que se favorecen las coberturas
-    "cash_slope_risk": 10,       # % de pendiente desde el que se avisa erosión a los cultivos de venta
-    "dry_soil_risk": -20,        # % de agua del suelo frente a lo normal desde el que se avisa a cultivos sedientos
-    "local_share_min": 0.05,     # fracción de la zona desde la que un cultivo "ya se siembra aquí"
-    "local_grown": 10,           # ya se siembra en la zona: hay mercado y maquinaria
-    "local_absent": -22,         # no se siembra en la zona (menos del 1%)
-    "local_rare": -12,           # se siembra poco en la zona
-    "loss": -60,                 # con los números del agricultor daría pérdida
-    "close_gap": 8,              # diferencia de puntos para llamarla "Casi tan buena"
+    "base": 60,                  # starting score for each crop
+    "repeat_crop": -35,          # repeating the last crop
+    "same_family": -18,          # same botanical family as the last crop
+    "other_family": 8,           # different family: breaks pest cycles
+    "legume_after_grass": 8,     # legume after a grass: returns nitrogen
+    "stress_free": 0.30,         # water stress tolerated without penalty
+    "stress_weight": 90,         # penalty per unit of stress above the tolerated level
+    "cover_texture": 6,          # cover crop on sandy or clayey soil
+    "cover_bare": 14,            # cover crop when there are bare-soil months
+    "cover_no_bare": -10,        # cover crop when the soil is already covered most of the year
+    "cover_slope": 8,            # cover crop on a slope of 5% or more
+    "cover_slope_min": 5,        # slope % from which cover crops are favored
+    "cash_slope_risk": 10,       # slope % from which cash crops get an erosion warning
+    "dry_soil_risk": -20,        # soil water % versus normal from which thirsty crops get a warning
+    "local_share_min": 0.05,     # share of the area from which a crop "is already grown here"
+    "local_grown": 10,           # already grown in the area: there's a market and machinery
+    "local_absent": -22,         # not grown in the area (less than 1%)
+    "local_rare": -12,           # grown little in the area
+    "loss": -60,                 # with the farmer's numbers it would lose money
+    "close_gap": 8,              # point gap to call it "Almost as good"
 }
 
 
 def method_rules() -> list[str]:
-    """Las reglas de puntuación en palabras, con los mismos números que usa el cálculo."""
+    """The scoring rules in words, with the same numbers the calculation uses."""
     r = RULES
     w = WATER_FACTOR
     if lang() == "en":
@@ -102,7 +102,7 @@ def _months_between(y1: int, m1: int, y2: int, m2: int) -> int:
 
 
 def _covered_months(history: list[dict], today: date) -> set[int]:
-    """Meses (1-12) con cultivo en campo durante los ultimos 12 meses."""
+    """Months (1-12) with a crop in the field during the last 12 months."""
     covered: set[int] = set()
     for h in history:
         for k in range(0, _months_between(h["plant_year"], h["plant_month"], h["harvest_year"], h["harvest_month"]) + 1):
@@ -118,7 +118,7 @@ def _cycle_months(crop: dict, start: int) -> list[int]:
 
 
 def _best_start(crop: dict, months_by_num: dict, today: date) -> int:
-    """Mes de siembra: el primero de la ventana que no sea anterior al actual; si no, el de menor vulnerabilidad."""
+    """Planting month: the first in the window that isn't before the current one; otherwise, the least vulnerable."""
     upcoming = [m for m in crop["plant"] if m >= today.month]
     pool = upcoming or crop["plant"]
     return min(pool, key=lambda m: sum(months_by_num[x]["vulnerability"] for x in _cycle_months(crop, m)))
@@ -138,7 +138,7 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
     covered = _covered_months(history, today)
     bare = [m for m in range(1, 13) if m not in covered] if history else []
     bare_source = "history" if history else None
-    # Si hay NDVI medido, manda sobre el calendario declarado: es lo que se ve desde el satelite.
+    # If there's measured NDVI, it overrides the declared calendar: it's what the satellite sees.
     if ndvi and ndvi.get("available") and ndvi.get("monthly") is not None:
         bare = list(ndvi["low_months"])
         bare_source = "ndvi"
@@ -151,9 +151,9 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
             for k, v in y.items():
                 local_share[k] = local_share.get(k, 0) + v / len(ys)
 
-    # Suelo real (SSURGO): componente dominante.
+    # Real soil (SSURGO): dominant component.
     sc = soil["components"][0] if soil and soil.get("available") and soil.get("components") else None
-    # Fuentes de NASA Earthdata: pendiente (SRTM) y agua guardada en el suelo frente a lo normal (NLDAS).
+    # NASA Earthdata sources: slope (SRTM) and water stored in the soil versus normal (NLDAS).
     slope = terrain["slope_pct"] if terrain and terrain.get("available") else None
     soil_anom = water.get("soil_anomaly_pct") if water and water.get("available") else None
     awc = sc["awc"] if sc else None
@@ -173,8 +173,8 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
 
         score, why, risks, evidence, gaps = float(RULES["base"]), [], [], [], []
 
-        # Rotacion: evitar repetir cultivo o familia (plagas y enfermedades).
-        # Las coberturas se evaluan mas abajo contra el cultivo de venta al que acompanan.
+        # Rotation: avoid repeating the crop or family (pests and diseases).
+        # Cover crops are evaluated further down against the cash crop they go with.
         rot_adj = 0.0
         if crop["kind"] == "cash":
             if key == last_crop:
@@ -197,7 +197,7 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
                              f"It returns nitrogen to the soil after the {lc}."))
         score += rot_adj
 
-        # Agua: vulnerabilidad real de NASA POWER en los meses del cultivo.
+        # Water: real NASA POWER vulnerability in the crop's months.
         score -= max(0.0, stress - RULES["stress_free"]) * RULES["stress_weight"]
         n = len(cyc)
         avg = lambda k: sum(months[x][k] for x in cyc) / n
@@ -217,7 +217,7 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
         elif stress < 0.3:
             why.append(t("El clima de sus meses de ciclo es favorable en agua.", "The weather in its cycle months is favorable for water."))
 
-        # Suelo real (SSURGO)
+        # Real soil (SSURGO)
         if sc:
             if awc is not None and awc < 0.12 and crop["water"] != "low":
                 risks.append(t("Tu suelo guarda poca agua y este cultivo necesita bastante: sufre más en sequía.",
@@ -235,7 +235,7 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
         else:
             gaps.append(t("Sin datos de suelo de SSURGO en este punto", "No SSURGO soil data at this point"))
 
-        # Suelo desnudo: coberturas ayudan si hay meses sin cultivo.
+        # Bare soil: cover crops help if there are months without a crop.
         if crop["kind"] == "cover":
             if bare:
                 score += RULES["cover_bare"]
@@ -252,7 +252,7 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
                 risks.append(t("Tu suelo ya tiene cultivo casi todo el año; la cobertura aporta menos.",
                                "Your soil already has a crop most of the year; a cover crop adds less."))
 
-        # Pendiente real (SRTM): en terrenos inclinados el suelo desnudo se lava con la lluvia.
+        # Real slope (SRTM): on sloped fields, bare soil washes away with the rain.
         if slope is not None:
             slope_ev = {"text": t(f"Pendiente promedio de {slope:.1f}% alrededor de tu punto (relieve SRTM de la NASA)",
                                   f"Average slope of {slope:.1f}% around your point (NASA SRTM terrain)"), "kind": "real", "source": "srtm"}
@@ -266,14 +266,14 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
                                f"With a {slope:.1f}% slope, bare soil between harvest and planting erodes: leave residue or a cover crop."))
                 evidence.append(slope_ev)
 
-        # Agua guardada en el suelo hoy (NLDAS): si está muy por debajo de lo normal, los cultivos sedientos arrancan en desventaja.
+        # Water stored in the soil today (NLDAS): if it's well below normal, thirsty crops start at a disadvantage.
         if soil_anom is not None and soil_anom <= RULES["dry_soil_risk"] and crop["kind"] == "cash" and crop["water"] == "high" and not irrigated:
             risks.append(t(f"Hoy tu suelo guarda {abs(soil_anom)}% menos agua que lo normal para esta época: arrancaría con poca reserva.",
                            f"Your soil holds {abs(soil_anom)}% less water than normal for this time of year: it would start with a low reserve."))
             evidence.append({"text": t(f"Humedad del suelo hasta 1 m en {water['latest_month']}: {abs(soil_anom)}% por debajo de su promedio de 10 años (modelo NLDAS de la NASA)",
                                        f"Soil moisture down to 1 m in {water['latest_month']}: {abs(soil_anom)}% below its 10-year average (NASA NLDAS model)"), "kind": "real", "source": "nldas"})
 
-        # Cultivos de la zona (CDL): proxy de mercado y maquinaria.
+        # The area's crops (CDL): a proxy for market and machinery.
         if local.get("available"):
             share = local_share.get(key, 0.0)
             if share >= RULES["local_share_min"]:
@@ -294,7 +294,7 @@ def build_options(analysis_months: list[dict], history: list[dict], irrigated: b
         else:
             gaps.append(t("Sin datos de cultivos de la zona (CDL solo cubre EE. UU.)", "No data on crops in the area (CDL only covers the U.S.)"))
 
-        # Economia: solo con los datos que declara el agricultor.
+        # Economics: only with the numbers the farmer enters.
         econ = None
         p = prices.get(key)
         if p and p.get("yield_per_ha") is not None and p.get("price_per_unit") is not None and p.get("cost_per_ha") is not None:
@@ -365,7 +365,7 @@ def _the(o: dict) -> str:
 
 
 def _cover_for(cover: dict, sell: dict) -> dict:
-    """La cobertura se siembra despues de cosechar el cultivo de venta: se juzga contra ese cultivo."""
+    """The cover crop is planted after the cash crop is harvested: it's judged against that crop."""
     c = {**cover, "why": list(cover["why"]), "risks": list(cover["risks"])}
     sell_name = _the(sell)
     if cover["family"] == sell["family"]:
@@ -394,7 +394,7 @@ def _label(rank: int, o: dict, top: int) -> str:
 
 
 def _behind(o: dict, best: dict) -> str | None:
-    """Por que queda detras de la mejor, en una frase: su primer riesgo, si tiene."""
+    """Why it ranks behind the best one, in one sentence: its first risk, if any."""
     if o["risks"]:
         reason = o['risks'][0][0].lower() + o['risks'][0][1:].rstrip('.')
         return t(f"Queda detrás de {_the(best)} porque: {reason}.", f"It ranks behind {_the(best)} because: {reason}.")
@@ -402,7 +402,7 @@ def _behind(o: dict, best: dict) -> str | None:
 
 
 def _field_notes(sc, drainage, awc, bare, bare_source, terrain=None, water_bal=None, moisture=None) -> list[dict]:
-    """Hechos de tu terreno que valen para todas las opciones: se dicen una sola vez."""
+    """Facts about your field that apply to every option: stated only once."""
     notes = []
     if sc:
         sand, clay, silt = (sc["sand"] or 0) >= 70, (sc["clay"] or 0) >= 40, (sc["silt"] or 0) >= 50

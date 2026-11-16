@@ -1,11 +1,13 @@
-"""Fuentes de NASA Earthdata por punto: SMAP, GPM IMERG, NLDAS y SRTM.
+"""NASA Earthdata sources per point: SMAP, GPM IMERG, NLDAS and SRTM.
 
-Todas usan el token de NASA Earthdata (EARTHDATA_TOKEN, se crea en https://urs.earthdata.nasa.gov y vence a los
-60 días). SMAP, IMERG y NLDAS se leen con OPeNDAP en la nube de Earthdata pidiendo solo el pixel del terreno;
-SRTM se descarga una vez por bloque de 1 grado y queda en caché.
+All of them use the NASA Earthdata token (EARTHDATA_TOKEN, created at https://urs.earthdata.nasa.gov, expires after
+60 days). SMAP, IMERG and NLDAS are read with OPeNDAP in the Earthdata cloud, requesting only the field's pixel;
+SRTM is downloaded once per 1-degree tile and kept in the cache.
 
-Nota de OPeNDAP (Hyrax en la nube): una petición de un solo valor devuelve vacío. Se pide una ventana de 2x2 que
-contiene la celda del terreno y se toma esa celda (ver _win).
+OPeNDAP note (Hyrax in the cloud): a request for a single value comes back empty. A 2x2 window containing the
+field's cell is requested and that cell is taken (see _win).
+
+User-facing notes stay in Spanish here; localize.py translates them on the way out.
 """
 import io
 import json
@@ -23,10 +25,10 @@ from .config import CACHE_DIR, EARTHDATA_TOKEN
 CMR = "https://cmr.earthdata.nasa.gov/search/granules.umm_json"
 OPENDAP = "https://opendap.earthdata.nasa.gov/collections"
 COLLECTIONS = {
-    "smap": "C2938664763-NSIDC_CPRD",   # SPL3SMP_E v006: humedad del suelo, 9 km, diario
-    "imerg": "C2723754859-GES_DISC",    # GPM_3IMERGDL v07: lluvia diaria, IMERG Late Run, 0.1°
-    "nldas": "C1887990023-GES_DISC",    # NLDAS_NOAH0125_M v2.0: balance de agua mensual, 0.125°, EE. UU.
-    "srtm": "C2763266360-LPCLOUD",      # SRTMGL1 v003: elevación, 1 segundo de arco (~30 m)
+    "smap": "C2938664763-NSIDC_CPRD",   # SPL3SMP_E v006: soil moisture, 9 km, daily
+    "imerg": "C2723754859-GES_DISC",    # GPM_3IMERGDL v07: daily rain, IMERG Late Run, 0.1°
+    "nldas": "C1887990023-GES_DISC",    # NLDAS_NOAH0125_M v2.0: monthly water balance, 0.125°, U.S.
+    "srtm": "C2763266360-LPCLOUD",      # SRTMGL1 v003: elevation, 1 arc-second (~30 m)
 }
 LINKS = {
     "smap": "https://nsidc.org/data/spl3smp_e/versions/6",
@@ -52,7 +54,7 @@ def _client() -> httpx.Client:
 
 
 def _cached(key: str, max_age_h: float | None, fn):
-    """Caché en disco (en Azure es Azure Files). No guarda resultados sin datos para reintentar más tarde."""
+    """Disk cache (on Azure it is Azure Files). Results without data aren't stored, so they are retried later."""
     path = DIR / f"{key}.json"
     if path.exists() and (max_age_h is None or time.time() - path.stat().st_mtime < max_age_h * 3600):
         return json.loads(path.read_text(encoding="utf8"))
@@ -63,7 +65,7 @@ def _cached(key: str, max_age_h: float | None, fn):
 
 
 def _guard(fn, base: dict) -> dict:
-    """Envuelve una consulta: sin token, token rechazado o fuente caída se informan; nunca se inventa el dato."""
+    """Wraps a query: a missing token, a rejected token or a source being down are reported; data is never made up."""
     if not EARTHDATA_TOKEN:
         return {**base, "available": False, "note": NO_TOKEN}
     try:
@@ -82,7 +84,7 @@ def _check(r: httpx.Response) -> httpx.Response:
 
 
 def _granules(collection: str, start: date, end: date, n: int = 60) -> list[tuple[str, str]]:
-    """(fecha, URL OPeNDAP) de los gránulos entre dos fechas, del más reciente al más antiguo. Sin login."""
+    """(date, OPeNDAP URL) of the granules between two dates, newest first. No login."""
     params = {"collection_concept_id": COLLECTIONS[collection], "page_size": n, "sort_key": "-start_date",
               "temporal": f"{start.isoformat()}T00:00:00Z,{end.isoformat()}T23:59:59Z"}
     with httpx.Client(timeout=60) as c:
@@ -91,14 +93,14 @@ def _granules(collection: str, start: date, end: date, n: int = 60) -> list[tupl
     for it in items:
         day = it["umm"]["TemporalExtent"]["RangeDateTime"]["BeginningDateTime"][:10]
         url = next((r["URL"] for r in it["umm"].get("RelatedUrls", []) if "opendap.earthdata.nasa.gov" in r["URL"]), None)
-        if url and day not in seen:  # SMAP publica a veces dos versiones del mismo día: se usa la primera
+        if url and day not in seen:  # SMAP sometimes publishes two versions of the same day: the first one is used
             seen.add(day)
             out.append((day, url))
     return out
 
 
 def _dap(client: httpx.Client, url: str, ce: list[str]) -> dict[str, list[float]]:
-    """Pide variables con OPeNDAP (DAP4, CSV) y devuelve {variable: valores}. NaN donde no hay dato."""
+    """Requests variables with OPeNDAP (DAP4, CSV) and returns {variable: values}. NaN where there is no data."""
     r = _check(client.get(url + ".dap.csv", params={"dap4.ce": ";".join(ce)}))
     out: dict[str, list[float]] = {}
     for line in r.text.splitlines()[1:]:
@@ -114,13 +116,13 @@ def _dap(client: httpx.Client, url: str, ce: list[str]) -> dict[str, list[float]
 
 
 def _win(i: int, n: int) -> tuple[str, int]:
-    """Rango de 2 celdas que contiene el índice i (dimensión de tamaño n) y la posición de i dentro del rango."""
+    """2-cell range containing index i (dimension of size n) and the position of i within that range."""
     a = min(max(i, 0), n - 2)
     return f"[{a}:{a + 1}]", i - a
 
 
 def _pick(vals: list[float], ro: int, co: int) -> float:
-    """Valor de la celda (ro, co) en una ventana 2x2 aplanada fila por fila."""
+    """Value of cell (ro, co) in a 2x2 window flattened row by row."""
     k = ro * 2 + co
     return vals[k] if len(vals) > k else float("nan")
 
@@ -142,7 +144,7 @@ _CELL, _X0, _Y0, _ROWS, _COLS = 9008.055210146, -17367530.44516138, 7314540.8306
 
 
 def _ease2_9km(lat: float, lon: float) -> tuple[int, int]:
-    """Fila y columna de la cuadrícula EASE-Grid 2.0 global de 9 km (EPSG:6933) que contiene el punto."""
+    """Row and column of the global 9 km EASE-Grid 2.0 (EPSG:6933) that contains the point."""
     s = math.sin(math.radians(lat))
     q = (1 - _E**2) * (s / (1 - _E**2 * s**2) - (1 / (2 * _E)) * math.log((1 - _E * s) / (1 + _E * s)))
     x, y = _A * _K0 * math.radians(lon), _A * q / (2 * _K0)
@@ -154,7 +156,7 @@ def _smap_word(v: float) -> str:
 
 
 def smap_at(lat: float, lon: float, days: int = 15) -> dict:
-    """Humedad de los primeros ~5 cm del suelo medida por SMAP (promedio de pasadas AM y PM) en las últimas semanas."""
+    """Moisture of the top ~5 cm of soil measured by SMAP (average of AM and PM passes) over the last weeks."""
     base = {"source": "SMAP L3 9 km (SPL3SMP_E v006), NSIDC", "official_url": LINKS["smap"], "series": []}
     row, col = _ease2_9km(lat, lon)
     if not (0 <= row < _ROWS and 0 <= col < _COLS):
@@ -199,7 +201,7 @@ def smap_at(lat: float, lon: float, days: int = 15) -> dict:
 # ---------------------------------------------------------------------------------------------------- IMERG
 
 def imerg_at(lat: float, lon: float, days: int = 30) -> dict:
-    """Lluvia diaria por satélite (GPM IMERG Late Run, 0.1°) de los últimos días disponibles."""
+    """Daily satellite rain (GPM IMERG Late Run, 0.1°) for the most recent available days."""
     base = {"source": "GPM IMERG Late Run diario v07 (GES DISC)", "official_url": LINKS["imerg"], "series": []}
     if not -60 <= lat <= 60:
         return {**base, "available": False, "note": "IMERG solo cubre entre 60° norte y 60° sur."}
@@ -240,8 +242,8 @@ def _nldas_url(y: int, m: int) -> str:
 
 
 def nldas_at(lat: float, lon: float, months: int = 12, normal_years: int = 10) -> dict:
-    """Balance de agua mensual del modelo NLDAS-2 Noah: humedad del suelo hasta 1 m, evapotranspiración,
-    escorrentía y lluvia de los últimos meses, y la humedad del último mes frente a su promedio de 10 años."""
+    """Monthly water balance from the NLDAS-2 Noah model: soil moisture down to 1 m, evapotranspiration,
+    runoff and rain for the last months, and the latest month's moisture versus its 10-year average."""
     base = {"source": "NLDAS-2 Noah mensual v2.0 (GES DISC)", "official_url": LINKS["nldas"], "months": []}
     jy, ix = round((lat - 25.0625) / 0.125), round((lon + 124.9375) / 0.125)
     if not (0 <= jy < 224 and 0 <= ix < 464):
@@ -288,7 +290,7 @@ def nldas_at(lat: float, lon: float, months: int = 12, normal_years: int = 10) -
 
 SRTM_DIR = DIR / "srtm"
 SRTM_DIR.mkdir(parents=True, exist_ok=True)
-_ARC = 30.87  # metros por segundo de arco en latitud
+_ARC = 30.87  # meters per arc-second of latitude
 
 
 def _tile_name(lat: float, lon: float) -> str:
@@ -297,7 +299,7 @@ def _tile_name(lat: float, lon: float) -> str:
 
 
 def _tile(name: str) -> np.ndarray | None:
-    """Bloque SRTM de 1°x1° (3601x3601, metros). Se descarga una vez; None si no existe (océano)."""
+    """1°x1° SRTM tile (3601x3601, meters). Downloaded once; None if it doesn't exist (ocean)."""
     path = SRTM_DIR / f"{name}.hgt"
     missing = SRTM_DIR / f"{name}.none"
     if missing.exists():
@@ -324,7 +326,7 @@ def _slope_word(p: float) -> str:
 
 
 def srtm_at(lat: float, lon: float) -> dict:
-    """Altura y pendiente del terreno (SRTM, ~30 m): en el punto, en ~270 m alrededor y el desnivel en ~1 km."""
+    """Terrain elevation and slope (SRTM, ~30 m): at the point, within ~270 m around it, and the relief within ~1 km."""
     base = {"source": "SRTM GL1 v003, ~30 m (LP DAAC)", "official_url": LINKS["srtm"]}
     if not -56 <= lat <= 60:
         return {**base, "available": False, "note": "SRTM solo cubre entre 60° norte y 56° sur."}
@@ -339,7 +341,7 @@ def srtm_at(lat: float, lon: float) -> dict:
 
         def window(h: int) -> np.ndarray:
             w = np.asarray(t[max(0, r - h): r + h + 1, max(0, c - h): c + h + 1], dtype=float)
-            w[w <= -32000] = np.nan  # vacíos del radar
+            w[w <= -32000] = np.nan  # radar voids
             return w
 
         near = window(4)  # 9x9 ≈ 270 m

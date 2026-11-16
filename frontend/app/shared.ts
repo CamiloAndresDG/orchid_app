@@ -27,7 +27,7 @@ export const CROP_NAMES: Record<"es" | "en", Record<string, string>> = {
   },
 };
 
-// Otras clases del mapa de cultivos (CDL) que se ven alrededor del terreno pero no son cultivos de ORCHID.
+// Other crop map (CDL) classes seen around the field that aren't ORCHID crops.
 export const LAND_NAMES: Record<"es" | "en", Record<string, string>> = {
   es: { pastizal: "pastizal", "alfalfa/heno": "alfalfa/heno", barbecho: "barbecho", algodon: "algodón", arroz: "arroz" },
   en: { pastizal: "grassland", "alfalfa/heno": "alfalfa/hay", barbecho: "fallow", algodon: "cotton", arroz: "rice" },
@@ -43,13 +43,13 @@ export const MONTHS: Record<"es" | "en", string[]> = {
 
 export type HistoryRow = { crop: string; plant_year: number; plant_month: number; harvest_year: number; harvest_month: number };
 
-// Precios y costos en las unidades del campo de EE. UU.
+// Prices and costs in U.S. farm units.
 export type EconUS = { yield: string; price: string; cost: string };
 
 export const HA_PER_ACRE = 0.404686;
 const KG_PER_CWT = 45.3592;
 
-// Unidad de rinde, kg por unidad de rinde, unidad de precio y kg por unidad de precio.
+// Yield unit, kg per yield unit, price unit and kg per price unit.
 export const US_UNITS: Record<string, { yieldUnit: string; kgPerYield: number; priceUnit: string; kgPerPrice: number }> = {
   corn: { yieldUnit: "bu/acre", kgPerYield: 25.401, priceUnit: "$/bu", kgPerPrice: 25.401 },
   soybean: { yieldUnit: "bu/acre", kgPerYield: 27.216, priceUnit: "$/bu", kgPerPrice: 27.216 },
@@ -61,7 +61,7 @@ export const US_UNITS: Record<string, { yieldUnit: string; kgPerYield: number; p
 
 const num = (v: string | undefined) => (v === undefined || v.trim() === "" || isNaN(parseFloat(v)) ? null : parseFloat(v));
 
-/** Convierte lo que escribe el agricultor (EE. UU.) a lo que usa el motor: t/ha, $/t y $/ha. */
+/** Converts what the farmer types (U.S. units) into what the engine uses: t/ha, $/t and $/ha. */
 export function toMetric(crop: string, e: EconUS) {
   const cost = num(e.cost);
   const u = US_UNITS[crop];

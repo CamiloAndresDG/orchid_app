@@ -7,7 +7,7 @@ const OPTIONS: { id: Lang; short: string; name: string }[] = [
   { id: "en", short: "EN", name: "English" },
 ];
 
-/** Selector de idioma ES | EN. */
+/** ES | EN language switcher. */
 export function LangToggle({ className = "", tone = "ink" }: { className?: string; tone?: "ink" | "paper" }) {
   const lang = useLang();
   const off = tone === "paper" ? "text-paper/75 hover:text-paper" : "text-ink-soft hover:text-ink";

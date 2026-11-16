@@ -1,7 +1,7 @@
-"""Traduce al inglés los textos fijos que devuelven las fuentes (notas, palabras de clase).
+"""Translates into English the fixed texts the sources return (notes, class words).
 
-Las fuentes guardan sus respuestas en caché en disco, en español. En vez de duplicar cada caché por idioma,
-la respuesta se traduce al salir, solo si la petición pidió inglés. Lo que no está en estas tablas se deja igual.
+Sources cache their responses on disk, in Spanish. Instead of duplicating each cache per language,
+the response is translated on the way out, only if the request asked for English. Anything not in these tables is left as is.
 """
 import re
 
@@ -62,7 +62,7 @@ PATTERNS = [
      r"There are no CoCoRaHS stations with rain in \1 within \2 km. CoCoRaHS covers the U.S. (and some areas of Canada and the Bahamas)."),
 ]
 
-# Palabras de clase que el frontend muestra tal cual.
+# Class words the frontend shows as they are.
 WORDS = {
     # SMAP
     "seco": "dry", "con humedad media": "medium moist", "húmedo": "moist", "muy húmedo": "very moist",
@@ -98,5 +98,5 @@ def _walk(v, key: str | None = None):
 
 
 def localize(out):
-    """La respuesta tal cual en español; en inglés, con las notas y palabras fijas traducidas."""
+    """The response as is in Spanish; in English, with the fixed notes and words translated."""
     return out if lang() != "en" else _walk(out)

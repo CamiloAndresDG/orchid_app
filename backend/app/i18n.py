@@ -1,8 +1,8 @@
-"""Idioma de la respuesta: español (por defecto) o inglés.
+"""Response language: Spanish (default) or English.
 
-El navegador manda el idioma elegido en Accept-Language. Un middleware lo guarda en una variable de contexto
-para que cualquier función que arme texto para el agricultor elija con `t(es, en)` sin pasar el idioma a mano.
-Las cachés en disco que guardan textos usan `cache_suffix()` para no mezclar idiomas.
+The browser sends the chosen language in Accept-Language. A middleware stores it in a context variable
+so any function that builds text for the farmer can pick with `t(es, en)` without passing the language around.
+Disk caches that store text use `cache_suffix()` so languages don't get mixed.
 """
 import contextvars
 from typing import Callable, TypeVar
@@ -13,7 +13,7 @@ R = TypeVar("R")
 
 
 def parse(header: str | None) -> str:
-    """Primer idioma de la cabecera: inglés si empieza por 'en'; cualquier otra cosa, español."""
+    """First language in the header: English if it starts with 'en'; anything else, Spanish."""
     first = (header or "").split(",")[0].strip().lower()
     return "en" if first.startswith("en") else "es"
 
@@ -23,17 +23,17 @@ def lang() -> str:
 
 
 def t(es: str, en: str) -> str:
-    """El texto en el idioma de la petición en curso."""
+    """The text in the current request's language."""
     return en if LANG.get() == "en" else es
 
 
 def cache_suffix() -> str:
-    """Sufijo para claves de caché con texto. Vacío en español, así las cachés ya guardadas siguen sirviendo."""
+    """Suffix for cache keys holding text. Empty in Spanish, so the caches already stored keep working."""
     return "" if LANG.get() == "es" else f"_{LANG.get()}"
 
 
 def in_ctx(fn: Callable[..., R]) -> Callable[..., R]:
-    """Envuelve una función para correrla en otro hilo con el idioma de la petición (los hilos no heredan el contexto)."""
+    """Wraps a function to run it in another thread with the request's language (threads don't inherit the context)."""
     ctx = contextvars.copy_context()
 
     def run(*a, **k):
@@ -43,7 +43,7 @@ def in_ctx(fn: Callable[..., R]) -> Callable[..., R]:
 
 
 class LangMiddleware:
-    """Middleware ASGI: fija el idioma de la petición a partir de Accept-Language."""
+    """ASGI middleware: sets the request's language from Accept-Language."""
 
     def __init__(self, app):
         self.app = app

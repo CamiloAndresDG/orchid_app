@@ -1,8 +1,11 @@
-"""Tabla 7 (stations_validation) y consulta en vivo: lluvia de estaciones CoCoRaHS frente al modelo.
+"""Table 7 (stations_validation) and live query: rain from CoCoRaHS stations versus the model.
 
-Fuente por defecto: GHCN-Daily de NOAA/NCEI, que incluye las estaciones CoCoRaHS (ID con prefijo US1).
-Las estaciones se buscan en el inventario de GHCN-Daily y su lluvia se pide al NCEI Access Data Service
-(sin cuenta). La API directa de CoCoRaHS se conserva (`fuente="cocorahs"`) pero suele responder HTML.
+Default source: NOAA/NCEI GHCN-Daily, which includes the CoCoRaHS stations (IDs with the US1 prefix).
+Stations are looked up in the GHCN-Daily inventory and their rain is requested from the NCEI Access Data
+Service (no account needed). The direct CoCoRaHS API is kept (`source="cocorahs"`) but it usually answers HTML.
+
+DataFrame column names (estacion, año, mes, lluvia_estacion_mm, ...) stay in Spanish: they are the stored
+schema of the table and of the cached CSVs.
 """
 import io
 import json
@@ -14,15 +17,15 @@ import httpx
 import numpy as np
 import pandas as pd
 
-from .config import RAW, cargar, guardar, hecho
-from .grid import AOIS, PILOTOS, cell_id, distancia_km, registrar_cobertura
+from .config import RAW, done, load, save
+from .grid import AOIS, PILOTS, cell_id, distance_km, register_coverage
 
 COCO = RAW / "cocorahs"
 COCO.mkdir(parents=True, exist_ok=True)
 
-ZONAS_COCO = {"california_central": "CA", "iowa": "IA"}      # zona piloto de EE. UU. -> estado
-PERIODO_COCO = ("2020-01-01", "2024-12-31")
-MAX_ESTACIONES = 40                                          # estaciones mas cercanas al centro de la zona
+COCO_ZONES = {"california_central": "CA", "iowa": "IA"}      # U.S. pilot zone -> state
+COCO_PERIOD = ("2020-01-01", "2024-12-31")
+MAX_STATIONS = 40                                            # stations closest to the zone's center
 
 NCEI = "https://www.ncei.noaa.gov/access/services/data/v1"
 EXP_ST = "https://data.cocorahs.org/cocorahs/export/exportstations.aspx"
@@ -30,208 +33,208 @@ EXP_REP = "https://data.cocorahs.org/export/exportreports.aspx"
 INV_URL = "https://www.ncei.noaa.gov/pub/data/ghcn/daily/ghcnd-inventory.txt"
 
 
-def _tabla_remota(url, params):
+def _remote_table(url, params):
     err = None
-    for intento in range(3):
+    for attempt in range(3):
         try:
             r = httpx.get(url, params=params, timeout=httpx.Timeout(180, connect=15))
             if r.status_code >= 400:
                 err = ValueError(f"HTTP {r.status_code}: {r.text[:300]!r}")
                 if r.status_code < 500:
-                    break                                  # error del cliente: reintentar no sirve
-                time.sleep(2 * (intento + 1))
+                    break                                  # client error: retrying won't help
+                time.sleep(2 * (attempt + 1))
                 continue
             txt = r.text.strip()
             if not txt:
                 return pd.DataFrame()
             if txt.startswith("<"):
-                raise ValueError("la respuesta no son datos. Primeros caracteres: " + txt[:200].replace("\n", " "))
+                raise ValueError("the response isn't data. First characters: " + txt[:200].replace("\n", " "))
             try:
-                dato = r.json()
-                if isinstance(dato, dict):
-                    dato = next((v for v in dato.values() if isinstance(v, list)), [dato])
-                return pd.json_normalize(dato)
+                data = r.json()
+                if isinstance(data, dict):
+                    data = next((v for v in data.values() if isinstance(v, list)), [data])
+                return pd.json_normalize(data)
             except ValueError:
                 return pd.read_csv(io.StringIO(r.text))
         except Exception as ex:
             err = ex
-            time.sleep(2 * (intento + 1))
-    print("fallo la consulta:", url, params, "|", type(err).__name__, str(err)[:400])
+            time.sleep(2 * (attempt + 1))
+    print("query failed:", url, params, "|", type(err).__name__, str(err)[:400])
     return pd.DataFrame()
 
 
-def _col(df, *patrones):
-    for p in patrones:
+def _col(df, *patterns):
+    for p in patterns:
         for c in df.columns:
             if re.search(p, str(c), re.I):
                 return c
     return None
 
 
-def _mas_cercanas(est, la0, lo0, n=MAX_ESTACIONES):
-    est = est.copy()
-    est["dist"] = np.hypot(est["lat"] - la0, (est["lon"] - lo0) * np.cos(np.radians(la0)))
-    return est.sort_values("dist").head(n).drop(columns="dist")
+def _closest(st, la0, lo0, n=MAX_STATIONS):
+    st = st.copy()
+    st["dist"] = np.hypot(st["lat"] - la0, (st["lon"] - lo0) * np.cos(np.radians(la0)))
+    return st.sort_values("dist").head(n).drop(columns="dist")
 
 
-def inventario_us1() -> pd.DataFrame:
-    """Estaciones CoCoRaHS (prefijo US1) con PRCP en GHCN-Daily: id, lat, lon, anios de inicio y fin."""
+def us1_inventory() -> pd.DataFrame:
+    """CoCoRaHS stations (US1 prefix) with PRCP in GHCN-Daily: id, lat, lon, first and last year."""
     cache = COCO / "ghcnd_us1_prcp.csv"
     if cache.exists() and time.time() - cache.stat().st_mtime < 30 * 86400:
         return pd.read_csv(cache)
-    bruto = COCO / "ghcnd-inventory.txt"
-    if not bruto.exists() or time.time() - bruto.stat().st_mtime > 30 * 86400:
+    raw = COCO / "ghcnd-inventory.txt"
+    if not raw.exists() or time.time() - raw.stat().st_mtime > 30 * 86400:
         r = httpx.get(INV_URL, timeout=httpx.Timeout(300, connect=15))
         r.raise_for_status()
-        bruto.write_bytes(r.content)
-    inv = pd.read_fwf(bruto, colspecs=[(0, 11), (12, 20), (21, 30), (31, 35), (36, 40), (41, 45)],
+        raw.write_bytes(r.content)
+    inv = pd.read_fwf(raw, colspecs=[(0, 11), (12, 20), (21, 30), (31, 35), (36, 40), (41, 45)],
                       names=["estacion", "lat", "lon", "elemento", "anio_ini", "anio_fin"])
     inv = inv[(inv["elemento"] == "PRCP") & inv["estacion"].astype(str).str.startswith("US1")]
     inv = inv.drop(columns="elemento")
     inv.to_csv(cache, index=False)
-    bruto.unlink(missing_ok=True)                  # el inventario completo pesa ~36 MB
+    raw.unlink(missing_ok=True)                    # the full inventory weighs ~36 MB
     return inv
 
 
-def prcp_ncei(ids: list[str], ini: str, fin: str, lote=20) -> pd.DataFrame:
-    """PRCP diaria (mm) de estaciones GHCN-Daily desde el NCEI Access Data Service, por anios y lotes."""
-    partes = []
-    for y in range(int(ini[:4]), int(fin[:4]) + 1):
-        a = max(pd.Timestamp(ini), pd.Timestamp(f"{y}-01-01")).strftime("%Y-%m-%d")
-        b = min(pd.Timestamp(fin), pd.Timestamp(f"{y}-12-31")).strftime("%Y-%m-%d")
-        for i in range(0, len(ids), lote):
-            p = {"dataset": "daily-summaries", "dataTypes": "PRCP", "stations": ",".join(ids[i:i + lote]),
+def ncei_prcp(ids: list[str], start: str, end: str, batch=20) -> pd.DataFrame:
+    """Daily PRCP (mm) for GHCN-Daily stations from the NCEI Access Data Service, by year and batch."""
+    parts = []
+    for y in range(int(start[:4]), int(end[:4]) + 1):
+        a = max(pd.Timestamp(start), pd.Timestamp(f"{y}-01-01")).strftime("%Y-%m-%d")
+        b = min(pd.Timestamp(end), pd.Timestamp(f"{y}-12-31")).strftime("%Y-%m-%d")
+        for i in range(0, len(ids), batch):
+            p = {"dataset": "daily-summaries", "dataTypes": "PRCP", "stations": ",".join(ids[i:i + batch]),
                  "startDate": a, "endDate": b, "format": "csv", "units": "metric"}
-            tbl = _tabla_remota(NCEI, p)
+            tbl = _remote_table(NCEI, p)
             if len(tbl):
-                partes.append(tbl)
+                parts.append(tbl)
             time.sleep(0.3)
-    return pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
+    return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
 
 
-def descargar_ncei(zona, ini, fin):
-    """Estaciones CoCoRaHS de la zona con datos en el periodo y su PRCP diaria."""
-    inv = inventario_us1()
-    w, s, e, n = AOIS[zona]
+def download_ncei(zone, start, end):
+    """CoCoRaHS stations in the zone with data for the period, and their daily PRCP."""
+    inv = us1_inventory()
+    w, s, e, n = AOIS[zone]
     ok = (inv["lat"].between(s, n) & inv["lon"].between(w, e) &
-          (inv["anio_ini"] <= int(ini[:4])) & (inv["anio_fin"] >= int(fin[:4])))
-    est = inv.loc[ok, ["estacion", "lat", "lon"]]
-    print(zona, "| estaciones CoCoRaHS (US1) en la zona con datos en el periodo:", len(est))
-    if est.empty:
+          (inv["anio_ini"] <= int(start[:4])) & (inv["anio_fin"] >= int(end[:4])))
+    st = inv.loc[ok, ["estacion", "lat", "lon"]]
+    print(zone, "| CoCoRaHS (US1) stations in the zone with data for the period:", len(st))
+    if st.empty:
         return pd.DataFrame(), pd.DataFrame()
-    est = _mas_cercanas(est, *PILOTOS[zona])
-    return est, prcp_ncei(est["estacion"].tolist(), ini, fin)
+    st = _closest(st, *PILOTS[zone])
+    return st, ncei_prcp(st["estacion"].tolist(), start, end)
 
 
-def estaciones_cocorahs(zona, estado):
-    est = pd.DataFrame()
-    for pais in (None, "usa", "USA"):
-        p = {"format": "json", "state": estado}
-        if pais:
-            p["country"] = pais
-        est = _tabla_remota(EXP_ST, p)
-        if len(est):
+def cocorahs_stations(zone, state):
+    st = pd.DataFrame()
+    for country in (None, "usa", "USA"):
+        p = {"format": "json", "state": state}
+        if country:
+            p["country"] = country
+        st = _remote_table(EXP_ST, p)
+        if len(st):
             break
-    if est.empty:
-        return est
-    c_id = _col(est, r"^(st_?num|station_?number|station_?id)$", r"station.*(num|id)")
-    c_lat, c_lon = _col(est, r"^lat"), _col(est, r"^(lng|lon)")
+    if st.empty:
+        return st
+    c_id = _col(st, r"^(st_?num|station_?number|station_?id)$", r"station.*(num|id)")
+    c_lat, c_lon = _col(st, r"^lat"), _col(st, r"^(lng|lon)")
     if None in (c_id, c_lat, c_lon):
         return pd.DataFrame()
-    est = est.rename(columns={c_id: "estacion", c_lat: "lat", c_lon: "lon"})[["estacion", "lat", "lon"]].copy()
-    est["lat"] = pd.to_numeric(est["lat"], errors="coerce")
-    est["lon"] = pd.to_numeric(est["lon"], errors="coerce")
-    w, s, e, n = AOIS[zona]
-    est = est.dropna()
-    est = est[est["lat"].between(s, n) & est["lon"].between(w, e)]
-    return _mas_cercanas(est, *PILOTOS[zona])
+    st = st.rename(columns={c_id: "estacion", c_lat: "lat", c_lon: "lon"})[["estacion", "lat", "lon"]].copy()
+    st["lat"] = pd.to_numeric(st["lat"], errors="coerce")
+    st["lon"] = pd.to_numeric(st["lon"], errors="coerce")
+    w, s, e, n = AOIS[zone]
+    st = st.dropna()
+    st = st[st["lat"].between(s, n) & st["lon"].between(w, e)]
+    return _closest(st, *PILOTS[zone])
 
 
-def reportes_cocorahs(est, ini, fin, lote=20):
-    ids = est["estacion"].astype(str).tolist()
-    partes = []
-    for y in range(int(ini[:4]), int(fin[:4]) + 1):
-        a = max(pd.Timestamp(ini), pd.Timestamp(f"{y}-01-01"))
-        b = min(pd.Timestamp(fin), pd.Timestamp(f"{y}-12-31"))
-        for i in range(0, len(ids), lote):
+def cocorahs_reports(st, start, end, batch=20):
+    ids = st["estacion"].astype(str).tolist()
+    parts = []
+    for y in range(int(start[:4]), int(end[:4]) + 1):
+        a = max(pd.Timestamp(start), pd.Timestamp(f"{y}-01-01"))
+        b = min(pd.Timestamp(end), pd.Timestamp(f"{y}-12-31"))
+        for i in range(0, len(ids), batch):
             p = {"Format": "csv", "ReportType": "Daily", "ResponseFields": "all",
                  "ReportDateType": "reportdate", "StartDate": a.strftime("%m/%d/%Y"),
-                 "EndDate": b.strftime("%m/%d/%Y"), "stations": ",".join(ids[i:i + lote])}
-            t = _tabla_remota(EXP_REP, p)
+                 "EndDate": b.strftime("%m/%d/%Y"), "stations": ",".join(ids[i:i + batch])}
+            t = _remote_table(EXP_REP, p)
             if len(t):
-                partes.append(t)
+                parts.append(t)
             time.sleep(0.5)
-    return pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
+    return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
 
 
-def lluvia_mensual(rep, est, unidad="mm", min_cobertura=0.8) -> pd.DataFrame:
-    """Lluvia mensual por estacion; solo meses con al menos 80 % de dias reportados."""
+def monthly_rain(rep, st, unit="mm", min_coverage=0.8) -> pd.DataFrame:
+    """Monthly rain per station; only months with at least 80% of days reported."""
     c_id = _col(rep, r"^stationnumber$", r"station.*(num|id)", r"^station$")
-    c_fe = _col(rep, r"^observationdate$", r"obs.*date", r"^date$")
-    c_ll = _col(rep, r"^totalprecipamt$", r"totalprecip", r"precip.*amt", r"^prcp$", r"gauge")
-    if None in (c_id, c_fe, c_ll):
-        print("No pude detectar las columnas. Columnas disponibles:", list(rep.columns))
+    c_date = _col(rep, r"^observationdate$", r"obs.*date", r"^date$")
+    c_rain = _col(rep, r"^totalprecipamt$", r"totalprecip", r"precip.*amt", r"^prcp$", r"gauge")
+    if None in (c_id, c_date, c_rain):
+        print("Couldn't detect the columns. Available columns:", list(rep.columns))
         return pd.DataFrame()
-    lluvia = rep[c_ll].astype(str).str.strip().replace({"T": "0", "NA": np.nan, "": np.nan, "nan": np.nan})
+    rain = rep[c_rain].astype(str).str.strip().replace({"T": "0", "NA": np.nan, "": np.nan, "nan": np.nan})
     r = pd.DataFrame({"estacion": rep[c_id].astype(str).str.strip(),
-                      "fecha": pd.to_datetime(rep[c_fe], errors="coerce"),
-                      "lluvia": pd.to_numeric(lluvia, errors="coerce")}).dropna()
-    if unidad == "in":
+                      "fecha": pd.to_datetime(rep[c_date], errors="coerce"),
+                      "lluvia": pd.to_numeric(rain, errors="coerce")}).dropna()
+    if unit == "in":
         r["lluvia"] = r["lluvia"] * 25.4
-    r = r.merge(est[["estacion", "lat", "lon"]].astype({"estacion": str}).drop_duplicates("estacion"),
+    r = r.merge(st[["estacion", "lat", "lon"]].astype({"estacion": str}).drop_duplicates("estacion"),
                 on="estacion", how="inner")
     r["año"], r["mes"], r["dias"] = r["fecha"].dt.year, r["fecha"].dt.month, r["fecha"].dt.days_in_month
-    mes = (r.groupby(["estacion", "lat", "lon", "año", "mes"], as_index=False)
-             .agg(lluvia_estacion_mm=("lluvia", "sum"), n_obs=("lluvia", "size"), dias=("dias", "first")))
-    mes = mes[mes["n_obs"] >= min_cobertura * mes["dias"]].drop(columns="dias")
-    mes["cell_id"] = cell_id(mes["lat"], mes["lon"])
-    return mes
+    month = (r.groupby(["estacion", "lat", "lon", "año", "mes"], as_index=False)
+               .agg(lluvia_estacion_mm=("lluvia", "sum"), n_obs=("lluvia", "size"), dias=("dias", "first")))
+    month = month[month["n_obs"] >= min_coverage * month["dias"]].drop(columns="dias")
+    month["cell_id"] = cell_id(month["lat"], month["lon"])
+    return month
 
 
-def construir_validacion(rep, est, clima, unidad="mm"):
-    mes = lluvia_mensual(rep, est, unidad)
-    if mes.empty:
-        return mes
-    mod = clima[["fuente", "cell_id", "año", "mes", "precip"]].rename(
+def build_validation(rep, st, climate, unit="mm"):
+    month = monthly_rain(rep, st, unit)
+    if month.empty:
+        return month
+    model = climate[["fuente", "cell_id", "año", "mes", "precip"]].rename(
         columns={"fuente": "fuente_modelo", "precip": "precip_modelo_mm"})
-    return mes.merge(mod, on=["cell_id", "año", "mes"], how="inner")
+    return month.merge(model, on=["cell_id", "año", "mes"], how="inner")
 
 
-def construir(periodo=PERIODO_COCO, fuente="ncei", unidad_cocorahs="in"):
-    """Tabla 7. Necesita climate_monthly (compara contra esa tabla)."""
-    if not hecho("climate_monthly"):
-        raise RuntimeError("Primero genera climate_monthly (la validacion compara contra esa tabla)")
-    clima_cm = cargar("climate_monthly")
-    sv_partes = []
-    for zona, estado in ZONAS_COCO.items():
-        ae, ar = COCO / f"{fuente}_stations_{zona}.csv", COCO / f"{fuente}_reports_{zona}.csv"
-        if ae.exists() and ar.exists():
-            est, rep = pd.read_csv(ae), pd.read_csv(ar)
+def build(period=COCO_PERIOD, source="ncei", cocorahs_unit="in"):
+    """Table 7. Needs climate_monthly (it compares against that table)."""
+    if not done("climate_monthly"):
+        raise RuntimeError("Build climate_monthly first (the validation compares against that table)")
+    climate_cm = load("climate_monthly")
+    sv_parts = []
+    for zone, state in COCO_ZONES.items():
+        fs, fr = COCO / f"{source}_stations_{zone}.csv", COCO / f"{source}_reports_{zone}.csv"
+        if fs.exists() and fr.exists():
+            st, rep = pd.read_csv(fs), pd.read_csv(fr)
         else:
-            if fuente == "ncei":
-                est, rep = descargar_ncei(zona, *periodo)
+            if source == "ncei":
+                st, rep = download_ncei(zone, *period)
             else:
-                est = estaciones_cocorahs(zona, estado)
-                rep = reportes_cocorahs(est, *periodo) if len(est) else pd.DataFrame()
-            if est.empty or rep.empty:
-                print("sin datos para", zona)
+                st = cocorahs_stations(zone, state)
+                rep = cocorahs_reports(st, *period) if len(st) else pd.DataFrame()
+            if st.empty or rep.empty:
+                print("no data for", zone)
                 continue
-            est.to_csv(ae, index=False)
-            rep.to_csv(ar, index=False)
-        v = construir_validacion(rep, est, clima_cm, "mm" if fuente == "ncei" else unidad_cocorahs)
+            st.to_csv(fs, index=False)
+            rep.to_csv(fr, index=False)
+        v = build_validation(rep, st, climate_cm, "mm" if source == "ncei" else cocorahs_unit)
         if len(v):
-            v["zona"] = zona
-            sv_partes.append(v)
-    if not sv_partes:
-        raise RuntimeError("No se genero stations_validation: revisa los mensajes de arriba")
-    sv = pd.concat(sv_partes, ignore_index=True)
-    guardar(sv, "stations_validation")
-    registrar_cobertura("CoCoRaHS", sv["cell_id"].unique())
+            v["zona"] = zone
+            sv_parts.append(v)
+    if not sv_parts:
+        raise RuntimeError("stations_validation wasn't generated: check the messages above")
+    sv = pd.concat(sv_parts, ignore_index=True)
+    save(sv, "stations_validation")
+    register_coverage("CoCoRaHS", sv["cell_id"].unique())
     return sv
 
 
-def resumen_validacion(sv: pd.DataFrame) -> list[dict]:
-    """Correlacion y sesgo medio (modelo - estacion) por fuente del modelo."""
+def validation_summary(sv: pd.DataFrame) -> list[dict]:
+    """Correlation and mean bias (model - station) per model source."""
     out = []
     for f, x in sv.groupby("fuente_modelo"):
         out.append({"fuente_modelo": f, "meses": int(len(x)),
@@ -244,67 +247,68 @@ def _r(v, nd):
     return None if v is None or not np.isfinite(v) else round(float(v), nd)
 
 
-# ---------------------------------------------------------------- consulta en vivo por punto
-from ..config import CACHE_DIR  # noqa: E402  (caché compartida; en Azure es Azure Files)
+# ---------------------------------------------------------------- live point query
+from ..config import CACHE_DIR  # noqa: E402  (shared cache; on Azure it is Azure Files)
 
 
-def stations_near(lat: float, lon: float, year: int | None = None, radio_km: float = 40, max_est: int = 5) -> dict:
-    """Estaciones CoCoRaHS cercanas al punto, su lluvia mensual del anio y la comparacion con NASA POWER."""
+def stations_near(lat: float, lon: float, year: int | None = None, radius_km: float = 40, max_stations: int = 5) -> dict:
+    """CoCoRaHS stations near the point, their monthly rain for the year and the comparison with NASA POWER."""
     from ..climate import aggregate
 
     year = year or date.today().year - 1
     lat, lon = round(lat, 3), round(lon, 3)
-    key = CACHE_DIR / f"cocorahs_{lat}_{lon}_{year}_{int(radio_km)}.json"
+    key = CACHE_DIR / f"cocorahs_{lat}_{lon}_{year}_{int(radius_km)}.json"
     if key.exists():
         return json.loads(key.read_text(encoding="utf8"))
-    base = {"available": False, "lat": lat, "lon": lon, "year": year, "radius_km": radio_km,
+    # User-facing text stays in Spanish here; localize.py translates it on the way out.
+    base = {"available": False, "lat": lat, "lon": lon, "year": year, "radius_km": radius_km,
             "stations": [], "months": [], "summary": None,
             "source": "CoCoRaHS (estaciones voluntarias US1) via GHCN-Daily, NOAA NCEI; modelo: NASA POWER PRECTOTCORR",
             "note": ""}
     try:
-        inv = inventario_us1()
+        inv = us1_inventory()
     except Exception as ex:
         base["note"] = f"No se pudo descargar el inventario de GHCN-Daily ({type(ex).__name__})."
         return base
-    d = 1.5 * radio_km / 111
+    d = 1.5 * radius_km / 111
     cand = inv[inv["lat"].between(lat - d, lat + d) & inv["lon"].between(lon - 2 * d, lon + 2 * d)
                & (inv["anio_ini"] <= year) & (inv["anio_fin"] >= year)].copy()
-    cand["dist_km"] = [distancia_km(lat, lon, a, b) for a, b in zip(cand["lat"], cand["lon"])]
-    cand = cand[cand["dist_km"] <= radio_km].sort_values("dist_km").head(max_est)
+    cand["dist_km"] = [distance_km(lat, lon, a, b) for a, b in zip(cand["lat"], cand["lon"])]
+    cand = cand[cand["dist_km"] <= radius_km].sort_values("dist_km").head(max_stations)
     if cand.empty:
-        base["note"] = (f"No hay estaciones CoCoRaHS con lluvia en {year} a menos de {radio_km:.0f} km. "
+        base["note"] = (f"No hay estaciones CoCoRaHS con lluvia en {year} a menos de {radius_km:.0f} km. "
                         "CoCoRaHS cubre EE. UU. (y algunas zonas de Canada y Bahamas).")
         key.write_text(json.dumps(base), encoding="utf8")
         return base
-    rep = prcp_ncei(cand["estacion"].tolist(), f"{year}-01-01", f"{year}-12-31")
+    rep = ncei_prcp(cand["estacion"].tolist(), f"{year}-01-01", f"{year}-12-31")
     if rep.empty:
         base["note"] = "NOAA NCEI no respondio con datos. Intenta de nuevo."
         return base
-    mes = lluvia_mensual(rep, cand[["estacion", "lat", "lon"]])
-    estaciones = []
+    month = monthly_rain(rep, cand[["estacion", "lat", "lon"]])
+    stations = []
     for _, s in cand.iterrows():
-        m = mes[mes["estacion"] == s["estacion"]]
-        estaciones.append({"id": s["estacion"], "lat": float(s["lat"]), "lon": float(s["lon"]),
-                           "distance_km": round(float(s["dist_km"]), 1), "complete_months": int(len(m)),
-                           "annual_mm": _r(m["lluvia_estacion_mm"].sum(), 1) if len(m) == 12 else None})
+        m = month[month["estacion"] == s["estacion"]]
+        stations.append({"id": s["estacion"], "lat": float(s["lat"]), "lon": float(s["lon"]),
+                         "distance_km": round(float(s["dist_km"]), 1), "complete_months": int(len(m)),
+                         "annual_mm": _r(m["lluvia_estacion_mm"].sum(), 1) if len(m) == 12 else None})
     try:
         power = aggregate(round(lat, 2), round(lon, 2), f"{year}0101", f"{year}1231", "monthly")["rows"]
-        p_mes = {int(r["start"][4:6]): r["precip_mm_total"] for r in power}
+        p_month = {int(r["start"][4:6]): r["precip_mm_total"] for r in power}
     except Exception:
-        p_mes = {}
-    meses = []
+        p_month = {}
+    months = []
     for m in range(1, 13):
-        x = mes[mes["mes"] == m]
-        meses.append({"month": m, "stations_mm": _r(x["lluvia_estacion_mm"].mean(), 1) if len(x) else None,
-                      "n_stations": int(len(x)), "power_mm": p_mes.get(m)})
-    pares = [(r["stations_mm"], r["power_mm"]) for r in meses if r["stations_mm"] is not None and r["power_mm"] is not None]
-    resumen = None
-    if len(pares) >= 3:
-        a, b = np.array(pares).T
-        resumen = {"months_compared": len(pares), "correlation": _r(np.corrcoef(a, b)[0, 1], 3),
+        x = month[month["mes"] == m]
+        months.append({"month": m, "stations_mm": _r(x["lluvia_estacion_mm"].mean(), 1) if len(x) else None,
+                       "n_stations": int(len(x)), "power_mm": p_month.get(m)})
+    pairs = [(r["stations_mm"], r["power_mm"]) for r in months if r["stations_mm"] is not None and r["power_mm"] is not None]
+    summary = None
+    if len(pairs) >= 3:
+        a, b = np.array(pairs).T
+        summary = {"months_compared": len(pairs), "correlation": _r(np.corrcoef(a, b)[0, 1], 3),
                    "bias_mm": _r(float(np.mean(b - a)), 1),
                    "stations_total_mm": _r(float(a.sum()), 0), "power_total_mm": _r(float(b.sum()), 0)}
-    base.update(available=bool(len(mes)), stations=estaciones, months=meses, summary=resumen,
+    base.update(available=bool(len(month)), stations=stations, months=months, summary=summary,
                 note="Lluvia mensual media de las estaciones (solo meses con al menos 80 % de dias reportados). "
                      "Sesgo = NASA POWER menos estaciones.")
     key.write_text(json.dumps(base), encoding="utf8")

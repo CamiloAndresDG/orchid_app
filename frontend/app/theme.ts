@@ -1,7 +1,7 @@
 "use client";
 
-// Tema: por defecto sigue al sistema (prefers-color-scheme). El usuario puede forzar claro u oscuro desde su menú;
-// esa elección se guarda en localStorage["orchid.theme"]. Siempre se escribe el tema efectivo en <html data-theme>.
+// Theme: follows the system by default (prefers-color-scheme). The user can force light or dark from their menu;
+// that choice is stored in localStorage["orchid.theme"]. The effective theme is always written to <html data-theme>.
 
 import { useSyncExternalStore } from "react";
 
@@ -9,7 +9,7 @@ export type ThemePref = "system" | "light" | "dark";
 export type Theme = "light" | "dark";
 
 const listeners = new Set<() => void>();
-// Clave nueva: el interruptor viejo guardaba "theme" y casi siempre era "light"; así todos arrancan siguiendo al sistema.
+// New key: the old toggle stored "theme" and it was almost always "light"; this way everyone starts following the system.
 const KEY = "orchid.theme";
 const MQ = "(prefers-color-scheme: dark)";
 

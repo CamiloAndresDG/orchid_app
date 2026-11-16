@@ -1,13 +1,13 @@
-// Sincroniza el cuaderno (terreno y precios) con la cuenta del servidor.
-// Las pantallas siguen leyendo y escribiendo localStorage; este módulo lo copia al servidor y viceversa.
+// Syncs the notebook (field and prices) with the server account.
+// Screens keep reading and writing localStorage; this module copies it to the server and back.
 import { ECON_KEY, PLOT_KEY, currentSession } from "./auth";
 import { API } from "./shared";
 
 type Notebook = { plot: unknown; econ: Record<string, unknown> };
 
-// Solo se sube después de haber traído el cuaderno de la cuenta; si no, se podría pisar con datos viejos.
+// Only upload after the account's notebook has been fetched; otherwise it could be overwritten with stale data.
 let syncedToken: string | null = null;
-let lastSent = ""; // evita reenviar lo mismo que ya está en el servidor
+let lastSent = ""; // avoids resending what's already on the server
 let timer: ReturnType<typeof setTimeout> | null = null;
 
 function local(): Notebook {
@@ -24,8 +24,8 @@ function local(): Notebook {
 const isEmpty = (nb: Notebook) => !nb.plot && Object.keys(nb.econ).length === 0;
 
 /**
- * Al entrar: trae el cuaderno de la cuenta y lo deja en localStorage.
- * Si la cuenta está vacía y en este navegador hay un terreno (por ejemplo del modo visitante), lo sube.
+ * On sign-in: fetches the account's notebook and puts it in localStorage.
+ * If the account is empty and this browser has a field (for example from guest mode), it uploads it.
  */
 export async function pullNotebook(token: string): Promise<"ok" | "unauthorized" | "offline"> {
   syncedToken = null;
@@ -67,7 +67,7 @@ async function push(token: string, nb: Notebook, keepalive = false) {
     });
     if (r.ok) lastSent = body;
   } catch {
-    // Sin conexión: queda en localStorage y se reintenta en el próximo cambio.
+    // Offline: it stays in localStorage and is retried on the next change.
   }
 }
 
@@ -78,10 +78,10 @@ function flush(keepalive = false) {
   if (token && token === syncedToken) void push(token, local(), keepalive);
 }
 
-/** Envía ya lo pendiente (antes de cerrar sesión). */
+/** Sends anything pending right away (before signing out). */
 export const flushNotebook = () => flush(true);
 
-/** Llamar después de escribir el terreno o los precios en localStorage. Solo sube si hay cuenta. */
+/** Call after writing the field or the prices to localStorage. Only uploads if there's an account. */
 export function notebookChanged() {
   const token = currentSession()?.token;
   if (!token || token !== syncedToken) return;
@@ -89,7 +89,7 @@ export function notebookChanged() {
   timer = setTimeout(flush, 800);
 }
 
-// Si la persona cierra la pestaña antes de que pase el retraso, se envía igual.
+// If the person closes the tab before the delay is up, it's sent anyway.
 if (typeof window !== "undefined") {
   window.addEventListener("pagehide", () => timer && flush(true));
 }

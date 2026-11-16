@@ -1,7 +1,7 @@
-"""Catalogo curado de cultivos (reglas agronomicas simples) y lectura de la capa CDL por punto.
+"""Curated crop catalog (simple agronomic rules) and per-point reading of the CDL layer.
 
-El catalogo son reglas curadas, no datos medidos: deben validarse con extensión agrícola local.
-CDL (USDA NASS) solo cubre EE. UU.; fuera devuelve sin datos y no se inventa nada.
+The catalog is curated rules, not measured data: it must be validated with local agricultural extension.
+CDL (USDA NASS) only covers the U.S.; elsewhere it returns no data and nothing is made up.
 """
 import collections
 import io
@@ -25,14 +25,14 @@ CATALOG = {
 }
 
 def crop_name(key: str) -> str:
-    """Nombre del cultivo en el idioma de la petición."""
+    """Crop name in the request's language."""
     c = CATALOG[key]
     return t(c["name"], c["name_en"])
 
 
-# Color de la capa CDL (RGB) -> cultivo. Verificados contra consultas reales: maiz, soja, trigo de invierno
-# y pastizal. Los demas (sorgo, girasol, alfalfa, barbecho, algodon, arroz) vienen de la leyenda de CDL
-# y no se han verificado con un punto real todavia.
+# CDL layer color (RGB) -> crop. Verified against real queries: corn, soybeans, winter wheat
+# and grassland. The rest (sorghum, sunflower, alfalfa, fallow, cotton, rice) come from the CDL legend
+# and haven't been verified with a real point yet.
 CDL_COLORS = {
     (255, 212, 0): "corn",
     (38, 115, 0): "soybean",
@@ -40,7 +40,7 @@ CDL_COLORS = {
     (255, 158, 11): "sorghum",
     (255, 255, 0): "sunflower",
 }
-# Clases reconocidas solo por el color de la leyenda, sin verificar con un punto real.
+# Classes recognized only by the legend color, not verified with a real point.
 UNVERIFIED = {"sorghum", "sunflower", "alfalfa/heno", "barbecho", "algodon", "arroz"}
 
 CDL_OTHER = {
@@ -84,14 +84,14 @@ def _cdl_year(lat: float, lon: float, year: int, half: float = 0.01) -> dict | N
 
 
 def local_crops(lat: float, lon: float, years=(2021, 2022, 2023, 2024, 2025)) -> dict:
-    """Mezcla de cultivos alrededor del punto (~1 km) por año, segun CDL. Solo EE. UU."""
+    """Crop mix around the point (~1 km) per year, according to CDL. U.S. only."""
     key = CACHE_DIR / f"cdl_{round(lat, 3)}_{round(lon, 3)}_{years[0]}_{years[-1]}.json"
     if key.exists():
         return _mark_unverified(json.loads(key.read_text(encoding="utf8")))
     with ThreadPoolExecutor(max_workers=5) as ex:
         results = list(ex.map(lambda y: _cdl_year(lat, lon, y), years))
     by_year = {y: r for y, r in zip(years, results) if r}
-    # Fuera de EE. UU. la capa viene vacia: sin ningun cultivo reconocible ni pastizal.
+    # Outside the U.S. the layer comes back empty: no recognizable crop or grassland.
     known = {k for r in by_year.values() for k in r if k != "otros usos"}
     if not by_year:
         return {"available": False, "radius_km": 1.1, "years": {}, "note": t("No pudimos consultar el mapa de cultivos ahora.", "We couldn't query the crop map right now.")}
@@ -103,7 +103,7 @@ def local_crops(lat: float, lon: float, years=(2021, 2022, 2023, 2024, 2025)) ->
     return _mark_unverified(out)
 
 
-# Las notas se guardan en caché en español; al leerlas se pasan al idioma de la petición.
+# Notes are cached in Spanish; when read they are switched to the request's language.
 NOTE_NONE = "No hay mapa de cultivos para este punto (solo cubre EE. UU.)."
 NOTE_OK = "Clasificado por el color de la capa CDL (USDA NASS)."
 NOTE_EN = {
@@ -113,7 +113,7 @@ NOTE_EN = {
 
 
 def _mark_unverified(out: dict) -> dict:
-    """Agrega qué clases presentes se reconocieron con un color de la leyenda que aún no verificamos."""
+    """Adds which present classes were recognized by a legend color we haven't verified yet."""
     seen = {k for y in out.get("years", {}).values() for k in y}
     out = {**out, "unverified": sorted(seen & UNVERIFIED)}
     if out.get("note") in NOTE_EN:

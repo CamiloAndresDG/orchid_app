@@ -1,7 +1,7 @@
 "use client";
 
-// Fuentes del ETL (backend/app/etl): FAO GAEZ v4 (temporada, idoneidad y cosechas reales) y
-// estaciones de lluvia CoCoRaHS (NOAA) comparadas con NASA POWER.
+// ETL sources (backend/app/etl): FAO GAEZ v4 (season, suitability and actual harvests) and
+// CoCoRaHS rain stations (NOAA) compared with NASA POWER.
 
 import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -123,7 +123,7 @@ const T = {
   },
 };
 
-// Nombres de GAEZ en inglés: se muestran tal cual en inglés.
+// GAEZ names are in English: shown as is in English.
 const cropName = (c: string, l: Lang) => (l === "en" ? c : es(c));
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -145,7 +145,7 @@ export type Rain = {
 };
 export type Agro = { suit: Suitability | null; grow: Growing | null; actual: Actual | null; rain: Rain | null };
 
-// Nombres de GAEZ -> español. Los que no estan se muestran tal cual.
+// GAEZ names -> Spanish. Missing ones are shown as is.
 const CROP_ES: Record<string, string> = {
   Maize: "Maíz", Soybean: "Soja", Wheat: "Trigo", Sorghum: "Sorgo", Sunflower: "Girasol", Oat: "Avena", Rye: "Centeno",
   Barley: "Cebada", Alfalfa: "Alfalfa", "Dry pea": "Arveja seca", Chickpea: "Garbanzo", "Phaseolus bean": "Frijol", Flax: "Lino",
@@ -161,16 +161,16 @@ const CROP_ES: Record<string, string> = {
   "Rest of crops": "Otros cultivos", "Oil seeds": "Oleaginosas",
 };
 const es = (c: string) => CROP_ES[c] ?? c;
-// Cultivos que maneja ORCHID, en el orden en que se muestran.
+// Crops ORCHID handles, in display order.
 const MAIN = ["Maize", "Soybean", "Wheat", "Sorghum", "Sunflower", "Oat", "Rye", "Barley", "Alfalfa"];
-// Cultivo de GAEZ -> clave de unidades de EE. UU. (shared.ts)
+// GAEZ crop -> U.S. units key (shared.ts)
 const US_KEY: Record<string, string> = { Maize: "corn", Soybean: "soybean", Wheat: "wheat", Sorghum: "sorghum", Sunflower: "sunflower", Oat: "oats" };
 
 const toIn = (mm: number) => mm / 25.4;
 const acres = (ha: number) => ha / HA_PER_ACRE;
 const fmt = (n: number, d = 0) => fmtNum("es", n, d);
 
-/** Rendimiento en t/ha -> unidad del campo de EE. UU. si el cultivo la tiene. */
+/** Yield in t/ha -> U.S. farm unit if the crop has one. */
 function usYield(crop: string, tHa: number, l: Lang): string | null {
   const u = US_UNITS[US_KEY[crop]];
   if (!u) return null;
@@ -217,7 +217,7 @@ export function useAgro(point: Point | null): Agro {
   return { suit, grow, actual, rain };
 }
 
-/** Lineas para el resumen que recibe el asistente de IA. */
+/** Lines for the summary the AI assistant receives. */
 export function agroBrief(a: Agro): string[] {
   const L: string[] = [];
   const h = a.grow?.available ? a.grow.highlights : null;
@@ -275,7 +275,7 @@ const Loading = ({ slow }: { slow?: boolean }) => {
   );
 };
 
-/* ---------------------------------- Temporada ---------------------------------- */
+/* ----------------------------------- Season ------------------------------------- */
 
 export function AboutSeason({ grow }: { grow: Growing | null }) {
   const l = useLang();
@@ -358,7 +358,7 @@ export function AboutSeason({ grow }: { grow: Growing | null }) {
   );
 }
 
-/* ---------------------------------- Idoneidad ---------------------------------- */
+/* --------------------------------- Suitability ---------------------------------- */
 
 const CLASS_TONE: Record<string, string> = {
   "muy alta": "bg-moss", alta: "bg-moss", buena: "bg-moss/60", media: "bg-clay/50", moderada: "bg-clay/50", marginal: "bg-clay", "muy marginal": "bg-clay", "no apta": "bg-clay",
@@ -453,7 +453,7 @@ export function AboutFit({ suit, irrigated }: { suit: Suitability | null; irriga
   );
 }
 
-/* ------------------------------- Cosechas reales -------------------------------- */
+/* ------------------------------- Actual harvests -------------------------------- */
 
 export function AboutHarvests({ actual }: { actual: Actual | null }) {
   const l = useLang();
@@ -504,7 +504,7 @@ export function AboutHarvests({ actual }: { actual: Actual | null }) {
   );
 }
 
-/* ----------------------------- Lluvia de estaciones ----------------------------- */
+/* --------------------------------- Station rain --------------------------------- */
 
 export function AboutRain({ rain }: { rain: Rain | null }) {
   const l = useLang();

@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Crea todo en Azure y hace el primer despliegue de ORCHID.
-# Uso (desde la raíz del repo, con Azure CLI y `az login` hecho):
-#   QUICKSTATS_KEY=tu_clave bash infra/azure/setup.sh
-# Todo se puede cambiar con variables de entorno (RG, LOCATION, ACR, STORAGE...).
+# Creates everything on Azure and does ORCHID's first deployment.
+# Usage (from the repo root, with Azure CLI and `az login` done):
+#   QUICKSTATS_KEY=your_key bash infra/azure/setup.sh
+# Everything can be changed with environment variables (RG, LOCATION, ACR, STORAGE...).
 set -euo pipefail
 
-# Todo va dentro de { ... } para que bash lea el script completo antes de ejecutarlo: en Windows los
-# procesos hijos (az) pueden mover la posición de lectura del archivo y bash leería basura.
+# Everything goes inside { ... } so bash reads the whole script before running it: on Windows child
+# processes (az) can move the file's read position and bash would read garbage.
 {
 
-# Windows (Git Bash) con Azure CLI instalado por pip: ese "az" se relanza con os.execl y devuelve el control
-# antes de terminar, así que $(az ...) queda vacío. Se llama a su Python directamente.
+# Windows (Git Bash) with Azure CLI installed via pip: that "az" relaunches itself with os.execl and returns control
+# before it finishes, so $(az ...) comes back empty. Its Python is called directly.
 if [[ "${OSTYPE:-}" == msys* || "${OSTYPE:-}" == cygwin* ]]; then
   AZ_PY=$(head -1 "$(command -v az)" | sed -n 's/^#!//p' | tr -d '\r\n')
   if [[ -n "$AZ_PY" && "$AZ_PY" == *python* && -x "$(cygpath -u "$AZ_PY")" ]]; then
@@ -19,7 +19,7 @@ if [[ "${OSTYPE:-}" == msys* || "${OSTYPE:-}" == cygwin* ]]; then
   fi
 fi
 
-# Sufijo estable sacado de la suscripción, para que los nombres globales no choquen.
+# Stable suffix derived from the subscription, so global names don't collide.
 SUFFIX=$(az account show --query id -o tsv | tr -d '-' | cut -c1-6)
 RG=${RG:-rg-orchid}
 LOCATION=${LOCATION:-eastus2}
@@ -27,15 +27,15 @@ ACR=${ACR:-acrorchid$SUFFIX}
 STORAGE=${STORAGE:-storchid$SUFFIX}
 ENV_NAME=${ENV_NAME:-env-orchid}
 PG=${PG:-pg-orchid$SUFFIX}
-# Algunas suscripciones no permiten PostgreSQL Flexible Server en todas las regiones (p. ej. eastus2).
+# Some subscriptions don't allow PostgreSQL Flexible Server in every region (e.g. eastus2).
 PG_LOCATION=${PG_LOCATION:-centralus}
 PG_USER=${PG_USER:-fsadmin}
 PG_DB=${PG_DB:-orchid}
-# Solo letras y números (no hay que escaparla en la URL); "Fs1" asegura mayúscula, minúscula y dígito.
+# Letters and digits only (no URL escaping needed); "Fs1" guarantees an uppercase, a lowercase and a digit.
 PG_PASSWORD=${PG_PASSWORD:-Fs1$(openssl rand -hex 16)}
-# Guía de IA en Microsoft Foundry. Por defecto gpt-5-mini (Azure OpenAI, con cuota en suscripciones nuevas).
-# Con ASSISTANT_PROVIDER=foundry usa Claude: desplegar modelos de Anthropic pide datos de la organización (se
-# envían a Anthropic al aceptar sus términos en Azure Marketplace) y cuota de Claude, que hay que solicitar.
+# AI Guide on Microsoft Foundry. Defaults to gpt-5-mini (Azure OpenAI, with quota on new subscriptions).
+# With ASSISTANT_PROVIDER=foundry it uses Claude: deploying Anthropic models asks for organization details (sent
+# to Anthropic when accepting its terms on Azure Marketplace) and Claude quota, which must be requested.
 FOUNDRY=${FOUNDRY:-orchid-ai-$SUFFIX}
 ASSISTANT_PROVIDER=${ASSISTANT_PROVIDER:-azure_openai}
 if [[ "$ASSISTANT_PROVIDER" == "azure_openai" ]]; then
@@ -53,31 +53,31 @@ ORG_COUNTRY=${ORG_COUNTRY:-CO}
 API_APP=${API_APP:-orchid-api}
 WEB_APP=${WEB_APP:-orchid-web}
 TAG=${TAG:-$(git rev-parse --short HEAD)}
-# Claves del servidor. Si no se pasan y ya están cargadas en Azure, se conservan (nunca se muestran).
-# Container Apps no acepta secretos vacíos: "-" significa "sin clave".
+# Server keys. If not passed and already set on Azure, they're kept (never shown).
+# Container Apps doesn't accept empty secrets: "-" means "no key".
 _keep() {
   local v
   v=$(az containerapp secret show -g "$RG" -n "$API_APP" --secret-name "$1" --query value -o tsv 2>/dev/null) || true
   if [[ -n "$v" ]]; then printf '%s' "$v"; else printf '%s' "-"; fi
 }
 QUICKSTATS_KEY=${QUICKSTATS_KEY:-$(_keep quickstats-key)}
-# Token de NASA Earthdata (SMAP, IMERG, NLDAS y SRTM); vence a los 60 días.
+# NASA Earthdata token (SMAP, IMERG, NLDAS and SRTM); expires after 60 days.
 EARTHDATA_TOKEN=${EARTHDATA_TOKEN:-$(_keep earthdata-token)}
 HERE=$(cd "$(dirname "$0")" && pwd)
 
-echo "==> Grupo de recursos $RG ($LOCATION)"
+echo "==> Resource group $RG ($LOCATION)"
 az extension add --name containerapp --upgrade --only-show-errors
 for ns in Microsoft.App Microsoft.OperationalInsights Microsoft.ContainerRegistry Microsoft.Storage Microsoft.DBforPostgreSQL Microsoft.CognitiveServices; do
   az provider register -n "$ns" --wait
 done
 az group create -n "$RG" -l "$LOCATION" -o none
 
-# Cada paso revisa si el recurso ya existe: el script se puede volver a correr sin romper nada.
+# Each step checks whether the resource already exists: the script can be re-run without breaking anything.
 exists() { az "$@" -o none >/dev/null 2>&1; }
 
-# Construye y sube una imagen. Con Docker disponible se construye en este equipo; si no, con ACR Tasks
-# (az acr build), que algunas suscripciones nuevas o de prueba no permiten.
-build_image() {  # nombre carpeta [build-arg]
+# Builds and pushes an image. With Docker available it builds on this machine; otherwise with ACR Tasks
+# (az acr build), which some new or trial subscriptions don't allow.
+build_image() {  # name folder [build-arg]
   local img="$ACR.azurecr.io/$1:$TAG"
   if [[ "${BUILD:-auto}" != acr ]] && command -v docker >/dev/null && docker info >/dev/null 2>&1; then
     az acr login -n "$ACR" -o none
@@ -92,14 +92,14 @@ echo "==> Container Registry $ACR"
 exists acr show -n "$ACR" || az acr create -g "$RG" -n "$ACR" --sku Basic --admin-enabled true -o none
 ACR_PASSWORD=$(az acr credential show -n "$ACR" --query "passwords[0].value" -o tsv)
 
-echo "==> Entorno de Container Apps $ENV_NAME"
+echo "==> Container Apps environment $ENV_NAME"
 exists containerapp env show -g "$RG" -n "$ENV_NAME" || az containerapp env create -g "$RG" -n "$ENV_NAME" -l "$LOCATION" -o none
 until [[ "$(az containerapp env show -g "$RG" -n "$ENV_NAME" --query properties.provisioningState -o tsv)" == "Succeeded" ]]; do
-  echo "    esperando a que el entorno termine de crearse..."; sleep 15
+  echo "    waiting for the environment to finish creating..."; sleep 15
 done
 ENV_ID=$(az containerapp env show -g "$RG" -n "$ENV_NAME" --query id -o tsv)
 
-echo "==> Azure Files para la caché del backend"
+echo "==> Azure Files for the backend cache"
 exists storage account show -g "$RG" -n "$STORAGE" ||
   az storage account create -g "$RG" -n "$STORAGE" -l "$LOCATION" --sku Standard_LRS --kind StorageV2 -o none
 exists storage share-rm show -g "$RG" --storage-account "$STORAGE" -n cache ||
@@ -107,28 +107,28 @@ exists storage share-rm show -g "$RG" --storage-account "$STORAGE" -n cache ||
 STORAGE_KEY=$(az storage account keys list -g "$RG" -n "$STORAGE" --query "[0].value" -o tsv)
 az containerapp env storage set -g "$RG" -n "$ENV_NAME" --storage-name cache   --azure-file-account-name "$STORAGE" --azure-file-account-key "$STORAGE_KEY"   --azure-file-share-name cache --access-mode ReadWrite -o none
 
-echo "==> PostgreSQL Flexible Server $PG en $PG_LOCATION (tarda unos minutos)"
+echo "==> PostgreSQL Flexible Server $PG in $PG_LOCATION (takes a few minutes)"
 if exists postgres flexible-server show -g "$RG" -n "$PG"; then
-  # Ya existe: no conocemos su contraseña, así que se pone la nueva.
+  # Already exists: we don't know its password, so the new one is set.
   az postgres flexible-server update -g "$RG" -n "$PG" --admin-password "$PG_PASSWORD" -o none
 else
-  # --public-access 0.0.0.0 abre el firewall solo a servicios de Azure. Para aislarlo del todo, usa una red virtual.
+  # --public-access 0.0.0.0 opens the firewall only to Azure services. To isolate it fully, use a virtual network.
   az postgres flexible-server create -g "$RG" -n "$PG" -l "$PG_LOCATION"     --tier Burstable --sku-name Standard_B1ms --storage-size 32 --version 16     --admin-user "$PG_USER" --admin-password "$PG_PASSWORD" --public-access 0.0.0.0 --yes -o none
 fi
 exists postgres flexible-server db show -g "$RG" -s "$PG" -d "$PG_DB" ||
   az postgres flexible-server db create -g "$RG" -s "$PG" -d "$PG_DB" -o none
 DATABASE_URL="postgresql+psycopg://$PG_USER:$PG_PASSWORD@$PG.postgres.database.azure.com:5432/$PG_DB?sslmode=require"
 
-# Las URLs de Container Apps son <app>.<dominio del entorno>: se conocen antes de crear las apps, así el
-# frontend se compila con la URL del API y el API nace con CORS para el frontend.
+# Container Apps URLs are <app>.<environment domain>: they're known before creating the apps, so the
+# frontend is built with the API URL and the API starts with CORS for the frontend.
 ENV_DOMAIN=$(az containerapp env show -g "$RG" -n "$ENV_NAME" --query properties.defaultDomain -o tsv)
 API_URL="https://$API_APP.$ENV_DOMAIN"
 WEB_URL="https://$WEB_APP.$ENV_DOMAIN"
 SUB=$(az account show --query id -o tsv)
 
-# Crea o actualiza una Container App con una plantilla JSON (PUT de ARM con api-version estable).
-# Se usa en lugar de "az containerapp create --yaml", que con algunas versiones de la extensión falla con 400.
-put_app() {  # nombre plantilla
+# Creates or updates a Container App from a JSON template (ARM PUT with a stable api-version).
+# Used instead of "az containerapp create --yaml", which fails with 400 on some versions of the extension.
+put_app() {  # name template
   local body="$HERE/.$1.rendered.json"
   sed -e "s|__LOCATION__|$LOCATION|" -e "s|__ENV_ID__|$ENV_ID|" -e "s|__ACR__|$ACR|g"       -e "s|__ACR_PASSWORD__|$ACR_PASSWORD|" -e "s|__QUICKSTATS_KEY__|$QUICKSTATS_KEY|" -e "s|__EARTHDATA_TOKEN__|$EARTHDATA_TOKEN|"       -e "s|__DATABASE_URL__|$DATABASE_URL|" -e "s|__ALLOWED_ORIGINS__|$WEB_URL,http://localhost:3000|"       -e "s|__ASSISTANT_PROVIDER__|$ASSISTANT_PROVIDER|" -e "s|__FOUNDRY_RESOURCE__|$FOUNDRY_RESOURCE|" -e "s|__FOUNDRY_RESOURCE_ID__|${FOUNDRY_RESOURCE:+$FOUNDRY_ID}|" -e "s|__ASSISTANT_MODEL__|$ASSISTANT_MODEL|"       -e "s|__ASSISTANT_FALLBACK_MODEL__|$ASSISTANT_FALLBACK_MODEL|" -e "s|__ASSISTANT_DAILY_LIMIT__|$ASSISTANT_DAILY_LIMIT|"       -e "s|__TAG__|$TAG|" "$HERE/$2" > "$body"
   command -v cygpath >/dev/null && body=$(cygpath -m "$body")
@@ -138,20 +138,20 @@ put_app() {  # nombre plantilla
   until [[ "$st" == "Succeeded" ]]; do
     sleep 10
     st=$(az containerapp show -g "$RG" -n "$1" --query properties.provisioningState -o tsv)
-    if [[ "$st" == "Failed" ]]; then echo "ERROR: la app $1 quedó en estado Failed" >&2; exit 1; fi
+    if [[ "$st" == "Failed" ]]; then echo "ERROR: app $1 ended up in Failed state" >&2; exit 1; fi
   done
 }
 
-echo "==> Microsoft Foundry $FOUNDRY (Guía de IA)"
+echo "==> Microsoft Foundry $FOUNDRY (AI Guide)"
 exists cognitiveservices account show -g "$RG" -n "$FOUNDRY" ||
   az cognitiveservices account create -g "$RG" -n "$FOUNDRY" -l "$LOCATION" --kind AIServices --sku S0 --custom-domain "$FOUNDRY" --yes -o none
-deploy_claude() {  # despliegue (= nombre del modelo) y versión; no detiene el script si falta cuota
+deploy_claude() {  # deployment (= model name) and version; doesn't stop the script if quota is missing
   local url="https://management.azure.com/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RG/providers/Microsoft.CognitiveServices/accounts/$FOUNDRY/deployments/$1?api-version=2025-10-01-preview"
   exists rest --method get --url "$url" && return 0
   local body="$HERE/.deploy-$1.json"
   printf '{"sku":{"name":"GlobalStandard","capacity":1},"properties":{"model":{"format":"Anthropic","name":"%s","version":"%s"},"modelProviderData":{"industry":"%s","organizationName":"%s","countryCode":"%s"}}}'     "$1" "$2" "$ORG_INDUSTRY" "$ORG_NAME" "$ORG_COUNTRY" > "$body"
   local b="$body"; command -v cygpath >/dev/null && b=$(cygpath -m "$body")
-  if az rest --method put --url "$url" --body "@$b" -o none; then echo "    $1 desplegado"; else echo "    AVISO: no se pudo desplegar $1 (¿cuota? ver infra/azure/README.md). La Guía queda desactivada."; fi
+  if az rest --method put --url "$url" --body "@$b" -o none; then echo "    $1 deployed"; else echo "    WARNING: couldn't deploy $1 (quota? see infra/azure/README.md). The Guide stays disabled."; fi
   rm -f "$body"
 }
 if [[ "$ASSISTANT_PROVIDER" == "azure_openai" ]]; then
@@ -159,38 +159,38 @@ if [[ "$ASSISTANT_PROVIDER" == "azure_openai" ]]; then
     az cognitiveservices account deployment create -g "$RG" -n "$FOUNDRY" --deployment-name "$ASSISTANT_MODEL" \
       --model-name "$ASSISTANT_MODEL" --model-version "$ASSISTANT_MODEL_VERSION" --model-format OpenAI \
       --sku-name GlobalStandard --sku-capacity 100 -o none ||
-    echo "    AVISO: no se pudo desplegar $ASSISTANT_MODEL. La Guía queda desactivada."
+    echo "    WARNING: couldn't deploy $ASSISTANT_MODEL. The Guide stays disabled."
 else
   deploy_claude "$ASSISTANT_MODEL" 2
   [[ -n "$ASSISTANT_FALLBACK_MODEL" ]] && deploy_claude "$ASSISTANT_FALLBACK_MODEL" 2
 fi
-# La Guía solo se activa si el modelo principal está desplegado (si no, el backend la muestra como no disponible).
+# The Guide is only enabled if the main model is deployed (otherwise the backend shows it as unavailable).
 DEPLOY_URL="https://management.azure.com/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RG/providers/Microsoft.CognitiveServices/accounts/$FOUNDRY/deployments/$ASSISTANT_MODEL?api-version=2025-10-01-preview"
 if exists rest --method get --url "$DEPLOY_URL"; then FOUNDRY_RESOURCE="$FOUNDRY"; else FOUNDRY_RESOURCE=""; fi
 FOUNDRY_ID=$(az cognitiveservices account show -g "$RG" -n "$FOUNDRY" --query id -o tsv)
 [[ -n "$ASSISTANT_FALLBACK_MODEL" ]] && { exists rest --method get --url "${DEPLOY_URL/$ASSISTANT_MODEL/$ASSISTANT_FALLBACK_MODEL}" || ASSISTANT_FALLBACK_MODEL=""; }
 
-echo "==> Imagen del backend"
+echo "==> Backend image"
 build_image orchid-api ./backend
 
-echo "==> Container App del backend ($API_URL)"
+echo "==> Backend Container App ($API_URL)"
 put_app "$API_APP" api.json
 
-echo "==> Permiso del backend sobre Foundry (identidad administrada)"
-# Contributor sobre el recurso: el backend lee la clave con su identidad y la guarda solo en memoria. Se usa este rol
-# porque algunas suscripciones (condición ABAC del Owner) solo permiten asignar Contributor.
+echo "==> Backend permission on Foundry (managed identity)"
+# Contributor on the resource: the backend reads the key with its identity and keeps it only in memory. This role is used
+# because some subscriptions (Owner ABAC condition) only allow assigning Contributor.
 API_PRINCIPAL=$(az containerapp show -g "$RG" -n "$API_APP" --query identity.principalId -o tsv)
 if [[ -z "$(az role assignment list --assignee-object-id "$API_PRINCIPAL" --scope "$FOUNDRY_ID" --role Contributor --query "[0].id" -o tsv)" ]]; then
   az role assignment create --assignee-object-id "$API_PRINCIPAL" --assignee-principal-type ServicePrincipal --role Contributor --scope "$FOUNDRY_ID" -o none
 fi
 
-echo "==> Imagen del frontend (con la URL del API dentro)"
+echo "==> Frontend image (with the API URL baked in)"
 build_image orchid-web ./frontend "NEXT_PUBLIC_API_URL=$API_URL"
 
-echo "==> Container App del frontend ($WEB_URL)"
+echo "==> Frontend Container App ($WEB_URL)"
 put_app "$WEB_APP" web.json
 
-echo "==> Comprobando que el backend responde"
+echo "==> Checking that the backend responds"
 for _ in $(seq 1 18); do
   [[ "$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$API_URL/health")" == 200 ]] && { echo "    $API_URL/health OK"; break; }
   sleep 10
@@ -198,16 +198,16 @@ done
 
 cat <<OUT
 
-Listo.
+Done.
   Frontend: $WEB_URL
-  Backend:  $API_URL  (prueba $API_URL/health)
-  Base de datos: $PG.postgres.database.azure.com / $PG_DB (usuario $PG_USER)
-  Guía de IA: ${FOUNDRY_RESOURCE:+activa con $ASSISTANT_MODEL en $FOUNDRY}${FOUNDRY_RESOURCE:-desactivada (falta desplegar $ASSISTANT_MODEL en $FOUNDRY; ver README)}
-  La contraseña de Postgres solo queda en el secreto "database-url" del backend.
+  Backend:  $API_URL  (try $API_URL/health)
+  Database: $PG.postgres.database.azure.com / $PG_DB (user $PG_USER)
+  AI Guide: ${FOUNDRY_RESOURCE:+enabled with $ASSISTANT_MODEL on $FOUNDRY}${FOUNDRY_RESOURCE:-disabled ($ASSISTANT_MODEL still needs to be deployed on $FOUNDRY; see README)}
+  The Postgres password only lives in the backend's "database-url" secret.
 
-Para el despliegue automático con GitHub Actions, crea estas *variables* del repositorio:
+For automatic deployment with GitHub Actions, create these repository *variables*:
   AZURE_RG=$RG  ACR_NAME=$ACR  API_APP=$API_APP  WEB_APP=$WEB_APP
-y los secretos AZURE_CLIENT_ID, AZURE_TENANT_ID y AZURE_SUBSCRIPTION_ID de una identidad administrada (ver infra/azure/README.md).
+and the AZURE_CLIENT_ID, AZURE_TENANT_ID and AZURE_SUBSCRIPTION_ID secrets of a managed identity (see infra/azure/README.md).
 OUT
 
 exit 0

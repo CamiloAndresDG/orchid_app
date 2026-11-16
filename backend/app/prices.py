@@ -1,7 +1,7 @@
-"""Precios de referencia oficiales (USDA NASS QuickStats): precio recibido por los agricultores, por estado.
+"""Official reference prices (USDA NASS QuickStats): price received by farmers, by state.
 
-Pide una clave gratuita del propio agricultor/equipo (https://quickstats.nass.usda.gov/api). No se guarda.
-Es un promedio estatal anual, no el precio local de una finca. Solo EE. UU.
+Requires a free key from the farmer/team (https://quickstats.nass.usda.gov/api). It is never stored.
+It is a yearly state average, not the local price at a given farm. U.S. only.
 """
 import httpx
 
@@ -10,7 +10,7 @@ from .i18n import t
 CENSUS = "https://geocoding.geo.census.gov/geocoder/geographies/coordinates"
 QS = "https://quickstats.nass.usda.gov/api/api_GET/"
 
-# cultivo del catalogo -> (commodity de QuickStats, texto que debe tener short_desc, unidad, unidades por tonelada metrica)
+# catalog crop -> (QuickStats commodity, text short_desc must contain, unit, units per metric ton)
 COMMODITIES = {
     "corn": ("CORN", "CORN, GRAIN - PRICE RECEIVED", "$ / BU", 39.368),
     "soybean": ("SOYBEANS", "SOYBEANS - PRICE RECEIVED", "$ / BU", 36.744),
@@ -41,7 +41,7 @@ def _num(v: str):
     try:
         return float(str(v).replace(",", ""))
     except ValueError:
-        return None  # "(D)" y similares: dato no divulgado
+        return None  # "(D)" and similar: undisclosed value
 
 
 def reference_prices(lat: float, lon: float, api_key: str, from_year: int = 2020) -> dict:

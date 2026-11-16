@@ -6,7 +6,7 @@ RUN npm ci
 
 FROM node:22-alpine AS build
 WORKDIR /app
-# Next.js copia NEXT_PUBLIC_* dentro del código al compilar: se pasa como build-arg.
+# Next.js inlines NEXT_PUBLIC_* into the code at build time: it's passed as a build-arg.
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_TELEMETRY_DISABLED=1

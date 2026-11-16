@@ -31,11 +31,11 @@ const COPY = {
   },
 };
 
-// Campo interactivo para el fondo del inicio de sesión.
-// - Sembrar: tocar o arrastrar sobre la tierra planta trigo, maíz o girasoles que crecen.
-// - Lluvia: tocar crea una nube que llueve; el agua hace crecer lo sembrado.
-// - Los agricultores se pueden arrastrar a otro lugar del campo.
-// - Al cambiar entre modo claro y oscuro, el sol se pone por la derecha y la luna sale por la izquierda (o al revés).
+// Interactive field for the sign-in background.
+// - Sow: tapping or dragging over the soil plants wheat, corn or sunflowers that grow.
+// - Rain: tapping creates a cloud that rains; the water makes the plants grow.
+// - The farmers can be dragged elsewhere in the field.
+// - Switching between light and dark mode, the sun sets on the right and the moon rises on the left (or the other way around).
 
 type Tool = "plant" | "rain";
 type Kind = "wheat" | "corn" | "sunflower";
@@ -106,7 +106,7 @@ export function InteractiveField() {
   const toolRef = useRef<Tool>("plant");
   const api = useRef<{ clear: () => void } | null>(null);
   const [tool, setTool] = useState<Tool>("plant");
-  // El tema ya viene puesto desde <head> (sistema o elección guardada); aquí solo se lee y se cambia.
+  // The theme is already set from <head> (system or saved choice); here it's only read and changed.
   const night = useTheme() === "dark";
   const t = COPY[useLang()];
 
@@ -130,7 +130,7 @@ export function InteractiveField() {
     let horizon = 0;
     let now = performance.now();
 
-    // Día/noche con transición suave.
+    // Day/night with a smooth transition.
     const isDark = () => document.documentElement.dataset.theme === "dark";
     let night = isDark() ? 1 : 0;
     let from = night;
@@ -195,7 +195,7 @@ export function InteractiveField() {
       });
     }
 
-    // --- Dibujo ---------------------------------------------------------
+    // --- Drawing -------------------------------------------------------
 
     function cloudShape(x: number, y: number, s: number) {
       c.beginPath();
@@ -212,7 +212,7 @@ export function InteractiveField() {
       g.addColorStop(1, p.skyBottom);
       c.fillStyle = g;
       c.fillRect(0, 0, w, horizon + 2);
-      // Atardecer: un resplandor cálido en el horizonte a mitad de la transición.
+      // Sunset: a warm glow on the horizon halfway through the transition.
       const dusk = Math.sin(Math.PI * night);
       if (dusk > 0.01) {
         const sg = c.createLinearGradient(0, horizon * 0.35, 0, horizon);
@@ -264,7 +264,7 @@ export function InteractiveField() {
       const mx = cx + rx * Math.cos(moonA);
       const my = cy - ry * Math.sin(moonA);
 
-      // Sol: se vuelve naranja al bajar.
+      // Sun: turns orange as it goes down.
       const low = Math.min(1, night * 1.8);
       const sunCore = mix("#f6d27a", "#e8743f", low);
       const glow = c.createRadialGradient(sx, sy, 0, sx, sy, 150);
@@ -279,7 +279,7 @@ export function InteractiveField() {
       c.arc(sx, sy, 24, 0, Math.PI * 2);
       c.fill();
 
-      // Luna llena con cráteres y halo.
+      // Full moon with craters and a halo.
       const mg = c.createRadialGradient(mx, my, 0, mx, my, 110);
       mg.addColorStop(0, "rgba(240,234,210,0.45)");
       mg.addColorStop(1, "rgba(240,234,210,0)");
@@ -311,7 +311,7 @@ export function InteractiveField() {
         if (cl.rain > 0) {
           cl.rain -= 16;
           if (cl.rain <= 0) cl.rain = -1;
-          // La nube llueve gotas que caen a distintos puntos del campo.
+          // The cloud rains drops that fall on different spots of the field.
           for (let k = 0; k < 3; k++) {
             drops.push({
               x: cl.x + rnd(-55, 55) * cl.s,
@@ -399,7 +399,7 @@ export function InteractiveField() {
       c.fill();
 
       if (g < 0.18) {
-        // Brote: dos hojitas.
+        // Sprout: two little leaves.
         c.fillStyle = p.crop;
         c.beginPath();
         c.ellipse(x - 3 * k, y - 4 * k, 3.5 * k, 1.8 * k, -0.6, 0, Math.PI * 2);
@@ -502,7 +502,7 @@ export function InteractiveField() {
       c.scale(s * f.dir, s);
       c.lineCap = "round";
       const bob = Math.abs(walk) * 1.4;
-      // Piernas
+      // Legs
       c.strokeStyle = shade("#3d4c5c");
       c.lineWidth = 3;
       c.beginPath();
@@ -526,7 +526,7 @@ export function InteractiveField() {
       c.moveTo(0, -15 - bob);
       c.lineTo(1, -28 - bob);
       c.stroke();
-      // Cabeza y sombrero
+      // Head and hat
       c.fillStyle = shade("#c99b74");
       c.beginPath();
       c.arc(1, -34 - bob, 4, 0, Math.PI * 2);
@@ -536,7 +536,7 @@ export function InteractiveField() {
       c.ellipse(1, -37.5 - bob, 8.5, 1.8, 0, 0, Math.PI * 2);
       c.fill();
       c.fillRect(-3, -42 - bob, 8, 4.5);
-      // Brazo y azada
+      // Arm and hoe
       c.strokeStyle = shade(f.shirt);
       c.lineWidth = 2.4;
       c.beginPath();
@@ -551,7 +551,7 @@ export function InteractiveField() {
       c.moveTo(14, -3);
       c.lineTo(20, -1);
       c.stroke();
-      // Farol de noche
+      // Lantern at night
       if (night > 0.05) {
         const lx = -6;
         const ly = -18 - bob;
@@ -577,7 +577,7 @@ export function InteractiveField() {
         d.y += d.vy;
         if (d.y >= d.ty) {
           rings.push({ x: d.x, y: d.ty, r: 1, life: 1 });
-          // El agua hace crecer lo que está cerca.
+          // The water makes nearby plants grow.
           let watered = false;
           for (const pl of plants) {
             if (Math.abs(pl.nx * w - d.x) < 26 && Math.abs(fieldY(pl.nf) - d.ty) < 26) {
@@ -646,7 +646,7 @@ export function InteractiveField() {
       drawClouds(p);
       drawBirds(p);
       landscape(p);
-      // Plantas y agricultores ordenados por profundidad.
+      // Plants and farmers sorted by depth.
       const items: ({ y: number; plant: Plant } | { y: number; farmer: Farmer })[] = [
         ...plants.map((plant) => ({ y: plant.nf, plant })),
         ...farmers.map((farmer) => ({ y: farmer.nf + (farmer.drag ? 2 : 0), farmer })),
@@ -661,7 +661,7 @@ export function InteractiveField() {
       raf = requestAnimationFrame(frame);
     }
 
-    // --- Interacción ----------------------------------------------------
+    // --- Interaction ---------------------------------------------------
 
     let dragging: Farmer | null = null;
     let lastPlant: { x: number; y: number } | null = null;
@@ -702,7 +702,7 @@ export function InteractiveField() {
         return;
       }
       if (y < horizon) {
-        // Tocar el cielo: aves de día, estrella fugaz de noche.
+        // Tapping the sky: birds by day, a shooting star by night.
         if (night > 0.5) shooting.push({ x, y, vx: rnd(4, 6), vy: rnd(1.5, 2.5), life: 1 });
         else for (let i = 0; i < 3; i++) birds.push({ x: x + i * 14, y: y + i * 8, v: rnd(1.2, 1.8), vy: -rnd(0.3, 0.6), s: rnd(0.8, 1.1) });
         return;

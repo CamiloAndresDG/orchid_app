@@ -1,4 +1,4 @@
-"""Modelo de datos y conexión (PostgreSQL en Azure, SQLite en local)."""
+"""Data model and connection (PostgreSQL on Azure, SQLite locally)."""
 import uuid
 from datetime import date, datetime, timezone
 
@@ -11,11 +11,11 @@ from .config import DATABASE_URL
 _sqlite = DATABASE_URL.startswith("sqlite")
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,  # Azure cierra conexiones inactivas
+    pool_pre_ping=True,  # Azure closes idle connections
     **({"connect_args": {"check_same_thread": False}} if _sqlite else {"pool_size": 5, "max_overflow": 5}),
 )
 if _sqlite:
-    # SQLite no aplica ON DELETE CASCADE si no se le pide.
+    # SQLite doesn't enforce ON DELETE CASCADE unless asked to.
     @event.listens_for(engine, "connect")
     def _fk_on(conn, _):
         conn.execute("PRAGMA foreign_keys=ON")
@@ -30,7 +30,7 @@ def utcnow() -> datetime:
 
 
 def as_utc(d: datetime) -> datetime:
-    """SQLite devuelve fechas sin zona; Postgres con zona. Normaliza a UTC."""
+    """SQLite returns naive datetimes; Postgres returns them with a zone. Normalizes to UTC."""
     return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
 
 
@@ -49,7 +49,7 @@ class User(Base):
 
 
 class AuthSession(Base):
-    """Sesión iniciada. Solo se guarda el SHA-256 del token, nunca el token."""
+    """Signed-in session. Only the token's SHA-256 is stored, never the token."""
     __tablename__ = "sessions"
     token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -59,7 +59,7 @@ class AuthSession(Base):
 
 
 class Plot(Base):
-    """El terreno del agricultor y sus precios. Hoy uno por usuario (user_id único)."""
+    """The farmer's field and prices. One per user for now (unique user_id)."""
     __tablename__ = "plots"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True)
@@ -69,13 +69,13 @@ class Plot(Base):
     lat: Mapped[float | None] = mapped_column(Float)
     lon: Mapped[float | None] = mapped_column(Float)
     history: Mapped[list] = mapped_column(JSONType, default=list)  # [{crop, plant_year, plant_month, harvest_year, harvest_month}]
-    econ: Mapped[dict] = mapped_column(JSONType, default=dict)  # {crop: {yield, price, cost}} en unidades de EE. UU.
+    econ: Mapped[dict] = mapped_column(JSONType, default=dict)  # {crop: {yield, price, cost}} in U.S. units
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
     user: Mapped[User] = relationship(back_populates="plot")
 
 
 class AssistantUsage(Base):
-    """Preguntas a la Guía por usuario y día (límite diario)."""
+    """Questions to the Guide per user and day (daily limit)."""
     __tablename__ = "assistant_usage"
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     day: Mapped[date] = mapped_column(Date, primary_key=True)
@@ -83,7 +83,7 @@ class AssistantUsage(Base):
 
 
 def init_db() -> None:
-    """Crea las tablas que falten. Para cambios de esquema futuros conviene pasar a Alembic."""
+    """Creates any missing tables. For future schema changes, moving to Alembic is advisable."""
     Base.metadata.create_all(engine)
 
 
