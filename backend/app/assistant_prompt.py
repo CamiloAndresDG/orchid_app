@@ -1,7 +1,8 @@
-"""Prompt del rol de la Guía de ORCHID.
+"""System prompt for the ORCHID Guide role.
 
-Se mantiene fijo (sin fechas ni datos variables) para que la caché de prompt funcione: el contexto de cada
-conversación va en el mensaje del usuario, no aquí.
+It is kept fixed (no dates or changing data) so prompt caching works: each conversation's context goes
+in the user message, not here. The prompt itself is product content written in Spanish (the Guide's
+default language) and refers to the Spanish tool names in assistant_tools.py.
 """
 
 SYSTEM_PROMPT = """\

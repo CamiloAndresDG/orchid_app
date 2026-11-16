@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatedBackground } from "./background";
 
-// Portada con video de fondo y parallax por capas.
-// La sección mide más que la pantalla y su interior queda fijo (sticky) mientras se hace scroll:
-// - el video se acerca y sube despacio (capa lejana),
-// - el texto sube más rápido y se desvanece (capa cercana).
-// El archivo va en /public/hero/campo.mp4 (opcional: /public/hero/campo.jpg como póster).
-// Si el video no existe o no carga, se usa la escena animada en canvas.
+// Hero with a background video and layered parallax.
+// The section is taller than the screen and its content stays fixed (sticky) while scrolling:
+// - the video zooms in and rises slowly (far layer),
+// - the text rises faster and fades out (near layer).
+// The file lives at /public/hero/campo.mp4 (optional: /public/hero/campo.jpg as the poster).
+// If the video doesn't exist or doesn't load, the animated canvas scene is used.
 export const HERO_VIDEO = "/hero/campo.mp4";
 export const HERO_POSTER = "/hero/campo.jpg";
 
@@ -77,7 +77,7 @@ export function ParallaxHero({ children }: { children: ReactNode }) {
             </video>
           )}
         </div>
-        {/* Velo de papel para leer el texto; se retira al hacer scroll y deja ver el campo completo. */}
+        {/* Paper veil so the text is readable; it lifts on scroll and reveals the whole field. */}
         <div
           ref={veil}
           aria-hidden="true"

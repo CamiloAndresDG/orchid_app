@@ -2,10 +2,10 @@
 
 import { useEffect, useRef } from "react";
 
-// Escena animada de campo: sol, nubes, aves, un tractor lejano con polvo,
-// un aspersor que riega, vapor que sube por evaporación, trigo que se mece
-// y una persona caminando con azada. Colores tomados del tema.
-// Con "reducir movimiento" dibuja un solo cuadro.
+// Animated farm scene: sun, clouds, birds, a distant tractor with dust,
+// a sprinkler watering, vapor rising from evaporation, swaying wheat
+// and a person walking with a hoe. Colors taken from the theme.
+// With "reduce motion" it draws a single frame.
 
 type Pal = { paper: string; paperDeep: string; mossWash: string; moss: string; mossDeep: string; clay: string; field: string; ink: string };
 
@@ -155,7 +155,7 @@ export function AnimatedBackground() {
     }
 
     function tractor(t: number, step: boolean) {
-      // Se desplaza despacio por el horizonte, dejando polvo.
+      // Moves slowly along the horizon, leaving dust.
       const span = w + 160;
       const x = ((t * 0.012) % span) - 80;
       const y = horizon - 4;
@@ -172,7 +172,7 @@ export function AnimatedBackground() {
     }
 
     function fields() {
-      // Franjas de tierra arada que se alejan en perspectiva.
+      // Strips of plowed land receding in perspective.
       c.fillStyle = pal.paperDeep;
       c.globalAlpha = 0.55;
       c.fillRect(0, horizon, w, h - horizon);
@@ -188,7 +188,7 @@ export function AnimatedBackground() {
     }
 
     function sprinkler(t: number) {
-      // Pivote de riego con un arco de gotas; el suelo bajo el arco se ve húmedo.
+      // Center-pivot irrigation with an arc of drops; the soil under the arc looks wet.
       const px = w * 0.3;
       const py = horizon + (h - horizon) * 0.2;
       const reach = w * 0.22;
@@ -219,7 +219,7 @@ export function AnimatedBackground() {
     }
 
     function evaporation(step: boolean) {
-      // Vapor que sube del suelo húmedo y se disipa.
+      // Vapor rising from the wet soil and fading away.
       if (step && Math.random() < 0.25) {
         vapor.push({ x: w * 0.3 + (Math.random() - 0.5) * w * 0.2, y: horizon + (h - horizon) * 0.3, r: 3, life: 1 });
       }
@@ -255,7 +255,7 @@ export function AnimatedBackground() {
     }
 
     function wheat(t: number) {
-      // Filas de trigo en primer plano, mecidas por el viento.
+      // Rows of wheat in the foreground, swaying in the wind.
       c.strokeStyle = pal.moss;
       c.lineWidth = 1.2;
       for (let row = 0; row < 4; row++) {
@@ -281,7 +281,7 @@ export function AnimatedBackground() {
     }
 
     function farmer(t: number, x0: number, gy0: number, k: number, dir: number) {
-      // Agricultor caminando con azada, en loop horizontal.
+      // Farmer walking with a hoe, looping horizontally.
       c.save();
       const span = w + 120;
       const raw = ((t * 0.01 * k + x0) % span) - 60;
@@ -297,7 +297,7 @@ export function AnimatedBackground() {
       c.lineWidth = 2.4;
       c.lineCap = "round";
       c.globalAlpha = 0.85;
-      // Piernas
+      // Legs
       c.beginPath();
       c.moveTo(x, gy - 14 - bob);
       c.lineTo(x - step * 6, gy);
@@ -309,14 +309,14 @@ export function AnimatedBackground() {
       c.moveTo(x, gy - 14 - bob);
       c.lineTo(x + 1, gy - 30 - bob);
       c.stroke();
-      // Sombrero y cabeza
+      // Hat and head
       c.beginPath();
       c.arc(x + 1, gy - 36 - bob, 4, 0, Math.PI * 2);
       c.fill();
       c.beginPath();
       c.ellipse(x + 1, gy - 39 - bob, 8, 1.6, 0, 0, Math.PI * 2);
       c.fill();
-      // Brazo y azada
+      // Arm and hoe
       c.beginPath();
       c.moveTo(x + 1, gy - 27 - bob);
       c.lineTo(x + 8 + step * 2, gy - 18);

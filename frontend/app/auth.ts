@@ -2,18 +2,18 @@ import { useMemo, useSyncExternalStore } from "react";
 import { API } from "./shared";
 import { currentLang, langHeaders } from "./i18n";
 
-// Sesión del navegador. Con cuenta real lleva el token del API (el terreno se guarda en el servidor).
-// El modo visitante no tiene token: todo queda solo en este navegador. La contraseña nunca se guarda aquí.
+// Browser session. With a real account it carries the API token (the field is stored on the server).
+// Guest mode has no token: everything stays in this browser only. The password is never stored here.
 export type Session = { name: string; email: string; createdAt: string; token?: string };
 
 export const SESSION_KEY = "orchid.session.v1";
 const EVENT = "orchid-session";
-// Claves del cuaderno local; se borran al cerrar una sesión con cuenta para no mezclar datos de dos personas.
+// Local notebook keys; cleared when an account session ends so two people's data never mix.
 export const PLOT_KEY = "orchid.plot.v1";
 export const ECON_KEY = "orchid.econ.us.v1";
 export const NASS_KEY = "orchid.nassKey.v1";
 
-// El proyecto se llamaba Field Shift: se pasan las claves viejas a las nuevas una sola vez.
+// The project used to be called Field Shift: old keys are migrated to the new ones once.
 if (typeof window !== "undefined") {
   try {
     for (const k of ["session.v1", "plot.v1", "econ.us.v1", "nassKey.v1"]) {
@@ -51,7 +51,7 @@ export function currentSession(): Session | null {
   }
 }
 
-// undefined = todavía no sabemos (servidor o primera pintura); null = sin sesión.
+// undefined = we don't know yet (server or first paint); null = no session.
 export function useSession(): Session | null | undefined {
   const raw = useSyncExternalStore(subscribe, read, () => undefined);
   return useMemo(() => {
@@ -100,7 +100,7 @@ async function authCall(path: string, body: object): Promise<void> {
   }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) {
-    // 422 de FastAPI trae una lista de errores; los demás, un texto.
+    // FastAPI's 422 carries a list of errors; the others, a text.
     throw new Error(
       typeof j.detail === "string" ? j.detail : currentLang() === "en" ? "Check your details and try again." : "Revisa los datos e intenta de nuevo.",
     );

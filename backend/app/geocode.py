@@ -1,8 +1,8 @@
-"""Buscar un lugar de EE. UU.: pueblo y estado, condado, codigo postal o direccion con calle.
+"""Look up a U.S. place: town and state, county, ZIP code or street address.
 
-Fuentes oficiales del Censo de EE. UU.:
-- Gazetteer 2024 (pueblos, condados y ZCTA): se descarga una vez y se guarda en cache.
-- Geocodificador del Censo (onelineaddress) solo para direcciones con numero y calle.
+Official U.S. Census sources:
+- Gazetteer 2024 (places, counties and ZCTAs): downloaded once and kept in the cache.
+- Census Geocoder (onelineaddress) only for addresses with a number and street.
 """
 import io
 import re
@@ -61,7 +61,7 @@ def _point(row: dict) -> tuple[float, float]:
 
 
 def _split_state(q: str) -> tuple[str, str | None]:
-    """'Ames, Iowa' -> ('ames', 'IA'). Acepta abreviatura o nombre completo, con o sin coma."""
+    """'Ames, Iowa' -> ('ames', 'IA'). Accepts the abbreviation or full name, with or without a comma."""
     t = _norm(q).replace(",", " ")
     t = re.sub(r"\s+", " ", t).strip()
     for name in sorted(NAME_TO_ABBR, key=len, reverse=True):
@@ -77,7 +77,7 @@ def search(q: str) -> dict | None:
     q = q.strip()
     if not q:
         return None
-    # Codigo postal (ZCTA)
+    # ZIP code (ZCTA)
     m = re.fullmatch(r"(\d{5})(-\d{4})?", q)
     if m:
         row = next((r for r in _load("zcta") if r["GEOID"] == m.group(1)), None)
@@ -85,7 +85,7 @@ def search(q: str) -> dict | None:
             lat, lon = _point(row)
             return {"lat": lat, "lon": lon, "label": t(f"Código postal {m.group(1)}", f"ZIP code {m.group(1)}"), "kind": "zip"}
         return None
-    # Direccion con numero y calle: geocodificador del Censo desde el servidor
+    # Address with number and street: Census geocoder from the server
     if re.match(r"^\d+\s+\w", q):
         try:
             r = httpx.get(CENSUS_ADDRESS, params={"address": q, "benchmark": "Public_AR_Current", "format": "json"}, timeout=30)
@@ -95,7 +95,7 @@ def search(q: str) -> dict | None:
         if hit:
             c = hit["coordinates"]
             return {"lat": c["y"], "lon": c["x"], "label": hit.get("matchedAddress", q), "kind": "address"}
-    # Condado
+    # County
     name, state = _split_state(q)
     if "county" in name:
         base = name.replace(" county", "").strip()
@@ -103,14 +103,14 @@ def search(q: str) -> dict | None:
             if (state is None or r["USPS"] == state) and _norm(r["NAME"]).replace(" county", "") == base:
                 lat, lon = _point(r)
                 return {"lat": lat, "lon": lon, "label": f"{r['NAME']}, {r['USPS']}", "kind": "county"}
-    # Pueblo o ciudad
+    # Town or city
     best = None
     for r in _load("place"):
         if state and r["USPS"] != state:
             continue
         pname = SUFFIX.sub("", _norm(r["NAME"]))
         if pname == name:
-            pop_rank = float(r.get("ALAND_SQMI") or 0)  # el mas grande si hay varios con el mismo nombre
+            pop_rank = float(r.get("ALAND_SQMI") or 0)  # the largest one if several share the same name
             if best is None or pop_rank > best[0]:
                 best = (pop_rank, r)
     if best:

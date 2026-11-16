@@ -5,7 +5,7 @@ import { NASS_KEY as KEY_STORAGE } from "./auth";
 import { ChevronIcon, ExternalIcon } from "./icons";
 import type { TabId } from "./panels";
 import { COVER_CROPS, CROP_NAMES, ECON_CROPS, EconUS, HistoryRow, US_UNITS, hasEcon } from "./shared";
-import type { Point } from "./terreno";
+import type { Point } from "./field";
 import { langHeaders, useLang } from "./i18n";
 
 const T = {
@@ -140,7 +140,7 @@ function CropRow({ crop, value, onChange }: { crop: string; value?: EconUS; onCh
   );
 }
 
-export function PreciosPanel({
+export function PricesPanel({
   econ,
   setEcon,
   point,
@@ -172,7 +172,7 @@ export function PreciosPanel({
       return false;
     }
   });
-  // Si el servidor tiene su propia clave de QuickStats, la del usuario es opcional.
+  // If the server has its own QuickStats key, the user's is optional.
   const [serverKey, setServerKey] = useState(false);
   useEffect(() => {
     fetch(`${API}/prices/status`, { headers: langHeaders() })
@@ -229,7 +229,7 @@ export function PreciosPanel({
         {!mine.length && (
           <p className="mt-1 text-base text-ink-soft">
             {t.whenAdd}
-            <button onClick={() => go("terreno")} className="font-semibold text-moss hover:underline">
+            <button onClick={() => go("field")} className="font-semibold text-moss hover:underline">
               {t.myField}
             </button>
             {t.willShow}
@@ -253,7 +253,7 @@ export function PreciosPanel({
             </div>
           </details>
         )}
-        <button onClick={() => go("terreno")} className="mt-8 rounded-md bg-moss px-6 py-3 text-base font-semibold text-paper hover:bg-moss-deep">
+        <button onClick={() => go("field")} className="mt-8 rounded-md bg-moss px-6 py-3 text-base font-semibold text-paper hover:bg-moss-deep">
           {t.done}
         </button>
       </section>

@@ -40,7 +40,7 @@ const LANGS: { id: Lang; name: string }[] = [
 const THEMES: ThemePref[] = ["system", "light", "dark"];
 const ITEMS = "[role=menuitem],[role=menuitemradio]";
 
-// Ajustes de usuario: botón con las iniciales, arriba a la derecha sobre el mapa.
+// User settings: a button with the initials, top right over the map.
 
 const initials = (name: string) =>
   name

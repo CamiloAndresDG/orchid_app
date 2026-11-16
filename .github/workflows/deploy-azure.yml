@@ -1,4 +1,4 @@
-name: Desplegar en Azure
+name: Deploy to Azure
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write # inicio de sesión en Azure con OIDC, sin contraseñas guardadas
+  id-token: write # sign in to Azure with OIDC, no stored passwords
   contents: read
 
 concurrency:
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   deploy:
-    # No corre hasta que configures las variables del repositorio (ver infra/azure/README.md).
+    # Doesn't run until you set the repository variables (see infra/azure/README.md).
     if: ${{ vars.AZURE_RG != '' }}
     runs-on: ubuntu-latest
     env:
@@ -34,8 +34,8 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Se construye en el runner (no con ACR Tasks, que algunas suscripciones no permiten).
-      - name: Login en el registro
+      # Built on the runner (not with ACR Tasks, which some subscriptions don't allow).
+      - name: Log in to the registry
         run: az acr login -n "$ACR"
 
       - name: Backend

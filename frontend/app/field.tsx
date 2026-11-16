@@ -354,7 +354,7 @@ const field = "w-full rounded-md border border-field bg-paper px-3 py-2.5 text-b
 
 export const REPORT_KEY = "orchid.report.v1";
 
-export function TerrenoPanel({
+export function FieldPanel({
   point,
   data,
   local,
@@ -384,7 +384,7 @@ export function TerrenoPanel({
   const [soil, setSoil] = useState<Soil | null>(null);
   const [ndvi, setNdvi] = useState<Ndvi | null>(null);
   const [editing, setEditing] = useState(false);
-  const [loaded, setLoaded] = useState(false); // ya se leyó lo guardado: recién entonces se puede escribir
+  const [loaded, setLoaded] = useState(false); // saved data has been read: only then can we write
   const [calcKey, setCalcKey] = useState<string | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const nasa = useNasa(point);
@@ -428,7 +428,7 @@ export function TerrenoPanel({
     setLoaded(true);
   }, []);
 
-  // No escribir hasta haber leído lo guardado (evita borrar el terreno al recargar o al volver a montar el panel).
+  // Don't write until the saved data has been read (avoids wiping the field on reload or when the panel remounts).
   useEffect(() => {
     if (!hydrated || !loaded) return;
     try {
@@ -479,7 +479,7 @@ export function TerrenoPanel({
     }
   }
 
-  // Al cambiar de idioma, si ya había opciones calculadas con los mismos datos, se piden otra vez en el idioma nuevo.
+  // When the language changes, if options were already calculated with the same data, they're requested again in the new language.
   const langRef = useRef(lang);
   useEffect(() => {
     if (langRef.current === lang) return;
@@ -489,7 +489,7 @@ export function TerrenoPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
-  // El informe completo se arma en /informe con lo que el agricultor ve aquí; se pasa por localStorage.
+  // The full report is built at /informe from what the farmer sees here; it's passed through localStorage.
   function openReport() {
     try {
       localStorage.setItem(
@@ -513,7 +513,7 @@ export function TerrenoPanel({
         <p className="max-w-prose text-lg text-ink-soft">{t.markLead}</p>
         <p className="text-base text-ink-soft">
           {t.firstSee}{" "}
-          <button onClick={() => goTab("estrategias")} className="font-semibold text-moss hover:underline">
+          <button onClick={() => goTab("strategies")} className="font-semibold text-moss hover:underline">
             {t.seeExample}
           </button>
         </p>
@@ -655,7 +655,7 @@ export function TerrenoPanel({
 
             <p className="text-base text-ink-soft">
               {econCount > 0 ? t.havePrices(econCount) : t.pricesHint}{" "}
-              <button onClick={() => goTab("precios")} className="font-semibold text-moss hover:underline">
+              <button onClick={() => goTab("prices")} className="font-semibold text-moss hover:underline">
                 {econCount > 0 ? t.changePrices : t.setPrices}
               </button>
             </p>
@@ -716,7 +716,7 @@ const TONE: Record<string, string> = {
   Riskier: "text-clay",
 };
 
-/** La recomendación en limpio: qué sembrar, por qué, de qué cuidarse y el informe para ver el detalle. */
+/** The recommendation in plain terms: what to plant, why, what to watch out for, and the report for the details. */
 function Summary({ r, onReport }: { r: Result; onReport: () => void }) {
   const lang = useLang();
   const t = T[lang];
@@ -806,7 +806,7 @@ function Progress({ data, local, soil, ndvi, comparing }: { data: boolean; local
   );
 }
 
-/* ------------------------------ Resultados ------------------------------ */
+/* -------------------------------- Results ------------------------------- */
 
 function Money({ o }: { o: Option }) {
   const lang = useLang();
@@ -954,7 +954,7 @@ function FieldNotes({ notes, point }: { notes: Note[]; point: Point }) {
   );
 }
 
-/** Resultados con todo el detalle (evidencia, vacíos, riesgos, otras rotaciones). Se usa en el informe. */
+/** Results in full detail (evidence, gaps, risks, other rotations). Used in the report. */
 export function ReportResults({ r, name, point }: { r: Result; name: string; point: Point }) {
   const lang = useLang();
   const t = T[lang];
@@ -1045,7 +1045,7 @@ export function ReportResults({ r, name, point }: { r: Result; name: string; poi
   );
 }
 
-/* ----------------------- Lo que sabemos del terreno ----------------------- */
+/* ----------------------- What we know about the field ----------------------- */
 
 function SourceLink({ href, title, children }: { href: string; title: string; children: React.ReactNode }) {
   return (

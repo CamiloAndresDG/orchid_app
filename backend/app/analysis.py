@@ -1,11 +1,11 @@
-"""Vulnerabilidad estacional y ventanas de suelo desnudo.
+"""Seasonal vulnerability and bare-soil windows.
 
-Los pesos del índice (WEIGHTS) los elegimos nosotros; los datos son de NASA POWER. CROP_MONTHS son calendarios
-típicos que solo se usan en las zonas de ejemplo: para el terreno del agricultor, los meses de suelo desnudo salen
-del NDVI de MODIS o de su historial.
+The index weights (WEIGHTS) are our own choice; the data comes from NASA POWER. CROP_MONTHS are typical
+calendars used only in the example zones: for the farmer's field, the bare-soil months come from MODIS NDVI
+or from their history.
 """
 
-# Meses (1-12) con el cultivo en campo, para el cultivo de la rotacion actual.
+# Months (1-12) with the crop in the field, for the crop in the current rotation.
 CROP_MONTHS = {
     "wheat": [10, 11, 12, 1, 2, 3, 4, 5, 6],
     "corn": [5, 6, 7, 8, 9, 10],
@@ -18,7 +18,7 @@ WEIGHTS = {"heat": 0.35, "dryness": 0.4, "low_rain": 0.25}
 
 
 def vulnerability_by_month(clim: dict) -> list[dict]:
-    """Indice 0-1: sube con calor y baja con humedad de suelo y lluvia."""
+    """0-1 index: rises with heat and falls with soil moisture and rain."""
     temps = [v["temp_c"] for v in clim.values() if v["temp_c"] is not None]
     t_min, t_max = min(temps), max(temps)
     rains = [v["precip_mm_day"] for v in clim.values() if v["precip_mm_day"] is not None]
@@ -40,7 +40,7 @@ def vulnerability_by_month(clim: dict) -> list[dict]:
 
 
 def bare_soil_months(current_rotation: list[str]) -> list[int]:
-    """Meses sin cultivo en campo segun el primer cultivo de la rotacion (aprox.)."""
+    """Months with no crop in the field according to the first crop of the rotation (approx.)."""
     covered: set[int] = set()
     for crop in current_rotation:
         covered.update(CROP_MONTHS.get(crop, []))

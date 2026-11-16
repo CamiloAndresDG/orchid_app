@@ -1,14 +1,14 @@
 "use client";
 
-// Fuentes de NASA Earthdata por punto: SMAP (humedad del suelo), IMERG (lluvia por satélite),
-// NLDAS (agua guardada en el suelo) y SRTM (relieve). El backend usa el token de Earthdata del servidor.
+// NASA Earthdata sources per point: SMAP (soil moisture), IMERG (satellite rain),
+// NLDAS (water stored in the soil) and SRTM (terrain). The backend uses the server's Earthdata token.
 
 import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ExternalIcon } from "./icons";
 import { API, MONTHS } from "./shared";
 import { SOURCE_LABELS, sourceUrl } from "./sources";
-import type { Point } from "./terreno";
+import type { Point } from "./field";
 import { Lang, fmtNum, langHeaders, useLang } from "./i18n";
 
 const T = {
@@ -159,7 +159,7 @@ export function useNasa(point: Point | null): Nasa {
   return { smap, imerg, nldas, srtm };
 }
 
-/* ------------------------------- Textos cortos ------------------------------- */
+/* -------------------------------- Short texts -------------------------------- */
 
 const toIn = (mm: number) => mm / 25.4;
 const day = (iso: string, l: Lang) => {
@@ -175,7 +175,7 @@ const monthName = (ym: string, l: Lang) => {
   return T[l].month(MONTHS[l][m - 1], y);
 };
 
-/** Una línea para el resumen de "Tu terreno". */
+/** One line for the "Your field" summary. */
 export const factSlope = (s: Srtm | null, l: Lang) =>
   !s ? T[l].checking : s.available && s.slope_pct !== undefined ? `${fmtNum(l, s.slope_pct, 1)}%, ${s.slope_word}` : T[l].noData;
 export const factMoisture = (s: Smap | null, l: Lang) =>
@@ -187,7 +187,7 @@ export const factRain = (i: Imerg | null, l: Lang) =>
       ? T[l].rainIn(fmtNum(l, i.total_in ?? 0, 1), fmtNum(l, i.total_mm, 0), i.days)
       : T[l].noData;
 
-/* ------------------------------ Para el informe ------------------------------ */
+/* -------------------------------- For the report ------------------------------ */
 
 function Source({ href, title, children }: { href: string; title: string; children: React.ReactNode }) {
   return (

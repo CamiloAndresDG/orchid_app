@@ -22,9 +22,9 @@ import {
   type Point,
   type Result,
   type Soil,
-} from "../terreno";
+} from "../field";
 
-// Informe completo para guardar o imprimir: todo el detalle que el cuaderno resume.
+// Full report to save or print: all the detail the notebook summarizes.
 
 type Snapshot = {
   createdAt: string;
@@ -97,7 +97,7 @@ const T = {
   },
 };
 
-export default function InformePage() {
+export default function ReportPage() {
   const lang = useLang();
   const t = T[lang];
   const CROPS = CROP_NAMES[lang];
@@ -138,12 +138,12 @@ export default function InformePage() {
   const ready =
     !!snap && !loadingClimate && local !== null && soil !== null && ndvi !== null && !!nasa.smap && !!nasa.imerg && !!nasa.nldas && !!nasa.srtm;
 
-  // Cuando todo cargó: abre los desplegables (para que se impriman) y ofrece guardar en PDF una sola vez.
+  // Once everything has loaded: opens the collapsibles (so they print) and offers to save as PDF once.
   useEffect(() => {
     if (!ready || printed.current) return;
     printed.current = true;
     document.querySelectorAll("details").forEach((d) => (d.open = true));
-    if (new URLSearchParams(window.location.search).has("vista")) return; // ?vista=1: solo mirar, sin imprimir
+    if (new URLSearchParams(window.location.search).has("vista")) return; // ?vista=1: view only, no printing
     const t = setTimeout(() => window.print(), 700);
     return () => clearTimeout(t);
   }, [ready]);

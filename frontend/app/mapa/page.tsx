@@ -7,21 +7,21 @@ import { Guide } from "../assistant";
 import { ECON_KEY, PLOT_KEY, endSession, useSession, type Session } from "../auth";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { AlertIcon, PinIcon } from "../icons";
-import { Analysis, ClimaPanel, EstrategiasPanel, FuentesPanel, TabId, VulnerabilidadPanel, Zone } from "../panels";
+import { Analysis, ClimatePanel, StrategiesPanel, SourcesPanel, TabId, VulnerabilityPanel, Zone } from "../panels";
 import { flushNotebook, notebookChanged, pullNotebook } from "../notebook";
-import { PreciosPanel } from "../precios";
+import { PricesPanel } from "../prices";
 import { EconUS, HistoryRow } from "../shared";
-import { LocalCrops, Point, TerrenoPanel } from "../terreno";
+import { LocalCrops, Point, FieldPanel } from "../field";
 import { UserMenu } from "../user-menu";
 import { CREDIT, FULL_NAME, OrchidMark } from "../logo";
 import { Lang, currentLang, langHeaders, useLang } from "../i18n";
 
-// Next no empaqueta el worker de MapLibre: se sirve desde /public/maplibre.
+// Next doesn't bundle the MapLibre worker: it's served from /public/maplibre.
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-// Imagen satelital con caminos y nombres del USGS (dominio publico, EE. UU.).
+// USGS satellite imagery with roads and names (public domain, U.S.).
 const MAP_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
@@ -36,12 +36,12 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
   layers: [{ id: "usgs", type: "raster", source: "usgs" }],
 };
 
-const MORE_IDS: TabId[] = ["clima", "vulnerabilidad", "estrategias", "fuentes"];
+const MORE_IDS: TabId[] = ["climate", "vulnerability", "strategies", "sources"];
 const isMore = (t: TabId) => MORE_IDS.includes(t);
 
 const COPY = {
   es: {
-    more: { clima: "Clima", vulnerabilidad: "Meses difíciles", estrategias: "Ejemplos", fuentes: "De dónde salen los datos" } as Record<string, string>,
+    more: { climate: "Clima", vulnerability: "Meses difíciles", strategies: "Ejemplos", sources: "De dónde salen los datos" } as Record<string, string>,
     pin: "Mi terreno",
     opening: "Abriendo tu cuaderno…",
     offline: "No pudimos abrir tu cuaderno guardado. Lo que cambies ahora no se guardará en tu cuenta; recarga la página en un rato.",
@@ -73,7 +73,7 @@ const COPY = {
     emptyBtn: "Ver un ejemplo",
   },
   en: {
-    more: { clima: "Climate", vulnerabilidad: "Hard months", estrategias: "Examples", fuentes: "Where the data comes from" } as Record<string, string>,
+    more: { climate: "Climate", vulnerability: "Hard months", strategies: "Examples", sources: "Where the data comes from" } as Record<string, string>,
     pin: "My field",
     opening: "Opening your notebook…",
     offline: "We couldn't open your saved notebook. Changes you make now won't be saved to your account; reload the page in a while.",
@@ -120,9 +120,9 @@ function pinElement(lang: Lang): HTMLElement {
   return el;
 }
 
-// Solo entran personas con sesión; si no, van al inicio de sesión.
-// Con cuenta, primero se trae el cuaderno del servidor; el modo visitante usa solo este navegador.
-export default function MapaPage() {
+// Only signed-in people get in; otherwise they go to sign-in.
+// With an account, the notebook is fetched from the server first; guest mode uses only this browser.
+export default function MapPage() {
   const router = useRouter();
   const session = useSession();
   const c = COPY[useLang()];
@@ -137,7 +137,7 @@ export default function MapaPage() {
     let live = true;
     pullNotebook(token).then((r) => {
       if (!live) return;
-      if (r === "unauthorized") return endSession(); // sesión vencida: vuelve al inicio de sesión
+      if (r === "unauthorized") return endSession(); // session expired: back to sign-in
       setOffline(r === "offline");
       setPulled(token);
     });
@@ -150,7 +150,7 @@ export default function MapaPage() {
   }
   return (
     <>
-      <MapaApp
+      <MapApp
         session={session}
         onLogout={() => {
           flushNotebook();
@@ -167,7 +167,7 @@ export default function MapaPage() {
   );
 }
 
-function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void }) {
+function MapApp({ session, onLogout }: { session: Session; onLogout: () => void }) {
   const mapEl = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const pin = useRef<maplibregl.Marker | null>(null);
@@ -181,7 +181,7 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
   const [loadingPoint, setLoadingPoint] = useState(false);
   const [loadingExample, setLoadingExample] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<TabId>("terreno");
+  const [tab, setTab] = useState<TabId>("field");
   const [econ, setEcon] = useState<Record<string, EconUS>>({});
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -199,7 +199,7 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
     } catch {}
     setHydrated(true);
   }, []);
-  // No escribir hasta haber leído lo guardado: si no, el estado inicial vacío borra los precios.
+  // Don't write until the saved data has been read: otherwise the empty initial state wipes the prices.
   useEffect(() => {
     if (!hydrated) return;
     try {
@@ -291,7 +291,7 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
       .catch(() => setLocal({ available: false, years: {}, radius_km: 1.1, note: t.cropsFail }));
   }
 
-  // Al cambiar de idioma: las notas del servidor vienen en el idioma pedido, así que se vuelven a pedir.
+  // On language change: the server's notes come in the requested language, so they're requested again.
   const langRef = useRef(lang);
   useEffect(() => {
     if (langRef.current === lang) return;
@@ -330,14 +330,14 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
       .finally(() => setLoadingExample(false));
   }
 
-  // El cuaderno muestra una sola vista a la vez: tu terreno (principal), tus precios o los datos de la zona.
+  // The notebook shows one view at a time: your field (main), your prices or the area's data.
   const scrollRef = useRef<HTMLDivElement>(null);
   function goTab(t: TabId) {
     setTab(t);
     scrollRef.current?.scrollTo({ top: 0 });
   }
 
-  // Cultivos que ocupan al menos el 5% de la zona (mapa de cultivos USDA): se ofrecen en Mis precios.
+  // Crops covering at least 5% of the area (USDA crop map): offered in My prices.
   const zoneCrops: string[] = [];
   if (local?.available) {
     const ys = Object.values(local.years);
@@ -346,7 +346,7 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
     Object.entries(avg).forEach(([k, v]) => v >= 0.05 && zoneCrops.push(k));
   }
 
-  // Clima y meses dificiles: tu terreno primero; si no hay, el ejemplo abierto.
+  // Climate and hard months: your field first; if there's none, the open example.
   const climateData = pointData ?? example;
 
   return (
@@ -359,8 +359,8 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
               <span className="font-serif text-2xl font-semibold leading-none tracking-wide">ORCHID</span>
               <span className="sr-only">, {FULL_NAME}</span>
             </h1>
-            {tab !== "terreno" && (
-              <button onClick={() => goTab("terreno")} className="text-base font-semibold text-moss hover:underline">
+            {tab !== "field" && (
+              <button onClick={() => goTab("field")} className="text-base font-semibold text-moss hover:underline">
                 {c.back}
               </button>
             )}
@@ -388,8 +388,8 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
             </p>
           )}
 
-          <div hidden={tab !== "terreno"}>
-            <TerrenoPanel
+          <div hidden={tab !== "field"}>
+            <FieldPanel
               point={point}
               data={pointData}
               local={local}
@@ -414,21 +414,21 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
               ORCHID: {FULL_NAME}. {CREDIT[lang]}.
             </p>
           </div>
-          <div hidden={tab !== "precios"}>
-            <PreciosPanel econ={econ} setEcon={setEcon} point={point} history={history} zoneCrops={zoneCrops} go={goTab} />
+          <div hidden={tab !== "prices"}>
+            <PricesPanel econ={econ} setEcon={setEcon} point={point} history={history} zoneCrops={zoneCrops} go={goTab} />
           </div>
           {isMore(tab) && (
             <div>
-              {tab === "estrategias" && (
+              {tab === "strategies" && (
                 <ExamplesHeader zones={zones} activeId={exampleId} onOpen={openExample} loading={loadingExample} />
               )}
-              {tab === "estrategias" && example && <EstrategiasPanel data={example} go={goTab} />}
-              {(tab === "clima" || tab === "vulnerabilidad") && !climateData && (
-                <EmptyMore loading={loadingPoint || loadingExample} onExample={() => goTab("estrategias")} />
+              {tab === "strategies" && example && <StrategiesPanel data={example} go={goTab} />}
+              {(tab === "climate" || tab === "vulnerability") && !climateData && (
+                <EmptyMore loading={loadingPoint || loadingExample} onExample={() => goTab("strategies")} />
               )}
-              {tab === "clima" && climateData && <ClimaPanel data={climateData} />}
-              {tab === "vulnerabilidad" && climateData && <VulnerabilidadPanel data={climateData} />}
-              {tab === "fuentes" && <FuentesPanel data={climateData} />}
+              {tab === "climate" && climateData && <ClimatePanel data={climateData} />}
+              {tab === "vulnerability" && climateData && <VulnerabilityPanel data={climateData} />}
+              {tab === "sources" && <SourcesPanel data={climateData} />}
             </div>
           )}
         </div>
@@ -451,7 +451,7 @@ function MapaApp({ session, onLogout }: { session: Session; onLogout: () => void
           </button>
         </form>
         <div className="absolute right-4 top-4 z-20">
-          <UserMenu session={session} onPrices={() => goTab("precios")} onLogout={onLogout} />
+          <UserMenu session={session} onPrices={() => goTab("prices")} onLogout={onLogout} />
         </div>
         {searchMsg && (
           <p role="status" className="absolute left-4 top-[4.75rem] w-[min(30rem,calc(100%-6.5rem))] rounded-md bg-paper/95 px-4 py-2 text-base text-ink shadow-[0_4px_12px_rgb(0_0_0/0.25)]">

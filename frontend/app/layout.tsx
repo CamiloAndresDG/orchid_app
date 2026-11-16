@@ -29,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${fraunces.variable} ${publicSans.variable} h-full antialiased`}
     >
       <head>
-        {/* Idioma del navegador y tema del sistema (o lo que el usuario eligió), antes de pintar. */}
+        {/* Browser language and system theme (or what the user chose), before painting. */}
         <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col">{children}</body>

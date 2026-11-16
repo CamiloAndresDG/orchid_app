@@ -1,105 +1,105 @@
-"""CLI del ETL.  Ejecutar desde la carpeta backend:
+"""ETL CLI. Run from the backend folder:
 
     python -m app.etl status
-    python -m app.etl build                       # todas las tablas posibles, saltando las ya hechas
+    python -m app.etl build                       # every table it can, skipping the ones already built
     python -m app.etl build gaez_suitability --force
-    python -m app.etl build gaez_actual --gaez5 C:/descargas/res06.zip
-    python -m app.etl build climate_monthly --periodo 2020-01-01 2020-12-31   # requiere EARTHDATA_TOKEN
+    python -m app.etl build gaez_actual --gaez5 C:/downloads/res06.zip
+    python -m app.etl build climate_monthly --period 2020-01-01 2020-12-31   # requires EARTHDATA_TOKEN
 """
 import argparse
 import sys
 import traceback
 
-from .config import NOMBRES_TABLAS, hecho, imprimir_estado
+from .config import TABLE_NAMES, done, print_status
 
-# tabla -> tablas que debe haber antes
-DEPENDE = {"stations_validation": ["climate_monthly"], "indicators_monthly": ["climate_monthly"],
+# table -> tables that must exist first
+DEPENDS = {"stations_validation": ["climate_monthly"], "indicators_monthly": ["climate_monthly"],
            "climatology": ["climate_monthly"], "crop_traits": []}
 
 
-def _construir(tabla: str, args) -> None:
-    if tabla == "cells":
-        from .grid import construir_cells
-        construir_cells()
-    elif tabla == "coverage":
-        print("coverage se llena sola al construir las demas tablas")
-    elif tabla == "gaez_actual":
-        from .gaez import construir_actual
-        construir_actual(args.gaez5)
-    elif tabla in ("climate_monthly", "climatology"):
-        from .ldas import construir
-        construir(tuple(args.periodo))
-    elif tabla == "landcover":
-        from .landcover import construir
-        construir()
-    elif tabla == "stations_validation":
-        from .stations import construir
-        construir(tuple(args.periodo_estaciones))
-    elif tabla == "gaez_growing":
-        from .gaez import construir_growing
-        construir_growing()
-    elif tabla == "gaez_suitability":
-        from .gaez import construir_suitability
-        construir_suitability()
-    elif tabla == "crop_traits":
-        from .traits import construir
-        construir()
-    elif tabla == "indicators_monthly":
-        from .indicators import construir
-        construir()
+def _build(table: str, args) -> None:
+    if table == "cells":
+        from .grid import build_cells
+        build_cells()
+    elif table == "coverage":
+        print("coverage fills itself as the other tables are built")
+    elif table == "gaez_actual":
+        from .gaez import build_actual
+        build_actual(args.gaez5)
+    elif table in ("climate_monthly", "climatology"):
+        from .ldas import build
+        build(tuple(args.period))
+    elif table == "landcover":
+        from .landcover import build
+        build()
+    elif table == "stations_validation":
+        from .stations import build
+        build(tuple(args.stations_period))
+    elif table == "gaez_growing":
+        from .gaez import build_growing
+        build_growing()
+    elif table == "gaez_suitability":
+        from .gaez import build_suitability
+        build_suitability()
+    elif table == "crop_traits":
+        from .traits import build
+        build()
+    elif table == "indicators_monthly":
+        from .indicators import build
+        build()
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="python -m app.etl", description="ETL de fuentes NASA/FAO/NOAA para ORCHID")
+    ap = argparse.ArgumentParser(prog="python -m app.etl", description="ETL of NASA/FAO/NOAA sources for ORCHID")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("status", help="estado de las tablas")
-    b = sub.add_parser("build", help="construir tablas")
-    b.add_argument("tablas", nargs="*", help=f"por defecto, todas: {', '.join(NOMBRES_TABLAS)}")
-    b.add_argument("--force", action="store_true", help="recalcular aunque el parquet exista")
-    b.add_argument("--gaez5", default=None, help="carpeta o archivo (.zip/.rar) del Tema 5; por defecto, el servidor FAO")
-    b.add_argument("--periodo", nargs=2, default=["2000-01-01", "2024-12-31"], metavar=("INICIO", "FIN"))
-    b.add_argument("--periodo-estaciones", nargs=2, default=["2020-01-01", "2024-12-31"], metavar=("INICIO", "FIN"))
+    sub.add_parser("status", help="table status")
+    b = sub.add_parser("build", help="build tables")
+    b.add_argument("tables", nargs="*", help=f"defaults to all: {', '.join(TABLE_NAMES)}")
+    b.add_argument("--force", action="store_true", help="rebuild even if the parquet exists")
+    b.add_argument("--gaez5", default=None, help="Theme 5 folder or file (.zip/.rar); defaults to the FAO server")
+    b.add_argument("--period", nargs=2, default=["2000-01-01", "2024-12-31"], metavar=("START", "END"))
+    b.add_argument("--stations-period", nargs=2, default=["2020-01-01", "2024-12-31"], metavar=("START", "END"))
     args = ap.parse_args(argv)
 
     if args.cmd == "status":
-        imprimir_estado()
+        print_status()
         return 0
 
-    desconocidas = [t for t in args.tablas if t not in NOMBRES_TABLAS]
-    if desconocidas:
-        ap.error(f"tablas desconocidas: {', '.join(desconocidas)}. Validas: {', '.join(NOMBRES_TABLAS)}")
-    tablas = args.tablas or NOMBRES_TABLAS
-    forzar = set(tablas) if args.force else set()
-    hechas_ahora, fallos = set(), {}
-    for t in tablas:
-        if t == "climatology" and "climate_monthly" in hechas_ahora:
-            continue                                # se construyen juntas
-        if hecho(t, forzar):
-            print(f"[saltada] {t} ya existe (usa --force para recalcular)")
+    unknown = [t for t in args.tables if t not in TABLE_NAMES]
+    if unknown:
+        ap.error(f"unknown tables: {', '.join(unknown)}. Valid: {', '.join(TABLE_NAMES)}")
+    tables = args.tables or TABLE_NAMES
+    force = set(tables) if args.force else set()
+    built_now, failures = set(), {}
+    for t in tables:
+        if t == "climatology" and "climate_monthly" in built_now:
+            continue                                # built together
+        if done(t, force):
+            print(f"[skipped] {t} already exists (use --force to rebuild)")
             continue
-        faltan = [d for d in DEPENDE.get(t, []) if not hecho(d)]
-        if faltan:
-            print(f"[pendiente] {t}: necesita {', '.join(faltan)}")
-            fallos[t] = f"necesita {', '.join(faltan)}"
+        missing = [d for d in DEPENDS.get(t, []) if not done(d)]
+        if missing:
+            print(f"[pending] {t}: needs {', '.join(missing)}")
+            failures[t] = f"needs {', '.join(missing)}"
             continue
         print(f"\n===== {t} =====")
         try:
-            _construir(t, args)
-            hechas_ahora.add(t)
+            _build(t, args)
+            built_now.add(t)
         except ImportError as ex:
-            fallos[t] = f"falta un paquete ({ex.name}); instala requirements-etl.txt"
-            print(f"[error] {t}: {fallos[t]}")
+            failures[t] = f"missing package ({ex.name}); install requirements-etl.txt"
+            print(f"[error] {t}: {failures[t]}")
         except Exception as ex:
-            fallos[t] = f"{type(ex).__name__}: {str(ex)[:300]}"
-            print(f"[error] {t}: {fallos[t]}")
+            failures[t] = f"{type(ex).__name__}: {str(ex)[:300]}"
+            print(f"[error] {t}: {failures[t]}")
             traceback.print_exc(limit=2)
     print()
-    imprimir_estado()
-    if fallos:
-        print("\nNo construidas:")
-        for t, m in fallos.items():
+    print_status()
+    if failures:
+        print("\nNot built:")
+        for t, m in failures.items():
             print(f"  - {t}: {m}")
-    return 1 if fallos and args.tablas else 0
+    return 1 if failures and args.tables else 0
 
 
 if __name__ == "__main__":

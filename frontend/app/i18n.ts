@@ -1,7 +1,7 @@
 "use client";
 
-// Idioma de la plataforma: español o inglés. Arranca con lo que el usuario eligió antes (localStorage) o, si nunca eligió,
-// con el idioma del navegador. El script de <head> en layout.tsx fija <html lang> antes de pintar; aquí se lee y se cambia.
+// Platform language: Spanish or English. Starts with what the user chose before (localStorage) or, if they never chose,
+// with the browser's language. The <head> script in layout.tsx sets <html lang> before painting; here it is read and changed.
 
 import { useSyncExternalStore } from "react";
 
@@ -14,7 +14,7 @@ export function detectLang(): Lang {
   return document.documentElement.lang === "en" ? "en" : "es";
 }
 
-/** Idioma actual, para código que no es un componente (fetch, textos de módulos). */
+/** Current language, for code that isn't a component (fetch, module-level texts). */
 export const currentLang = detectLang;
 
 export function setLang(l: Lang) {
@@ -39,7 +39,7 @@ export const locale = (l: Lang) => (l === "en" ? "en-US" : "es-US");
 export const fmtNum = (l: Lang, n: number, d = 0) =>
   n.toLocaleString(locale(l), { maximumFractionDigits: d, minimumFractionDigits: d });
 
-/** Cabeceras para el backend: el idioma va en Accept-Language (cabecera simple, no dispara preflight de CORS). */
+/** Headers for the backend: the language goes in Accept-Language (a simple header, it doesn't trigger a CORS preflight). */
 export const langHeaders = (extra: Record<string, string> = {}): Record<string, string> => ({
   "accept-language": currentLang(),
   ...extra,

@@ -1,4 +1,4 @@
-"""Serie climatica diaria de NASA POWER agregada por dia, mes, trimestre, semestre o anio."""
+"""Daily NASA POWER climate series aggregated by day, month, quarter, half-year or year."""
 import json
 from datetime import date, datetime
 
@@ -18,7 +18,7 @@ def official_url(lat: float, lon: float, start: str, end: str) -> str:
 
 def _fetch_daily(lat: float, lon: float, start: str, end: str) -> dict:
     key = CACHE_DIR / f"daily_{lat:.2f}_{lon:.2f}_{start}_{end}.json"
-    # No se cachea si el rango llega a fechas recientes (los datos se siguen completando).
+    # Not cached if the range reaches recent dates (the data is still being filled in).
     recent = (date.today() - datetime.strptime(end, "%Y%m%d").date()).days < 30
     if key.exists() and not recent:
         return json.loads(key.read_text())

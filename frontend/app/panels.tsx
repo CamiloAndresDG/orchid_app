@@ -1,7 +1,7 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ClimaExplorer } from "./climate";
+import { ClimateExplorer } from "./climate";
 import { ChevronIcon, ExternalIcon, ShieldIcon } from "./icons";
 import { Lang, useLang } from "./i18n";
 import { MONTHS as MONTH_NAMES } from "./shared";
@@ -163,7 +163,7 @@ export type Analysis = {
   sources: string[];
   disclaimer: string;
 };
-export type TabId = "terreno" | "precios" | "estrategias" | "clima" | "vulnerabilidad" | "fuentes";
+export type TabId = "field" | "prices" | "strategies" | "climate" | "vulnerability" | "sources";
 
 const tooltipStyle = { background: "var(--paper)", border: "1px solid var(--rule)", color: "var(--ink)" };
 const monthList = (ms: number[], l: Lang) => {
@@ -193,7 +193,7 @@ function Fold({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
-/* ------------------------------- Ejemplos -------------------------------- */
+/* ------------------------------- Examples -------------------------------- */
 
 function rationale(s: Strategy, bare: number, l: Lang): string {
   if (s.is_current) return T[l].currentRat(bare);
@@ -201,7 +201,7 @@ function rationale(s: Strategy, bare: number, l: Lang): string {
   return covers ? T[l].coverRat : T[l].longRat;
 }
 
-export function EstrategiasPanel({ data }: { data: Analysis; go?: (t: TabId) => void }) {
+export function StrategiesPanel({ data }: { data: Analysis; go?: (t: TabId) => void }) {
   const l = useLang();
   const t = T[l];
   return (
@@ -266,7 +266,7 @@ export function EstrategiasPanel({ data }: { data: Analysis; go?: (t: TabId) => 
   );
 }
 
-/* --------------------------------- Clima --------------------------------- */
+/* -------------------------------- Climate -------------------------------- */
 
 const CLIMATE_VARS = [
   { key: "precip_mm_day" as const, max: 5, tech: "PRECTOTCORR" },
@@ -283,7 +283,7 @@ function climateCell(key: "precip_mm_day" | "temp_c" | "soil_wetness", v: number
   return { main: v < 0.35 ? T[l].dry : v < 0.55 ? T[l].mid : T[l].wet, alt: "" };
 }
 
-export function ClimaPanel({ data }: { data: Analysis }) {
+export function ClimatePanel({ data }: { data: Analysis }) {
   const l = useLang();
   const t = T[l];
   const crit = data.most_vulnerable_months;
@@ -299,7 +299,7 @@ export function ClimaPanel({ data }: { data: Analysis }) {
         </p>
       </div>
 
-      <ClimaExplorer lat={data.zone.lat} lon={data.zone.lon} />
+      <ClimateExplorer lat={data.zone.lat} lon={data.zone.lon} />
 
       <section>
         <h3 className="font-serif text-xl font-semibold">{t.avgTitle}</h3>
@@ -359,9 +359,9 @@ export function ClimaPanel({ data }: { data: Analysis }) {
   );
 }
 
-/* ---------------------------- Meses difíciles ---------------------------- */
+/* ------------------------------ Hard months ------------------------------ */
 
-export function VulnerabilidadPanel({ data }: { data: Analysis }) {
+export function VulnerabilityPanel({ data }: { data: Analysis }) {
   const l = useLang();
   const t = T[l];
   const w = data.method.weights;
@@ -436,11 +436,11 @@ export function VulnerabilidadPanel({ data }: { data: Analysis }) {
   );
 }
 
-/* ----------------------------- De dónde salen ----------------------------- */
+/* ------------------------ Where the data comes from ------------------------ */
 
 type Src = { topic: string; name: string; live: boolean; what: string; use: string; site: string };
 
-// Fuente unica de verdad sobre que esta conectado.
+// Single source of truth about what is connected.
 const SOURCES_EN: Src[] = [
   { topic: "Climate", name: "NASA POWER", live: true, what: "Rain, temperature and soil moisture for any point, since 1981.", use: "Hard months, climate by date and water risk for each option.", site: "https://power.larc.nasa.gov/data-access-viewer/" },
   { topic: "Field greenness", name: "MODIS · NASA", live: true, what: "How green your field looks from the satellite, every 16 days (NDVI).", use: "Finds the months when your soil was left uncovered.", site: "https://modis.ornl.gov/globalsubset/" },
@@ -471,7 +471,7 @@ const SOURCES_ES: Src[] = [
 
 export const SOURCES: Record<Lang, Src[]> = { es: SOURCES_ES, en: SOURCES_EN };
 
-export function FuentesPanel({ data }: { data: Analysis | null }) {
+export function SourcesPanel({ data }: { data: Analysis | null }) {
   const l = useLang();
   const t = T[l];
   const live = SOURCES[l].filter((s) => s.live);

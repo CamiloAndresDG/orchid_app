@@ -129,7 +129,7 @@ const COPY = {
   },
 };
 
-// Contenedor de la página: ancho, con margen lateral que crece con la pantalla, y todo alineado a la izquierda.
+// Page container: wide, with a side margin that grows with the screen, and everything left-aligned.
 const WRAP = "mx-auto w-full max-w-[120rem] px-6 sm:px-10 lg:px-16";
 
 export default function Home() {
@@ -182,7 +182,7 @@ export default function Home() {
         </nav>
       </header>
 
-      {/* Portada */}
+      {/* Hero */}
       <ParallaxHero>
         <div className={`pb-24 pt-6 ${WRAP}`}>
           <div className="max-w-3xl">
@@ -229,7 +229,7 @@ export default function Home() {
         </div>
       </ParallaxHero>
 
-      {/* Agricultores */}
+      {/* Farmers */}
       <section id="agricultores" className={`py-20 ${WRAP}`}>
         <div className="max-w-2xl">
           <h2 className="font-serif text-4xl font-semibold tracking-tight">{c.navFarmers}</h2>
@@ -246,7 +246,7 @@ export default function Home() {
         </ol>
       </section>
 
-      {/* Jurado */}
+      {/* Judges */}
       <section id="jurado" className="bg-moss-deep text-paper">
         <div className={`grid gap-14 py-20 lg:grid-cols-2 ${WRAP}`}>
           <div>
@@ -293,7 +293,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Cierre */}
+      {/* Closing */}
       <section className={`py-20 ${WRAP}`}>
         <h2 className="font-serif text-4xl font-semibold tracking-tight">{c.closeTitle}</h2>
         <p className="mt-4 max-w-prose text-lg text-ink-soft">{c.closeText}</p>

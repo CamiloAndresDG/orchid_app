@@ -1,4 +1,4 @@
-"""Cliente de NASA POWER (sin API key). Climatologia mensual por punto."""
+"""NASA POWER client (no API key). Monthly climatology per point."""
 import json
 
 import httpx
@@ -6,11 +6,11 @@ import httpx
 from .config import CACHE_DIR
 
 URL = "https://power.larc.nasa.gov/api/temporal/monthly/point"
-PARAMS = "PRECTOTCORR,T2M,GWETROOT"  # lluvia mm/dia, temp C, humedad zona radicular 0-1
+PARAMS = "PRECTOTCORR,T2M,GWETROOT"  # rain mm/day, temp C, root-zone wetness 0-1
 
 
 def monthly_climatology(lat: float, lon: float, start: int = 2015, end: int = 2024) -> dict:
-    """Devuelve {month(1-12): {precip_mm_day, temp_c, soil_wetness}} promedio del periodo."""
+    """Returns {month(1-12): {precip_mm_day, temp_c, soil_wetness}} averaged over the period."""
     key = CACHE_DIR / f"power_{lat:.2f}_{lon:.2f}_{start}_{end}.json"
     if key.exists():
         data = json.loads(key.read_text())

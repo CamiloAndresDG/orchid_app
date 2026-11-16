@@ -1,4 +1,4 @@
-// Iconos de trazo propio (1.75 px), en el mismo grosor en toda la app.
+// Custom stroke icons (1.75 px), same weight across the whole app.
 type P = { className?: string };
 const base = {
   width: 20,

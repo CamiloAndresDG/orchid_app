@@ -6,10 +6,10 @@ import { currentSession, type Session } from "./auth";
 import { ExternalIcon, Spinner } from "./icons";
 import { Mascot, type MascotState } from "./mascot";
 import { API } from "./shared";
-import type { Point } from "./terreno";
+import type { Point } from "./field";
 import { Lang, currentLang, langHeaders, useLang } from "./i18n";
 
-// Brote, la guía de ORCHID: chat con IA anclado a las fuentes, por texto o voz (Web Speech API del navegador).
+// Brote, ORCHID's guide: AI chat grounded in the sources, by text or voice (the browser's Web Speech API).
 
 type Source = { n: number; id: string; name: string; url: string | null };
 type Msg = { role: "user" | "assistant"; content: string; sources?: Source[]; error?: boolean };
@@ -107,16 +107,16 @@ function getRecognition(): (new () => Recognition) | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-// Voz en el idioma elegido; en español se respeta la variante del navegador (es-MX, es-US…).
+// Voice in the chosen language; in Spanish the browser's variant is respected (es-MX, es-US…).
 const speechLang = (l: Lang) => {
   if (l === "en") return "en-US";
   return typeof navigator !== "undefined" && navigator.language?.startsWith("es") ? navigator.language : "es-US";
 };
 
-/** Texto apto para leer en voz alta: sin citas [n] ni marcas de formato. */
+/** Text fit to be read aloud: no [n] citations or formatting marks. */
 const forSpeech = (t: string) => t.replace(/\[\d+\]/g, "").replace(/\*\*/g, "").replace(/^\s*-\s+/gm, "");
 
-/** Párrafos y listas simples, **negritas** y citas [n] como enlaces a la fuente. */
+/** Paragraphs and simple lists, **bold** and [n] citations as links to the source. */
 function Rich({ text, sources }: { text: string; sources?: Source[] }) {
   const inline = (line: string, key: string) =>
     line.split(/(\*\*[^*]+\*\*|\[\d+\])/g).map((part, i) => {

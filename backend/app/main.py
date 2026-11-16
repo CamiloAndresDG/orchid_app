@@ -65,10 +65,10 @@ def analysis(zone_id: str):
         raise HTTPException(404, t("Zona no encontrada", "Area not found"))
     try:
         clim = monthly_climatology(zone["lat"], zone["lon"])
-    except Exception as exc:  # NASA POWER caido o sin red
+    except Exception as exc:  # NASA POWER down or no network
         raise HTTPException(502, t(f"No se pudo consultar NASA POWER: {exc}", f"We couldn't query NASA POWER: {exc}"))
 
-    # Se ordena por vulnerabilidad para resaltar las temporadas criticas.
+    # Sorted by vulnerability to highlight the critical seasons.
     months = vulnerability_by_month(clim)
     top = sorted(months, key=lambda x: x["vulnerability"], reverse=True)[:3]
     return {
@@ -127,7 +127,7 @@ def _climate(p: Point):
 
 @app.post("/point/analysis")
 def point_analysis(p: Point):
-    """Clima real (NASA POWER) y cultivos cercanos (CDL) para un punto elegido en el mapa."""
+    """Real climate (NASA POWER) and nearby crops (CDL) for a point picked on the map."""
     months = _climate(p)
     top = sorted(months, key=lambda x: x["vulnerability"], reverse=True)[:3]
     return {
@@ -151,8 +151,8 @@ def point_analysis(p: Point):
 def recommend(req: RecommendRequest):
     months = _climate(req)
     la, lo = req.lat, req.lon
-    # Todas las fuentes en paralelo: cada una tiene su caché y devuelve available=False si falla.
-    # in_ctx lleva el idioma de la petición a cada hilo.
+    # Every source in parallel: each has its own cache and returns available=False if it fails.
+    # in_ctx carries the request's language into each thread.
     with ThreadPoolExecutor(max_workers=7) as ex:
         jobs = {
             "local": ex.submit(in_ctx(local_crops), la, lo),
@@ -180,7 +180,7 @@ def recommend(req: RecommendRequest):
 
 @app.get("/climate")
 def climate(lat: float, lon: float, start: str, end: str, resolution: str = "monthly"):
-    """Clima real de NASA POWER agregado. start/end en formato YYYYMMDD."""
+    """Aggregated real climate from NASA POWER. start/end in YYYYMMDD format."""
     if resolution not in RESOLUTIONS:
         raise HTTPException(400, t(f"resolution debe ser una de {RESOLUTIONS}", f"resolution must be one of {RESOLUTIONS}"))
     try:
@@ -199,52 +199,52 @@ def climate(lat: float, lon: float, start: str, end: str, resolution: str = "mon
 
 @app.post("/point/local-crops")
 def point_local_crops(p: Point):
-    """Cultivos cercanos (CDL). Va aparte del clima porque tarda mas."""
+    """Nearby crops (CDL). Separate from climate because it takes longer."""
     return local_crops(p.lat, p.lon)
 
 
 @app.post("/point/soil")
 def point_soil(p: Point):
-    """Suelo real (SSURGO) en el punto. Solo EE. UU."""
+    """Real soil (SSURGO) at the point. U.S. only."""
     return localize(soil_at(p.lat, p.lon))
 
 
 @app.post("/point/ndvi")
 def point_ndvi(p: Point):
-    """NDVI real (MODIS MOD13Q1) del punto, ultimos ~14 meses."""
+    """Real NDVI (MODIS MOD13Q1) at the point, last ~14 months."""
     return localize(ndvi_at(p.lat, p.lon))
 
 
-# ---------- NASA Earthdata (requiere EARTHDATA_TOKEN) ----------
+# ---------- NASA Earthdata (requires EARTHDATA_TOKEN) ----------
 
 
 @app.get("/earthdata/status")
 def earthdata_status():
-    """Indica si el servidor tiene token de NASA Earthdata (no lo valida: cada fuente avisa si lo rechazan)."""
+    """Whether the server has a NASA Earthdata token (it isn't validated: each source reports if it gets rejected)."""
     return earthdata.status()
 
 
 @app.post("/point/smap")
 def point_smap(p: Point):
-    """Humedad de la superficie del suelo medida por SMAP (NASA), últimas ~2 semanas. Global."""
+    """Surface soil moisture measured by SMAP (NASA), last ~2 weeks. Global."""
     return localize(earthdata.smap_at(p.lat, p.lon))
 
 
 @app.post("/point/imerg")
 def point_imerg(p: Point):
-    """Lluvia diaria por satélite (GPM IMERG Late, NASA), últimos 30 días. Global entre 60° N y 60° S."""
+    """Daily satellite rain (GPM IMERG Late, NASA), last 30 days. Global between 60° N and 60° S."""
     return localize(earthdata.imerg_at(p.lat, p.lon))
 
 
 @app.post("/point/nldas")
 def point_nldas(p: Point):
-    """Balance de agua mensual (NLDAS-2 Noah, NASA): humedad del suelo, evapotranspiración, escorrentía. EE. UU. contiguo."""
+    """Monthly water balance (NLDAS-2 Noah, NASA): soil moisture, evapotranspiration, runoff. Contiguous U.S."""
     return localize(earthdata.nldas_at(p.lat, p.lon))
 
 
 @app.post("/point/srtm")
 def point_srtm(p: Point):
-    """Altura, pendiente y desnivel del terreno (SRTM, NASA, ~30 m). Global entre 60° N y 56° S."""
+    """Terrain elevation, slope and relief (SRTM, NASA, ~30 m). Global between 60° N and 56° S."""
     return localize(earthdata.srtm_at(p.lat, p.lon))
 
 
@@ -254,13 +254,13 @@ class PriceRequest(Point):
 
 @app.get("/prices/status")
 def prices_status():
-    """Indica si el servidor tiene su propia clave de QuickStats (entonces el usuario no necesita la suya)."""
+    """Whether the server has its own QuickStats key (then the user doesn't need theirs)."""
     return {"server_key": bool(QUICKSTATS_KEY)}
 
 
 @app.post("/prices/reference")
 def prices_reference(req: PriceRequest):
-    """Precios de referencia por estado (USDA QuickStats). Usa la clave del usuario o, si no trae, la del servidor. No se guarda."""
+    """Reference prices by state (USDA QuickStats). Uses the user's key or, if none is sent, the server's. Never stored."""
     key = (req.api_key or "").strip() or QUICKSTATS_KEY
     if len(key) < 8:
         raise HTTPException(400, t("Falta la clave del USDA QuickStats.", "The USDA QuickStats key is missing."))
@@ -272,19 +272,19 @@ def prices_reference(req: PriceRequest):
 
 @app.post("/point/gaez/suitability")
 def point_gaez_suitability(p: Point, input_level: Literal["High", "Low"] = "High"):
-    """Idoneidad y rendimiento alcanzable por cultivo, en secano y con riego (GAEZ v4 Tema 4, 1981-2010). Global."""
+    """Suitability and attainable yield per crop, rainfed and irrigated (GAEZ v4 Theme 4, 1981-2010). Global."""
     return localize(suitability_at(p.lat, p.lon, input_level))
 
 
 @app.post("/point/gaez/growing")
 def point_gaez_growing(p: Point):
-    """Periodo de crecimiento, dias de helada y calor, lluvia y P/PET (GAEZ v4 Tema 2, 1981-2010). Global."""
+    """Growing period, frost and heat days, rain and P/PET (GAEZ v4 Theme 2, 1981-2010). Global."""
     return localize(growing_at(p.lat, p.lon))
 
 
 @app.post("/point/gaez/actual")
 def point_gaez_actual(p: Point):
-    """Cultivos realmente cosechados en el pixel: area, produccion y rendimiento (GAEZ v4 Tema 5, 2010). Global."""
+    """Crops actually harvested in the pixel: area, production and yield (GAEZ v4 Theme 5, 2010). Global."""
     return localize(actual_at(p.lat, p.lon))
 
 
@@ -295,30 +295,30 @@ class StationsRequest(Point):
 
 @app.post("/point/stations")
 def point_stations(req: StationsRequest):
-    """Lluvia de estaciones CoCoRaHS cercanas (NOAA GHCN-Daily) frente a NASA POWER. Solo EE. UU."""
+    """Rain from nearby CoCoRaHS stations (NOAA GHCN-Daily) versus NASA POWER. U.S. only."""
     return localize(stations_near(req.lat, req.lon, req.year, req.radius_km))
 
 
-# ---------- Base de datos del ETL (backend/data/db, ver app/etl) ----------
+# ---------- ETL database (backend/data/db, see app/etl) ----------
 
 
 @app.get("/datasets")
 def datasets_status():
-    """Tablas del ETL, si estan construidas y cuantas filas tienen, y las zonas piloto."""
-    return datasets.resumen_estado()
+    """ETL tables, whether they are built and how many rows they have, plus the pilot zones."""
+    return datasets.status_summary()
 
 
 @app.get("/datasets/cell")
 def datasets_cell(lat: float, lon: float):
-    """Todo lo que la base sabe de la celda de 0.25 grados que contiene el punto."""
-    return datasets.celda(lat, lon)
+    """Everything the database knows about the 0.25-degree cell that contains the point."""
+    return datasets.cell(lat, lon)
 
 
 @app.get("/datasets/zones/{zone}")
 def datasets_zone(zone: str):
-    """Resumen de una zona piloto: cultivos principales, sequia reciente, cobertura del suelo y validacion."""
+    """Summary of a pilot zone: main crops, recent drought, land cover and validation."""
     try:
-        return datasets.zona_resumen(zone)
+        return datasets.zone_summary(zone)
     except DatasetError as e:
         raise HTTPException(e.status, e.msg)
 
@@ -326,9 +326,9 @@ def datasets_zone(zone: str):
 @app.get("/datasets/{table}")
 def datasets_table(table: str, zona: str | None = None, cell_id: int | None = None, crop: str | None = None,
                    fuente: str | None = None, limit: int = 500, offset: int = 0):
-    """Filas de una tabla con filtros simples (zona, celda, cultivo, fuente). Maximo 5000 por pagina."""
+    """Rows of a table with simple filters (zona, cell, crop, fuente). At most 5000 per page."""
     try:
-        return datasets.filas_tabla(table, zona, cell_id, {"crop": crop, "fuente": fuente},
+        return datasets.table_rows(table, zona, cell_id, {"crop": crop, "fuente": fuente},
                                     max(1, min(limit, 5000)), max(0, offset))
     except DatasetError as e:
         raise HTTPException(e.status, e.msg)
@@ -336,7 +336,7 @@ def datasets_table(table: str, zona: str | None = None, cell_id: int | None = No
 
 @app.get("/geocode")
 def geocode(q: str):
-    """Busca pueblo y estado, condado, codigo postal o direccion de EE. UU. (Gazetteer y geocodificador del Censo)."""
+    """Looks up a U.S. town and state, county, ZIP code or address (Census Gazetteer and geocoder)."""
     from .geocode import search
 
     if not q.strip() or len(q) > 120:

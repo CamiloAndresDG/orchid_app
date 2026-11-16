@@ -1,21 +1,24 @@
-"""ETL de la base de datos NASA Space Apps (Adapting Farms with NASA Data).
+"""ETL for the NASA Space Apps database (Adapting Farms with NASA Data).
 
-Convierte el notebook `etl_nasa_space_apps.ipynb` en modulos reutilizables:
+Turns the `etl_nasa_space_apps.ipynb` notebook into reusable modules:
 
-| # | Tabla                 | Modulo          | Fuente                                                  |
+| # | Table                 | Module          | Source                                                  |
 |---|-----------------------|-----------------|---------------------------------------------------------|
-| 1 | cells                 | grid            | Cuadricula GLDAS 0.25 grados + zonas piloto             |
-| 2 | coverage              | grid            | Derivada: que fuentes cubren cada celda                 |
-| 3 | gaez_actual           | gaez            | GAEZ v4 Tema 5 (servidor FAO o carpeta local)           |
-| 4 | climate_monthly       | ldas            | GLDAS 2.1 (global) y NLDAS-2 (EE. UU.) via Earthdata    |
-| 5 | climatology           | ldas            | Derivada de climate_monthly                             |
-| 6 | landcover             | landcover       | NLCD (MRLC via pygeohydro), solo EE. UU.                |
-| 7 | stations_validation   | stations        | CoCoRaHS en GHCN-Daily (NOAA NCEI) + climate_monthly    |
-| 8 | gaez_growing          | gaez            | GAEZ v4 Tema 2 (res01)                                  |
-| 9 | gaez_suitability      | gaez            | GAEZ v4 Tema 4 (res05)                                  |
-|10 | crop_traits           | traits          | Manual (borrador botanico, CSV editable)                |
-|11 | indicators_monthly    | indicators      | Derivada de climate_monthly                             |
+| 1 | cells                 | grid            | GLDAS 0.25-degree grid + pilot zones                    |
+| 2 | coverage              | grid            | Derived: which sources cover each cell                  |
+| 3 | gaez_actual           | gaez            | GAEZ v4 Theme 5 (FAO server or local folder)            |
+| 4 | climate_monthly       | ldas            | GLDAS 2.1 (global) and NLDAS-2 (U.S.) via Earthdata     |
+| 5 | climatology           | ldas            | Derived from climate_monthly                            |
+| 6 | landcover             | landcover       | NLCD (MRLC via pygeohydro), U.S. only                   |
+| 7 | stations_validation   | stations        | CoCoRaHS in GHCN-Daily (NOAA NCEI) + climate_monthly    |
+| 8 | gaez_growing          | gaez            | GAEZ v4 Theme 2 (res01)                                 |
+| 9 | gaez_suitability      | gaez            | GAEZ v4 Theme 4 (res05)                                 |
+|10 | crop_traits           | traits          | Manual (botanical draft, editable CSV)                  |
+|11 | indicators_monthly    | indicators      | Derived from climate_monthly                            |
 
-Construir tablas:  `python -m app.etl build [tabla ...]`  (desde la carpeta backend)
-Ver estado:        `python -m app.etl status`
+Build tables:  `python -m app.etl build [table ...]`  (from the backend folder)
+Show status:   `python -m app.etl status`
+
+Column names inside the parquet files (zona, año, mes, fuente, valor, ...) stay in Spanish:
+they are the stored schema shared with the notebook, and renaming them would break existing data.
 """

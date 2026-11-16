@@ -1,9 +1,9 @@
-"""Motor de reglas de rotacion (MVP).
+"""Rotation rules engine (MVP).
 
-Tabla escrita a mano para las dos zonas de ejemplo: cada estrategia declara beneficios, evidencia,
-vacios y riesgos, como exige el reto (apoyar el criterio del agricultor, no reemplazarlo).
-"evidence" nombra el tipo de dato que respalda cada punto; no son consultas hechas para el ejemplo.
-Nada de esto lo ha validado todavia la extension agricola local (K-State, Iowa State).
+Hand-written table for the two example zones: each strategy states benefits, evidence,
+gaps and risks, as the challenge requires (support the farmer's judgment, not replace it).
+"evidence" names the kind of data backing each point; they aren't queries run for the example.
+None of this has been validated by local agricultural extension yet (K-State, Iowa State).
 """
 from .i18n import lang
 
@@ -75,7 +75,7 @@ STRATEGIES = {
 }
 
 
-# Los mismos textos en inglés, en el mismo orden.
+# The same texts in English, in the same order.
 STRATEGIES_EN = {
     "ks-sumner": [
         {

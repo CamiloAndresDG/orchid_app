@@ -1,4 +1,4 @@
-"""Suelo real por punto desde SSURGO via Soil Data Access (USDA NRCS). Solo EE. UU., sin cuenta."""
+"""Real soil per point from SSURGO via Soil Data Access (USDA NRCS). U.S. only, no account."""
 import json
 
 import httpx
@@ -46,7 +46,7 @@ def soil_at(lat: float, lon: float) -> dict:
         table = r.json().get("Table", [])
     except Exception:
         out["note"] = "No se pudo consultar SSURGO ahora. Intenta de nuevo."
-        return out  # no se cachea el fallo
+        return out  # failures aren't cached
     if len(table) > 1:
         cols = table[0]
         comps = []
